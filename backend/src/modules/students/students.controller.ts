@@ -1,0 +1,262 @@
+import { Controller, Get, Post, Put, Delete, Param, Body, Query } from '@nestjs/common';
+import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
+import { StudentsService } from './students.service';
+import { Roles } from '../../common/decorators/roles.decorator';
+import { CurrentUser } from '../../common/decorators/current-user.decorator';
+import { ROLES } from '../../common/constants';
+import { CreateEnquiryDto } from './dto/create-enquiry.dto';
+import { UpdateEnquiryDto } from './dto/update-enquiry.dto';
+import { CreateApplicationDto } from './dto/create-application.dto';
+import { UpdateApplicationDto } from './dto/update-application.dto';
+import { ReviewApplicationDto } from './dto/review-application.dto';
+import { CreateStudentDto } from './dto/create-student.dto';
+import { UpdateStudentDto } from './dto/update-student.dto';
+import { LinkParentDto } from './dto/link-parent.dto';
+import { CreateDocumentDto } from './dto/create-document.dto';
+import { CreateAcademicRecordDto } from './dto/create-academic-record.dto';
+import { ListEnquiriesQueryDto } from './dto/list-enquiries-query.dto';
+import { ListApplicationsQueryDto } from './dto/list-applications-query.dto';
+import { ListStudentsQueryDto } from './dto/list-students-query.dto';
+import { CreateParentDto } from './dto/create-parent.dto';
+
+@ApiTags('Students')
+@ApiBearerAuth()
+@Controller()
+export class StudentsController {
+  constructor(private readonly studentsService: StudentsService) {}
+
+  // ─── Enquiries ────────────────────────────────────────────────────────────
+
+  @Post('enquiries')
+  @Roles(ROLES.RECEPTION, ROLES.PRINCIPAL, ROLES.ORGANIZATION_OWNER)
+  @ApiOperation({ summary: 'Create enquiry' })
+  async createEnquiry(@CurrentUser() user: any, @Body() dto: CreateEnquiryDto) {
+    const data = await this.studentsService.createEnquiry({ ...dto, tenantId: user.tenantId, branchId: user.branchId || dto.classId });
+    return { success: true, data };
+  }
+
+  @Get('branches/:branchId/enquiries')
+  @Roles(ROLES.RECEPTION, ROLES.PRINCIPAL, ROLES.ORGANIZATION_OWNER)
+  @ApiOperation({ summary: 'List enquiries for a branch' })
+  async findEnquiries(@Param('branchId') branchId: string, @Query() query: ListEnquiriesQueryDto) {
+    return this.studentsService.findEnquiriesByBranch(branchId, query);
+  }
+
+  @Get('enquiries/:id')
+  @Roles(ROLES.RECEPTION, ROLES.PRINCIPAL, ROLES.ORGANIZATION_OWNER)
+  @ApiOperation({ summary: 'Get enquiry by ID' })
+  async findEnquiryById(@Param('id') id: string) {
+    const data = await this.studentsService.findEnquiryById(id);
+    return { success: true, data };
+  }
+
+  @Put('enquiries/:id')
+  @Roles(ROLES.RECEPTION, ROLES.PRINCIPAL)
+  @ApiOperation({ summary: 'Update enquiry' })
+  async updateEnquiry(@Param('id') id: string, @Body() dto: UpdateEnquiryDto) {
+    const data = await this.studentsService.updateEnquiry(id, dto);
+    return { success: true, data };
+  }
+
+  @Post('enquiries/:id/convert')
+  @Roles(ROLES.RECEPTION, ROLES.PRINCIPAL)
+  @ApiOperation({ summary: 'Convert enquiry to application' })
+  async convertEnquiry(@Param('id') id: string) {
+    const data = await this.studentsService.convertEnquiryToApplication(id);
+    return { success: true, data };
+  }
+
+  // ─── Applications ─────────────────────────────────────────────────────────
+
+  @Post('applications')
+  @Roles(ROLES.RECEPTION, ROLES.PRINCIPAL, ROLES.ORGANIZATION_OWNER)
+  @ApiOperation({ summary: 'Submit application' })
+  async createApplication(@CurrentUser() user: any, @Body() dto: CreateApplicationDto) {
+    const data = await this.studentsService.createApplication({ ...dto, tenantId: user.tenantId, branchId: user.branchId });
+    return { success: true, data };
+  }
+
+  @Get('branches/:branchId/applications')
+  @Roles(ROLES.RECEPTION, ROLES.PRINCIPAL, ROLES.ORGANIZATION_OWNER)
+  @ApiOperation({ summary: 'List applications for a branch' })
+  async findApplications(@Param('branchId') branchId: string, @Query() query: ListApplicationsQueryDto) {
+    return this.studentsService.findApplicationsByBranch(branchId, query);
+  }
+
+  @Get('applications/:id')
+  @Roles(ROLES.RECEPTION, ROLES.PRINCIPAL, ROLES.ORGANIZATION_OWNER)
+  @ApiOperation({ summary: 'Get application by ID' })
+  async findApplicationById(@Param('id') id: string) {
+    const data = await this.studentsService.findApplicationById(id);
+    return { success: true, data };
+  }
+
+  @Put('applications/:id')
+  @Roles(ROLES.RECEPTION, ROLES.PRINCIPAL)
+  @ApiOperation({ summary: 'Update application' })
+  async updateApplication(@Param('id') id: string, @Body() dto: UpdateApplicationDto) {
+    const data = await this.studentsService.updateApplication(id, dto);
+    return { success: true, data };
+  }
+
+  @Post('applications/:id/review')
+  @Roles(ROLES.PRINCIPAL, ROLES.ORGANIZATION_OWNER)
+  @ApiOperation({ summary: 'Review application' })
+  async reviewApplication(@CurrentUser() user: any, @Param('id') id: string, @Body() dto: ReviewApplicationDto) {
+    const data = await this.studentsService.reviewApplication(id, dto.status, dto.reviewRemarks, user.id);
+    return { success: true, data };
+  }
+
+  @Post('applications/:id/admit')
+  @Roles(ROLES.PRINCIPAL, ROLES.ORGANIZATION_OWNER)
+  @ApiOperation({ summary: 'Admit application as student' })
+  async admitApplication(@Param('id') id: string) {
+    const data = await this.studentsService.admitApplication(id);
+    return { success: true, data };
+  }
+
+  // ─── Students ─────────────────────────────────────────────────────────────
+
+  @Post('students')
+  @Roles(ROLES.PRINCIPAL, ROLES.ORGANIZATION_OWNER)
+  @ApiOperation({ summary: 'Create student directly' })
+  async createStudent(@CurrentUser() user: any, @Body() dto: CreateStudentDto) {
+    const data = await this.studentsService.createStudent({ ...dto, tenantId: user.tenantId, branchId: user.branchId || user.tenantId });
+    return { success: true, data };
+  }
+
+  @Get('branches/:branchId/students')
+  @Roles(ROLES.PRINCIPAL, ROLES.TEACHER, ROLES.ORGANIZATION_OWNER)
+  @ApiOperation({ summary: 'List students for a branch' })
+  async findStudents(@Param('branchId') branchId: string, @Query() query: ListStudentsQueryDto) {
+    return this.studentsService.findStudentsByBranch(branchId, query);
+  }
+
+  @Get('students/:id')
+  @Roles(ROLES.PRINCIPAL, ROLES.TEACHER, ROLES.ORGANIZATION_OWNER)
+  @ApiOperation({ summary: 'Get student by ID' })
+  async findStudentById(@Param('id') id: string) {
+    const data = await this.studentsService.findStudentById(id);
+    return { success: true, data };
+  }
+
+  @Put('students/:id')
+  @Roles(ROLES.PRINCIPAL, ROLES.ORGANIZATION_OWNER)
+  @ApiOperation({ summary: 'Update student' })
+  async updateStudent(@Param('id') id: string, @Body() dto: UpdateStudentDto) {
+    const data = await this.studentsService.updateStudent(id, dto);
+    return { success: true, data };
+  }
+
+  @Post('students/:id/withdraw')
+  @Roles(ROLES.PRINCIPAL, ROLES.ORGANIZATION_OWNER)
+  @ApiOperation({ summary: 'Withdraw student' })
+  async withdrawStudent(@Param('id') id: string, @Body('leavingDate') leavingDate: string, @Body('leavingReason') leavingReason?: string) {
+    const data = await this.studentsService.withdrawStudent(id, leavingDate, leavingReason);
+    return { success: true, data };
+  }
+
+  @Get('students/:id/documents')
+  @Roles(ROLES.PRINCIPAL, ROLES.TEACHER)
+  @ApiOperation({ summary: 'Get student documents' })
+  async getStudentDocuments(@Param('id') id: string) {
+    const data = await this.studentsService.getStudentDocuments(id);
+    return { success: true, data };
+  }
+
+  @Get('students/:id/academic-records')
+  @Roles(ROLES.PRINCIPAL, ROLES.TEACHER)
+  @ApiOperation({ summary: 'Get student academic records' })
+  async getStudentAcademicRecords(@Param('id') id: string) {
+    const data = await this.studentsService.getStudentAcademicRecords(id);
+    return { success: true, data };
+  }
+
+  // ─── Parents ──────────────────────────────────────────────────────────────
+
+  @Post('parents')
+  @Roles(ROLES.PRINCIPAL, ROLES.RECEPTION)
+  @ApiOperation({ summary: 'Create parent' })
+  async createParent(@CurrentUser() user: any, @Body() dto: CreateParentDto) {
+    const data = await this.studentsService.createParent({ ...dto, tenantId: user.tenantId });
+    return { success: true, data };
+  }
+
+  @Get('parents/:id')
+  @Roles(ROLES.PRINCIPAL, ROLES.TEACHER)
+  @ApiOperation({ summary: 'Get parent by ID' })
+  async findParentById(@Param('id') id: string) {
+    const data = await this.studentsService.findParentById(id);
+    return { success: true, data };
+  }
+
+  @Put('parents/:id')
+  @Roles(ROLES.PRINCIPAL)
+  @ApiOperation({ summary: 'Update parent' })
+  async updateParent(@Param('id') id: string, @Body() dto: CreateParentDto) {
+    const data = await this.studentsService.updateParent(id, dto);
+    return { success: true, data };
+  }
+
+  @Post('students/:id/parents')
+  @Roles(ROLES.PRINCIPAL, ROLES.RECEPTION)
+  @ApiOperation({ summary: 'Link parent to student' })
+  async linkParent(@Param('id') studentId: string, @Body() dto: LinkParentDto) {
+    const data = await this.studentsService.linkParentToStudent(
+      studentId, dto.parentId, dto.relationship, dto.isPrimary, dto.isEmergencyContact,
+    );
+    return { success: true, data };
+  }
+
+  @Get('students/:id/parents')
+  @Roles(ROLES.PRINCIPAL, ROLES.TEACHER)
+  @ApiOperation({ summary: 'Get student parents' })
+  async getStudentParents(@Param('id') id: string) {
+    const data = await this.studentsService.getStudentParents(id);
+    return { success: true, data };
+  }
+
+  // ─── Documents ────────────────────────────────────────────────────────────
+
+  @Post('students/:id/documents')
+  @Roles(ROLES.PRINCIPAL, ROLES.RECEPTION)
+  @ApiOperation({ summary: 'Add document to student' })
+  async createDocument(@CurrentUser() user: any, @Param('id') studentId: string, @Body() dto: CreateDocumentDto) {
+    const data = await this.studentsService.createDocument({ ...dto, tenantId: user.tenantId, studentId });
+    return { success: true, data };
+  }
+
+  @Put('documents/:id')
+  @Roles(ROLES.PRINCIPAL)
+  @ApiOperation({ summary: 'Update document' })
+  async updateDocument(@Param('id') id: string, @Body() dto: CreateDocumentDto) {
+    const data = await this.studentsService.updateDocument(id, dto);
+    return { success: true, data };
+  }
+
+  @Delete('documents/:id')
+  @Roles(ROLES.PRINCIPAL)
+  @ApiOperation({ summary: 'Delete document' })
+  async deleteDocument(@Param('id') id: string) {
+    await this.studentsService.deleteDocument(id);
+    return { success: true, message: 'Document deleted' };
+  }
+
+  // ─── Academic Records ─────────────────────────────────────────────────────
+
+  @Post('students/:id/academic-records')
+  @Roles(ROLES.PRINCIPAL, ROLES.ORGANIZATION_OWNER)
+  @ApiOperation({ summary: 'Create academic record' })
+  async createAcademicRecord(@CurrentUser() user: any, @Param('id') studentId: string, @Body() dto: CreateAcademicRecordDto) {
+    const data = await this.studentsService.createAcademicRecord({ ...dto, tenantId: user.tenantId, branchId: user.branchId, studentId });
+    return { success: true, data };
+  }
+
+  @Post('students/:id/promote')
+  @Roles(ROLES.PRINCIPAL, ROLES.ORGANIZATION_OWNER)
+  @ApiOperation({ summary: 'Promote student to next class' })
+  async promoteStudent(@Param('id') studentId: string, @Body('classId') classId: string, @Body('academicYearId') academicYearId: string, @Body('sectionId') sectionId?: string) {
+    const data = await this.studentsService.promoteStudent(studentId, classId, academicYearId, sectionId);
+    return { success: true, data };
+  }
+}
