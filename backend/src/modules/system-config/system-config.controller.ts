@@ -10,6 +10,7 @@ import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { SystemConfigService } from './system-config.service';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { ROLES } from '../../common/constants';
+import { UpdateSystemConfigDto } from './dto/update-config.dto';
 
 @ApiTags('System Config')
 @ApiBearerAuth()
@@ -36,9 +37,9 @@ export class SystemConfigController {
   @ApiOperation({ summary: 'Set a config value' })
   async set(
     @Param('key') key: string,
-    @Body() body: { value: any; description?: string },
+    @Body() dto: UpdateSystemConfigDto,
   ) {
-    const data = await this.systemConfigService.set(key, body.value, body.description);
+    const data = await this.systemConfigService.set(key, dto.value, dto.description);
     return { success: true, data };
   }
 

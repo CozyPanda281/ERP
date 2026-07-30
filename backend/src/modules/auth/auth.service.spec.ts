@@ -143,7 +143,7 @@ describe('AuthService', () => {
     it('should invalidate session', async () => {
       mockDb.setDrizzleResults([[]]);
 
-      await expect(service.logout('session-1')).resolves.not.toThrow();
+      await expect(service.logout('session-1', 'user-1')).resolves.not.toThrow();
     });
   });
 });

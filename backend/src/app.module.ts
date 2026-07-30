@@ -15,6 +15,26 @@ import { AcademicModule } from './modules/academic/academic.module';
 import { RolesModule } from './modules/roles/roles.module';
 import { StudentsModule } from './modules/students/students.module';
 import { ImportModule } from './modules/import/import.module';
+import { TimetableModule } from './modules/timetable/timetable.module';
+import { AttendanceModule } from './modules/attendance/attendance.module';
+import { ExamsModule } from './modules/exams/exams.module';
+import { FeeModule } from './modules/fee/fee.module';
+import { CommunicationModule } from './modules/communication/communication.module';
+import { HrModule } from './modules/hr/hr.module';
+import { AccountingModule } from './modules/accounting/accounting.module';
+import { TransportModule } from './modules/transport/transport.module';
+import { HostelModule } from './modules/hostel/hostel.module';
+import { LibraryModule } from './modules/library/library.module';
+import { InventoryModule } from './modules/inventory/inventory.module';
+import { StaffModule } from './modules/staff/staff.module';
+import { LeaveModule } from './modules/leave/leave.module';
+import { PayrollModule } from './modules/payroll/payroll.module';
+import { ExpensesModule } from './modules/expenses/expenses.module';
+import { HomeworkModule } from './modules/homework/homework.module';
+import { LessonPlansModule } from './modules/lesson-plans/lesson-plans.module';
+import { NotificationsModule } from './modules/notifications/notifications.module';
+import { IdCardsModule } from './modules/id-cards/id-cards.module';
+import { VisitorsModule } from './modules/visitors/visitors.module';
 import { SharedModule } from './shared/shared.module';
 import { TenantMiddleware } from './common/middleware/tenant.middleware';
 import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
@@ -50,6 +70,26 @@ import encryptionConfig from './config/encryption.config';
     RolesModule,
     StudentsModule,
     ImportModule,
+    TimetableModule,
+    AttendanceModule,
+    ExamsModule,
+    FeeModule,
+    CommunicationModule,
+    HrModule,
+    AccountingModule,
+    TransportModule,
+    HostelModule,
+    LibraryModule,
+    InventoryModule,
+    StaffModule,
+    LeaveModule,
+    PayrollModule,
+    ExpensesModule,
+    HomeworkModule,
+    LessonPlansModule,
+    NotificationsModule,
+    IdCardsModule,
+    VisitorsModule,
     SharedModule,
   ],
   providers: [

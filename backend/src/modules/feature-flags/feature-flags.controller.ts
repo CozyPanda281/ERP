@@ -11,6 +11,8 @@ import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { FeatureFlagsService } from './feature-flags.service';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { ROLES } from '../../common/constants';
+import { ToggleFeatureDto } from './dto/toggle-feature.dto';
+import { UpdatePlanFeatureDto } from './dto/update-plan-feature.dto';
 
 @ApiTags('Feature Flags')
 @ApiBearerAuth()
@@ -44,13 +46,13 @@ export class FeatureFlagsController {
   async setTenantOverride(
     @Param('tenantId') tenantId: string,
     @Param('featureCode') featureCode: string,
-    @Body() body: { enabled: boolean; overridePlan?: boolean },
+    @Body() dto: ToggleFeatureDto,
   ) {
     await this.featureFlagsService.setTenantOverride(
       tenantId,
       featureCode,
-      body.enabled,
-      body.overridePlan,
+      dto.enabled,
+      dto.overridePlan,
     );
     return { success: true, message: 'Feature override updated' };
   }
@@ -61,12 +63,12 @@ export class FeatureFlagsController {
   async updatePlanFeature(
     @Param('planId') planId: string,
     @Param('featureCode') featureCode: string,
-    @Body() body: { enabled: boolean },
+    @Body() dto: UpdatePlanFeatureDto,
   ) {
     await this.featureFlagsService.updatePlanFeature(
       planId,
       featureCode,
-      body.enabled,
+      dto.enabled,
     );
     return { success: true, message: 'Plan feature updated' };
   }

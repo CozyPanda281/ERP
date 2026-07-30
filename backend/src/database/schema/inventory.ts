@@ -1,92 +1,116 @@
-import { pgTable, uuid, varchar, text, integer, boolean, timestamp, date, numeric, index, uniqueIndex } from 'drizzle-orm/pg-core';
-import { relations, sql } from 'drizzle-orm';
-import { tenants } from './tenants';
-import { branches } from './branches';
+import { pgTable, uuid, varchar, text, integer, decimal, date, timestamp, boolean } from 'drizzle-orm/pg-core';
 
 export const inventoryCategories = pgTable('inventory_categories', {
-  id: uuid('id').defaultRandom().primaryKey(),
-  tenantId: uuid('tenant_id').notNull().references(() => tenants.id, { onDelete: 'cascade' }),
-  name: varchar('name', { length: 100 }).notNull(),
+  id: uuid('id').primaryKey().defaultRandom(),
+  tenantId: uuid('tenant_id').notNull(),
+  branchId: uuid('branch_id').notNull(),
+  name: varchar('name', { length: 200 }).notNull(),
+  code: varchar('code', { length: 50 }),
   description: text('description'),
+  parentId: uuid('parent_id'),
   isActive: boolean('is_active').default(true),
-  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
-  updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow(),
-}, (table) => ({
-  tenantNameUnique: uniqueIndex('inventory_categories_tenant_id_name_key').on(table.tenantId, table.name),
-}));
+  createdAt: timestamp('created_at').defaultNow(),
+  updatedAt: timestamp('updated_at').defaultNow(),
+  deletedAt: timestamp('deleted_at'),
+});
 
 export const inventoryItems = pgTable('inventory_items', {
-  id: uuid('id').defaultRandom().primaryKey(),
-  tenantId: uuid('tenant_id').notNull().references(() => tenants.id, { onDelete: 'cascade' }),
-  branchId: uuid('branch_id').notNull().references(() => branches.id, { onDelete: 'cascade' }),
-  categoryId: uuid('category_id').references(() => inventoryCategories.id),
-  name: varchar('name', { length: 255 }).notNull(),
-  sku: varchar('sku', { length: 100 }),
-  description: text('description'),
+  id: uuid('id').primaryKey().defaultRandom(),
+  tenantId: uuid('tenant_id').notNull(),
+  branchId: uuid('branch_id').notNull(),
+  categoryId: uuid('category_id'),
+  name: varchar('name', { length: 200 }).notNull(),
+  code: varchar('code', { length: 50 }),
   unit: varchar('unit', { length: 50 }),
-  quantity: numeric('quantity', { precision: 12, scale: 2 }).default('0'),
-  minQuantity: numeric('min_quantity', { precision: 12, scale: 2 }).default('0'),
-  maxQuantity: numeric('max_quantity', { precision: 12, scale: 2 }),
-  unitPrice: numeric('unit_price', { precision: 10, scale: 2 }),
-  totalValue: numeric('total_value', { precision: 12, scale: 2 }),
-  location: varchar('location', { length: 255 }),
+  reorderLevel: integer('reorder_level').default(0),
+  currentStock: integer('current_stock').default(0),
+  unitPrice: decimal('unit_price', { precision: 10, scale: 2 }),
+  taxRate: decimal('tax_rate', { precision: 5, scale: 2 }).default('0'),
   isActive: boolean('is_active').default(true),
-  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
-  updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow(),
-  deletedAt: timestamp('deleted_at', { withTimezone: true }),
-}, (table) => ({
-  branchIdx: index('idx_inventory_items_branch').on(table.branchId),
-  categoryIdx: index('idx_inventory_items_category').on(table.categoryId),
-  skuIdx: index('idx_inventory_items_sku').on(table.sku),
-  lowStockIdx: index('idx_inventory_items_low_stock').on(table.quantity).where(sql`quantity <= min_quantity`),
-}));
-
-export const inventoryTransactions = pgTable('inventory_transactions', {
-  id: uuid('id').defaultRandom().primaryKey(),
-  tenantId: uuid('tenant_id').notNull().references(() => tenants.id, { onDelete: 'cascade' }),
-  branchId: uuid('branch_id').notNull().references(() => branches.id, { onDelete: 'cascade' }),
-  itemId: uuid('item_id').notNull().references(() => inventoryItems.id, { onDelete: 'cascade' }),
-  transactionType: varchar('transaction_type', { length: 5 }).notNull(),
-  quantity: numeric('quantity', { precision: 12, scale: 2 }).notNull().default('0'),
-  unitPrice: numeric('unit_price', { precision: 10, scale: 2 }),
-  totalAmount: numeric('total_amount', { precision: 12, scale: 2 }),
-  referenceType: varchar('reference_type', { length: 50 }),
-  referenceId: uuid('reference_id'),
-  vendorName: varchar('vendor_name', { length: 255 }),
-  billNumber: varchar('bill_number', { length: 100 }),
-  remarks: text('remarks'),
-  createdBy: uuid('created_by'),
-  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
-}, (table) => ({
-  itemIdx: index('idx_inventory_transactions_item').on(table.itemId),
-  typeIdx: index('idx_inventory_transactions_type').on(table.transactionType),
-}));
-
-export const assets = pgTable('assets', {
-  id: uuid('id').defaultRandom().primaryKey(),
-  tenantId: uuid('tenant_id').notNull().references(() => tenants.id, { onDelete: 'cascade' }),
-  branchId: uuid('branch_id').notNull().references(() => branches.id, { onDelete: 'cascade' }),
-  name: varchar('name', { length: 255 }).notNull(),
-  assetType: varchar('asset_type', { length: 100 }).notNull(),
-  assetCode: varchar('asset_code', { length: 50 }),
+  status: varchar('status', { length: 20 }).default('active'),
   description: text('description'),
-  purchaseDate: date('purchase_date'),
-  purchasePrice: numeric('purchase_price', { precision: 12, scale: 2 }),
-  currentValue: numeric('current_value', { precision: 12, scale: 2 }),
-  depreciationMethod: varchar('depreciation_method', { length: 50 }),
-  depreciationRate: numeric('depreciation_rate', { precision: 5, scale: 2 }),
-  warrantyExpiry: date('warranty_expiry'),
-  warrantyDetails: text('warranty_details'),
-  location: varchar('location', { length: 255 }),
-  status: varchar('status', { length: 50 }).default('active'),
-  assignedTo: uuid('assigned_to'),
-  conditionNote: text('condition_note'),
+  createdAt: timestamp('created_at').defaultNow(),
+  updatedAt: timestamp('updated_at').defaultNow(),
+  deletedAt: timestamp('deleted_at'),
+});
+
+export const inventorySuppliers = pgTable('inventory_suppliers', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  tenantId: uuid('tenant_id').notNull(),
+  branchId: uuid('branch_id').notNull(),
+  name: varchar('name', { length: 200 }).notNull(),
+  code: varchar('code', { length: 50 }),
+  contactPerson: varchar('contact_person', { length: 100 }),
+  phone: varchar('phone', { length: 20 }),
+  email: varchar('email', { length: 200 }),
+  address: text('address'),
   isActive: boolean('is_active').default(true),
-  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
-  updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow(),
-  deletedAt: timestamp('deleted_at', { withTimezone: true }),
-}, (table) => ({
-  branchIdx: index('idx_assets_branch').on(table.branchId),
-  typeIdx: index('idx_assets_type').on(table.assetType),
-  statusIdx: index('idx_assets_status').on(table.status),
-}));
+  status: varchar('status', { length: 20 }).default('active'),
+  createdAt: timestamp('created_at').defaultNow(),
+  updatedAt: timestamp('updated_at').defaultNow(),
+  deletedAt: timestamp('deleted_at'),
+});
+
+export const inventoryPurchaseOrders = pgTable('inventory_purchase_orders', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  tenantId: uuid('tenant_id').notNull(),
+  branchId: uuid('branch_id').notNull(),
+  orderNumber: varchar('order_number', { length: 50 }).notNull(),
+  supplierId: uuid('supplier_id').notNull(),
+  orderDate: date('order_date').notNull(),
+  expectedDate: date('expected_date'),
+  status: varchar('status', { length: 20 }).default('draft'),
+  totalAmount: decimal('total_amount', { precision: 12, scale: 2 }),
+  notes: text('notes'),
+  createdBy: uuid('created_by'),
+  createdAt: timestamp('created_at').defaultNow(),
+  updatedAt: timestamp('updated_at').defaultNow(),
+  deletedAt: timestamp('deleted_at'),
+});
+
+export const inventoryPurchaseOrderItems = pgTable('inventory_purchase_order_items', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  poId: uuid('po_id').notNull(),
+  itemId: uuid('item_id').notNull(),
+  quantity: integer('quantity').notNull(),
+  unitPrice: decimal('unit_price', { precision: 10, scale: 2 }).notNull(),
+  totalPrice: decimal('total_price', { precision: 12, scale: 2 }),
+  createdAt: timestamp('created_at').defaultNow(),
+});
+
+export const inventoryGoodsReceipts = pgTable('inventory_goods_receipts', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  tenantId: uuid('tenant_id').notNull(),
+  branchId: uuid('branch_id').notNull(),
+  poId: uuid('po_id'),
+  receiptNumber: varchar('receipt_number', { length: 50 }).notNull(),
+  receiptDate: date('receipt_date').notNull(),
+  notes: text('notes'),
+  status: varchar('status', { length: 20 }).default('received'),
+  createdBy: uuid('created_by'),
+  createdAt: timestamp('created_at').defaultNow(),
+  updatedAt: timestamp('updated_at').defaultNow(),
+});
+
+export const inventoryGoodsReceiptItems = pgTable('inventory_goods_receipt_items', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  grnId: uuid('grn_id').notNull(),
+  itemId: uuid('item_id').notNull(),
+  quantity: integer('quantity').notNull(),
+  unitPrice: decimal('unit_price', { precision: 10, scale: 2 }),
+  createdAt: timestamp('created_at').defaultNow(),
+});
+
+export const inventoryStockAdjustments = pgTable('inventory_stock_adjustments', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  tenantId: uuid('tenant_id').notNull(),
+  branchId: uuid('branch_id').notNull(),
+  itemId: uuid('item_id').notNull(),
+  adjustmentType: varchar('adjustment_type', { length: 20 }).notNull(),
+  quantity: integer('quantity').notNull(),
+  reason: varchar('reason', { length: 200 }),
+  referenceNumber: varchar('reference_number', { length: 50 }),
+  adjustedBy: uuid('adjusted_by'),
+  notes: text('notes'),
+  createdAt: timestamp('created_at').defaultNow(),
+});

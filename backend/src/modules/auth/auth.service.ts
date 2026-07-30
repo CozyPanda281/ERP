@@ -186,10 +186,10 @@ export class AuthService {
     }
   }
 
-  async logout(sessionId: string) {
+  async logout(sessionId: string, userId: string) {
     await this.db.db.update(schema.userSessions)
       .set({ isActive: false })
-      .where(eq(schema.userSessions.id, sessionId));
+      .where(and(eq(schema.userSessions.id, sessionId), eq(schema.userSessions.userId, userId)));
   }
 
   private async getUserRoles(userId: string, tenantId: string | null) {

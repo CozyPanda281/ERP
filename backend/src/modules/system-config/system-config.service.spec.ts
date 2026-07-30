@@ -33,7 +33,7 @@ describe('SystemConfigService', () => {
       ]);
 
       const result = await service.get('default_plan');
-      expect(result.configKey).toBe('default_plan');
+      expect(result!.configKey).toBe('default_plan');
     });
 
     it('should return null for unknown key', async () => {
@@ -65,7 +65,7 @@ describe('SystemConfigService', () => {
       );
 
       const result = await service.set('test_key', { enabled: true }, 'Test config');
-      expect(result.configKey).toBe('test_key');
+      expect(result!.configKey).toBe('test_key');
     });
 
     it('should update existing config', async () => {

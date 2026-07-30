@@ -4,6 +4,7 @@ const CHAIN_METHODS = [
   'select', 'insert', 'update', 'delete', 'from', 'where', 'leftJoin', 'innerJoin',
   'rightJoin', 'fullJoin', 'crossJoin', 'orderBy', 'limit', 'offset', 'groupBy', 'having', 'values',
   'set', 'returning', 'onConflictDoNothing', 'onConflictDoUpdate', 'for', 'of', 'with', 'as',
+  'transaction',
 ];
 
 function isChainMethod(prop: string) {

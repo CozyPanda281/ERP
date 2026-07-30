@@ -35,14 +35,17 @@ export class AcademicService {
       endDate: params.endDate,
       isCurrent: params.isCurrent || false,
     });
-    return this.findAcademicYearById(id);
+    return this.findAcademicYearById(id, params.tenantId);
   }
 
-  async findAcademicYearById(id: string) {
+  async findAcademicYearById(id: string, tenantId?: string) {
+    const conditions: any[] = [eq(schema.academicYears.id, id)];
+    if (tenantId) conditions.push(eq(schema.academicYears.tenantId, tenantId));
+
     const result = await this.db.db
       .select()
       .from(schema.academicYears)
-      .where(eq(schema.academicYears.id, id))
+      .where(and(...conditions))
       .limit(1);
     if (!result.length) throw new NotFoundException('Academic year not found');
     return result[0];
@@ -90,14 +93,17 @@ export class AcademicService {
       description: params.description,
       hodId: params.hodId,
     });
-    return this.findDepartmentById(id);
+    return this.findDepartmentById(id, params.branchId);
   }
 
-  async findDepartmentById(id: string) {
+  async findDepartmentById(id: string, branchId?: string) {
+    const conditions: any[] = [eq(schema.departments.id, id), isNull(schema.departments.deletedAt)];
+    if (branchId) conditions.push(eq(schema.departments.branchId, branchId));
+
     const result = await this.db.db
       .select()
       .from(schema.departments)
-      .where(and(eq(schema.departments.id, id), isNull(schema.departments.deletedAt)))
+      .where(and(...conditions))
       .limit(1);
     if (!result.length) throw new NotFoundException('Department not found');
     return result[0];
@@ -157,14 +163,17 @@ export class AcademicService {
       description: params.description,
       displayOrder: params.displayOrder || 0,
     });
-    return this.findClassById(id);
+    return this.findClassById(id, params.branchId);
   }
 
-  async findClassById(id: string) {
+  async findClassById(id: string, branchId?: string) {
+    const conditions: any[] = [eq(schema.classes.id, id), isNull(schema.classes.deletedAt)];
+    if (branchId) conditions.push(eq(schema.classes.branchId, branchId));
+
     const result = await this.db.db
       .select()
       .from(schema.classes)
-      .where(and(eq(schema.classes.id, id), isNull(schema.classes.deletedAt)))
+      .where(and(...conditions))
       .limit(1);
     if (!result.length) throw new NotFoundException('Class not found');
     return result[0];
@@ -218,14 +227,17 @@ export class AcademicService {
       capacity: params.capacity || 0,
       roomNumber: params.roomNumber,
     });
-    return this.findSectionById(id);
+    return this.findSectionById(id, params.branchId);
   }
 
-  async findSectionById(id: string) {
+  async findSectionById(id: string, branchId?: string) {
+    const conditions: any[] = [eq(schema.sections.id, id), isNull(schema.sections.deletedAt)];
+    if (branchId) conditions.push(eq(schema.sections.branchId, branchId));
+
     const result = await this.db.db
       .select()
       .from(schema.sections)
-      .where(and(eq(schema.sections.id, id), isNull(schema.sections.deletedAt)))
+      .where(and(...conditions))
       .limit(1);
     if (!result.length) throw new NotFoundException('Section not found');
     return result[0];
@@ -265,14 +277,17 @@ export class AcademicService {
       isLanguage: params.isLanguage || false,
       description: params.description,
     });
-    return this.findSubjectById(id);
+    return this.findSubjectById(id, params.branchId);
   }
 
-  async findSubjectById(id: string) {
+  async findSubjectById(id: string, branchId?: string) {
+    const conditions: any[] = [eq(schema.subjects.id, id), isNull(schema.subjects.deletedAt)];
+    if (branchId) conditions.push(eq(schema.subjects.branchId, branchId));
+
     const result = await this.db.db
       .select()
       .from(schema.subjects)
-      .where(and(eq(schema.subjects.id, id), isNull(schema.subjects.deletedAt)))
+      .where(and(...conditions))
       .limit(1);
     if (!result.length) throw new NotFoundException('Subject not found');
     return result[0];

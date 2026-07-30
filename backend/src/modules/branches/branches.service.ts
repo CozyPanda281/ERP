@@ -45,14 +45,17 @@ export class BranchesService {
       principalId: params.principalId,
       establishedDate: params.establishedDate,
     });
-    return this.findById(id);
+    return this.findById(id, params.tenantId);
   }
 
-  async findById(id: string) {
+  async findById(id: string, tenantId?: string) {
+    const conditions: any[] = [eq(schema.branches.id, id), isNull(schema.branches.deletedAt)];
+    if (tenantId) conditions.push(eq(schema.branches.tenantId, tenantId));
+
     const result = await this.db.db
       .select()
       .from(schema.branches)
-      .where(and(eq(schema.branches.id, id), isNull(schema.branches.deletedAt)))
+      .where(and(...conditions))
       .limit(1);
     if (!result.length) throw new NotFoundException('Branch not found');
     return result[0];

@@ -27,26 +27,28 @@ export class UsersService {
     const userId = uuidv4();
     const encryptedPhone = params.phone ? this.crypto.encrypt(params.phone) : null;
 
-    await this.db.db.insert(schema.users).values({
-      id: userId,
-      tenantId: params.tenantId,
-      email: params.email,
-      phone: encryptedPhone,
-      passwordHash,
-      firstName: params.firstName,
-      lastName: params.lastName,
+    await this.db.db.transaction(async (tx) => {
+      await tx.insert(schema.users).values({
+        id: userId,
+        tenantId: params.tenantId,
+        email: params.email,
+        phone: encryptedPhone,
+        passwordHash,
+        firstName: params.firstName,
+        lastName: params.lastName,
+      });
+
+      for (const roleId of params.roleIds) {
+        await tx.insert(schema.userRoles).values({
+          id: uuidv4(),
+          userId,
+          roleId,
+          branchId: params.branchId || null,
+        });
+      }
     });
 
-    for (const roleId of params.roleIds) {
-      await this.db.db.insert(schema.userRoles).values({
-        id: uuidv4(),
-        userId,
-        roleId,
-        branchId: params.branchId || null,
-      });
-    }
-
-    return this.findById(userId);
+    return this.findById(userId, params.tenantId);
   }
 
   private decryptPhone(row: any) {
@@ -57,10 +59,13 @@ export class UsersService {
     return row;
   }
 
-  async findById(id: string) {
+  async findById(id: string, tenantId?: string) {
+    const conditions: any[] = [eq(schema.users.id, id), isNull(schema.users.deletedAt)];
+    if (tenantId) conditions.push(eq(schema.users.tenantId, tenantId));
+
     const [user] = await this.db.db.select()
       .from(schema.users)
-      .where(and(eq(schema.users.id, id), isNull(schema.users.deletedAt)))
+      .where(and(...conditions))
       .limit(1);
 
     if (!user) {
@@ -105,6 +110,24 @@ export class UsersService {
         total: Number(countResult.count),
       },
     };
+  }
+
+  async update(id: string, tenantId: string, params: any) {
+    await this.findById(id, tenantId);
+    const allowed: any = { updatedAt: new Date() };
+    if (params.email !== undefined) allowed.email = params.email;
+    if (params.firstName !== undefined) allowed.firstName = params.firstName;
+    if (params.lastName !== undefined) allowed.lastName = params.lastName;
+    if (params.phone !== undefined) allowed.phone = this.crypto.encrypt(params.phone);
+    if (params.status !== undefined) allowed.status = params.status;
+    if (params.password !== undefined) allowed.passwordHash = await bcrypt.hash(params.password, 12);
+    await this.db.db.update(schema.users).set(allowed).where(eq(schema.users.id, id));
+    return this.findById(id, tenantId);
+  }
+
+  async softDelete(id: string, tenantId: string) {
+    const user = await this.findById(id, tenantId);
+    await this.db.db.update(schema.users).set({ deletedAt: new Date() }).where(eq(schema.users.id, id));
   }
 
   async bulkCreate(tenantId: string, users: Array<{

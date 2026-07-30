@@ -5,6 +5,7 @@ import { Roles } from '../../common/decorators/roles.decorator';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { ROLES } from '../../common/constants';
 import { CreateAcademicYearDto } from './dto/create-academic-year.dto';
+import { SetCurrentAcademicYearDto } from './dto/set-current-academic-year.dto';
 import { CreateDepartmentDto } from './dto/create-department.dto';
 import { UpdateDepartmentDto } from './dto/update-department.dto';
 import { CreateClassDto } from './dto/create-class.dto';
@@ -37,8 +38,8 @@ export class AcademicController {
   @Put('academic-years/:id/set-current')
   @Roles(ROLES.ORGANIZATION_OWNER, ROLES.PRINCIPAL)
   @ApiOperation({ summary: 'Set current academic year' })
-  async setCurrentAcademicYear(@CurrentUser() user: any, @Param('id') id: string, @Body('branchId') branchId: string) {
-    const data = await this.academicService.setCurrentAcademicYear(id, user.tenantId, branchId);
+  async setCurrentAcademicYear(@CurrentUser() user: any, @Param('id') id: string, @Body() dto: SetCurrentAcademicYearDto) {
+    const data = await this.academicService.setCurrentAcademicYear(id, user.tenantId, dto.branchId);
     return { success: true, data };
   }
 

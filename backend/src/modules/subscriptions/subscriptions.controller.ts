@@ -14,6 +14,8 @@ import { Roles } from '../../common/decorators/roles.decorator';
 import { Public } from '../../common/decorators/public.decorator';
 import { ROLES } from '../../common/constants';
 import { CreatePlanDto } from './dto/create-plan.dto';
+import { UpdatePlanDto } from './dto/update-plan.dto';
+import { SuspendSubscriptionDto } from './dto/suspend-subscription.dto';
 import { AssignSubscriptionDto } from './dto/assign-subscription.dto';
 import { ChangePlanDto } from './dto/change-plan.dto';
 
@@ -54,7 +56,7 @@ export class SubscriptionsController {
   @Put('plans/:id')
   @Roles(ROLES.SUPER_ADMIN)
   @ApiOperation({ summary: 'Update a subscription plan' })
-  async updatePlan(@Param('id') id: string, @Body() dto: any) {
+  async updatePlan(@Param('id') id: string, @Body() dto: UpdatePlanDto) {
     const data = await this.subscriptionsService.updatePlan(id, dto);
     return { success: true, data };
   }
@@ -114,11 +116,11 @@ export class SubscriptionsController {
   @ApiOperation({ summary: 'Suspend a tenant subscription' })
   async suspendSubscription(
     @Param('tenantId') tenantId: string,
-    @Body('reason') reason?: string,
+    @Body() dto: SuspendSubscriptionDto,
   ) {
     const data = await this.subscriptionsService.suspendSubscription(
       tenantId,
-      reason,
+      dto.reason,
     );
     return { success: true, ...data };
   }

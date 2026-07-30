@@ -18,6 +18,7 @@ import { CreateTenantDto } from './dto/create-tenant.dto';
 import { UpdateTenantDto } from './dto/update-tenant.dto';
 import { TenantQueryDto } from './dto/tenant-query.dto';
 import { SetupTenantDto } from './dto/setup-tenant.dto';
+import { UpdateTenantStatusDto } from './dto/update-status.dto';
 
 @ApiTags('Tenants')
 @ApiBearerAuth()
@@ -69,9 +70,9 @@ export class TenantsController {
   @ApiOperation({ summary: 'Activate or suspend a tenant (SuperAdmin)' })
   async updateStatus(
     @Param('id') id: string,
-    @Body('status') status: string,
+    @Body() dto: UpdateTenantStatusDto,
   ) {
-    const data = await this.tenantsService.updateStatus(id, status);
+    const data = await this.tenantsService.updateStatus(id, dto.status);
     return { success: true, data };
   }
 

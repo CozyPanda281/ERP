@@ -71,11 +71,14 @@ export class ImportService {
       createdBy: userId,
     }).returning({ id: schema.importBatches.id });
 
-    return this.getBatch(batch.id);
+    return this.getBatch(batch.id, tenantId);
   }
 
-  async getBatch(id: string) {
-    const [result] = await this.db.db.select().from(schema.importBatches).where(eq(schema.importBatches.id, id)).limit(1);
+  async getBatch(id: string, tenantId?: string) {
+    const conditions: any[] = [eq(schema.importBatches.id, id)];
+    if (tenantId) conditions.push(eq(schema.importBatches.tenantId, tenantId));
+
+    const [result] = await this.db.db.select().from(schema.importBatches).where(and(...conditions)).limit(1);
     if (!result) throw new NotFoundException('Import batch not found');
     return result;
   }

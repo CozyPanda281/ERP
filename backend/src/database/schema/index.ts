@@ -25,3 +25,4 @@ export * from './audit';
 export * from './system-config';
 export * from './feature-flags';
 export * from './import';
+export * from './accounting';

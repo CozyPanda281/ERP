@@ -1,10 +1,11 @@
-import { Controller, Get, Post, Param, Body, Query } from '@nestjs/common';
+import { Controller, Get, Post, Put, Delete, Param, Body, Query } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { UsersService } from './users.service';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { ROLES } from '../../common/constants';
 import { CreateUserDto } from './dto/create-user.dto';
+import { UpdateUserDto } from './dto/update-user.dto';
 
 @ApiTags('Users')
 @ApiBearerAuth()
@@ -38,8 +39,24 @@ export class UsersController {
   @Get(':id')
   @Roles(ROLES.ORGANIZATION_OWNER, ROLES.PRINCIPAL, ROLES.HR)
   @ApiOperation({ summary: 'Get user by ID' })
-  async findById(@Param('id') id: string) {
-    const data = await this.usersService.findById(id);
+  async findById(@Param('id') id: string, @CurrentUser() user: any) {
+    const data = await this.usersService.findById(id, user.tenantId);
     return { success: true, data };
+  }
+
+  @Put(':id')
+  @Roles(ROLES.ORGANIZATION_OWNER, ROLES.PRINCIPAL, ROLES.HR, ROLES.SUPER_ADMIN)
+  @ApiOperation({ summary: 'Update user' })
+  async update(@Param('id') id: string, @Body() dto: UpdateUserDto, @CurrentUser() user: any) {
+    const data = await this.usersService.update(id, user.tenantId, dto);
+    return { success: true, data };
+  }
+
+  @Delete(':id')
+  @Roles(ROLES.ORGANIZATION_OWNER, ROLES.PRINCIPAL, ROLES.HR, ROLES.SUPER_ADMIN)
+  @ApiOperation({ summary: 'Soft delete user' })
+  async remove(@Param('id') id: string, @CurrentUser() user: any) {
+    await this.usersService.softDelete(id, user.tenantId);
+    return { success: true, message: 'User deleted' };
   }
 }

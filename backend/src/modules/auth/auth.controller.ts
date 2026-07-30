@@ -5,6 +5,9 @@ import { Throttle } from '@nestjs/throttler';
 import { AuthService } from './auth.service';
 import { LoginDto } from './dto/login.dto';
 import { RefreshTokenDto } from './dto/refresh.dto';
+import { LogoutDto } from './dto/logout.dto';
+import { Roles } from '../../common/decorators/roles.decorator';
+import { ROLES } from '../../common/constants';
 import { Public } from '../../common/decorators';
 
 @ApiTags('Auth')
@@ -35,11 +38,12 @@ export class AuthController {
   }
 
   @Post('logout')
+  @Roles(ROLES.SUPER_ADMIN, ROLES.ORGANIZATION_OWNER, ROLES.PRINCIPAL, ROLES.TEACHER, ROLES.STUDENT, ROLES.PARENT)
   @HttpCode(HttpStatus.OK)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Logout and invalidate session' })
-  async logout(@CurrentUser() user: any, @Body('sessionId') sessionId: string) {
-    await this.authService.logout(sessionId);
+  async logout(@CurrentUser() user: any, @Body() dto: LogoutDto) {
+    await this.authService.logout(dto.sessionId, user.id);
     return { message: 'Logged out successfully' };
   }
 }

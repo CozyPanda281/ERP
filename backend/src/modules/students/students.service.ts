@@ -1,12 +1,30 @@
 import { Injectable, NotFoundException, ConflictException, BadRequestException } from '@nestjs/common';
 import { DatabaseProvider } from '../../database/database.provider';
+import { CryptoService } from '../../shared/crypto/crypto.service';
 import { v4 as uuidv4 } from 'uuid';
 import * as schema from '../../database/schema';
 import { eq, and, isNull, or, ilike, desc, asc, count, sql, inArray } from 'drizzle-orm';
 
 @Injectable()
 export class StudentsService {
-  constructor(private readonly db: DatabaseProvider) {}
+  constructor(
+    private readonly db: DatabaseProvider,
+    private readonly crypto: CryptoService,
+  ) {}
+
+  private encrypt(val?: string | null): string | undefined {
+    return val ? this.crypto.encrypt(val) : undefined;
+  }
+
+  private decryptRow<T extends Record<string, any>>(row: T, fields: (keyof T)[]): T {
+    if (!row) return row;
+    for (const field of fields) {
+      if (row[field]) {
+        try { (row as any)[field] = this.crypto.decrypt(row[field] as string); } catch { (row as any)[field] = null; }
+      }
+    }
+    return row;
+  }
 
   // ─── Enquiries ────────────────────────────────────────────────────────────
 
@@ -21,18 +39,21 @@ export class StudentsService {
       tenantId: params.tenantId, branchId: params.branchId,
       studentName: params.studentName, dateOfBirth: params.dateOfBirth,
       gender: params.gender, parentName: params.parentName,
-      parentPhone: params.parentPhone, parentEmail: params.parentEmail,
+      parentPhone: this.encrypt(params.parentPhone), parentEmail: this.encrypt(params.parentEmail),
       address: params.address, classId: params.classId,
       academicYearId: params.academicYearId, source: params.source,
       remarks: params.remarks, followUpDate: params.followUpDate,
     }).returning({ id: schema.enquiries.id });
-    return this.findEnquiryById(inserted.id);
+    return this.decryptRow(await this.findEnquiryById(inserted.id, params.branchId), ['parentPhone', 'parentEmail']);
   }
 
-  async findEnquiryById(id: string) {
-    const [result] = await this.db.db.select().from(schema.enquiries).where(eq(schema.enquiries.id, id)).limit(1);
+  async findEnquiryById(id: string, branchId?: string) {
+    const conditions: any[] = [eq(schema.enquiries.id, id)];
+    if (branchId) conditions.push(eq(schema.enquiries.branchId, branchId));
+
+    const [result] = await this.db.db.select().from(schema.enquiries).where(and(...conditions)).limit(1);
     if (!result) throw new NotFoundException('Enquiry not found');
-    return result;
+    return this.decryptRow(result, ['parentPhone', 'parentEmail']);
   }
 
   async findEnquiriesByBranch(branchId: string, query: { page?: number; limit?: number; status?: string; search?: string; fromDate?: string; toDate?: string }) {
@@ -52,7 +73,11 @@ export class StudentsService {
 
   async updateEnquiry(id: string, params: any) {
     await this.findEnquiryById(id);
-    await this.db.db.update(schema.enquiries).set({ ...params, updatedAt: new Date() }).where(eq(schema.enquiries.id, id));
+    const allowed: any = { updatedAt: new Date() };
+    for (const key of ['studentName', 'dateOfBirth', 'gender', 'parentName', 'parentPhone', 'parentEmail', 'address', 'classId', 'academicYearId', 'source', 'remarks', 'followUpDate', 'status', 'remarks']) {
+      if (params[key] !== undefined) allowed[key] = params[key];
+    }
+    await this.db.db.update(schema.enquiries).set(allowed).where(eq(schema.enquiries.id, id));
     return this.findEnquiryById(id);
   }
 
@@ -74,7 +99,7 @@ export class StudentsService {
     const [insertedApp] = await this.db.db.insert(schema.applications).values(insertData).returning({ id: schema.applications.id });
 
     await this.db.db.update(schema.enquiries).set({ convertedToApplication: true, updatedAt: new Date() }).where(eq(schema.enquiries.id, id));
-    return this.findApplicationById(insertedApp.id);
+    return this.findApplicationById(insertedApp.id, enquiry.branchId);
   }
 
   // ─── Applications ─────────────────────────────────────────────────────────
@@ -98,14 +123,25 @@ export class StudentsService {
     classId: string; academicYearId: string;
   }) {
     const applicationNumber = await this.generateApplicationNumber(params.tenantId, params.branchId);
-    const [inserted] = await this.db.db.insert(schema.applications).values({ ...params, applicationNumber }).returning({ id: schema.applications.id });
-    return this.findApplicationById(inserted.id);
+    const encrypted = { ...params, applicationNumber };
+    if (encrypted.phone) encrypted.phone = this.encrypt(encrypted.phone);
+    if (encrypted.email) encrypted.email = this.encrypt(encrypted.email);
+    if (encrypted.fatherPhone) encrypted.fatherPhone = this.encrypt(encrypted.fatherPhone);
+    if (encrypted.fatherEmail) encrypted.fatherEmail = this.encrypt(encrypted.fatherEmail);
+    if (encrypted.motherPhone) encrypted.motherPhone = this.encrypt(encrypted.motherPhone);
+    if (encrypted.motherEmail) encrypted.motherEmail = this.encrypt(encrypted.motherEmail);
+    if (encrypted.guardianPhone) encrypted.guardianPhone = this.encrypt(encrypted.guardianPhone);
+    const [inserted] = await this.db.db.insert(schema.applications).values(encrypted as any).returning({ id: schema.applications.id });
+    return this.decryptRow(await this.findApplicationById(inserted.id, params.branchId), ['phone', 'email', 'fatherPhone', 'fatherEmail', 'motherPhone', 'motherEmail', 'guardianPhone']);
   }
 
-  async findApplicationById(id: string) {
-    const [result] = await this.db.db.select().from(schema.applications).where(eq(schema.applications.id, id)).limit(1);
+  async findApplicationById(id: string, branchId?: string) {
+    const conditions: any[] = [eq(schema.applications.id, id)];
+    if (branchId) conditions.push(eq(schema.applications.branchId, branchId));
+
+    const [result] = await this.db.db.select().from(schema.applications).where(and(...conditions)).limit(1);
     if (!result) throw new NotFoundException('Application not found');
-    return result;
+    return this.decryptRow(result, ['phone', 'email', 'fatherPhone', 'fatherEmail', 'motherPhone', 'motherEmail', 'guardianPhone']);
   }
 
   async findApplicationsByBranch(branchId: string, query: { page?: number; limit?: number; status?: string; classId?: string; fromDate?: string; toDate?: string }) {
@@ -125,7 +161,11 @@ export class StudentsService {
 
   async updateApplication(id: string, params: any) {
     await this.findApplicationById(id);
-    await this.db.db.update(schema.applications).set({ ...params, updatedAt: new Date() }).where(eq(schema.applications.id, id));
+    const allowed: any = { updatedAt: new Date() };
+    for (const key of ['studentFirstName', 'studentLastName', 'dateOfBirth', 'gender', 'nationality', 'religion', 'caste', 'category', 'address', 'city', 'state', 'pincode', 'phone', 'email', 'bloodGroup', 'fatherName', 'fatherPhone', 'fatherEmail', 'fatherOccupation', 'motherName', 'motherPhone', 'motherEmail', 'motherOccupation', 'guardianName', 'guardianRelation', 'guardianPhone', 'previousSchool', 'previousClass', 'classId', 'academicYearId']) {
+      if (params[key] !== undefined) allowed[key] = params[key];
+    }
+    await this.db.db.update(schema.applications).set(allowed).where(eq(schema.applications.id, id));
     return this.findApplicationById(id);
   }
 
@@ -146,28 +186,30 @@ export class StudentsService {
 
     const admissionNumber = await this.generateAdmissionNumber(app.tenantId, app.branchId);
 
-    const [studentInserted] = await this.db.db.insert(schema.students).values({
-      tenantId: app.tenantId, branchId: app.branchId,
-      admissionNumber, applicationId: id,
-      firstName: app.studentFirstName, lastName: app.studentLastName,
-      dateOfBirth: app.dateOfBirth, gender: app.gender,
-      nationality: app.nationality, religion: app.religion,
-      caste: app.caste, category: app.category,
-      address: app.address, city: app.city, state: app.state, pincode: app.pincode,
-      phone: app.phone, email: app.email, bloodGroup: app.bloodGroup,
-      admissionDate: new Date().toISOString().split('T')[0],
-    }).returning({ id: schema.students.id });
-    const studentId = studentInserted.id;
+    let studentId: string;
+    await this.db.db.transaction(async (tx) => {
+      const [studentInserted] = await tx.insert(schema.students).values({
+        tenantId: app.tenantId, branchId: app.branchId,
+        admissionNumber, applicationId: id,
+        firstName: app.studentFirstName, lastName: app.studentLastName,
+        dateOfBirth: app.dateOfBirth, gender: app.gender,
+        nationality: app.nationality, religion: app.religion,
+        caste: app.caste, category: app.category,
+        address: app.address, city: app.city, state: app.state, pincode: app.pincode,
+        phone: app.phone, email: app.email, bloodGroup: app.bloodGroup,
+        admissionDate: new Date().toISOString().split('T')[0],
+      } as any).returning({ id: schema.students.id });
+      studentId = studentInserted.id;
 
-    const recordValues = {
-      tenantId: app.tenantId, branchId: app.branchId,
-      studentId, classId: app.classId, academicYearId: app.academicYearId,
-    };
-    await this.db.db.insert(schema.studentAcademicRecords).values(recordValues as any);
+      await tx.insert(schema.studentAcademicRecords).values({
+        tenantId: app.tenantId, branchId: app.branchId,
+        studentId, classId: app.classId, academicYearId: app.academicYearId,
+      } as any);
 
-    await this.db.db.update(schema.applications).set({ admitted: true, status: 'admitted', updatedAt: new Date() }).where(eq(schema.applications.id, id));
+      await tx.update(schema.applications).set({ admitted: true, status: 'admitted', updatedAt: new Date() } as any).where(eq(schema.applications.id, id));
+    });
 
-    return this.findStudentById(studentId);
+    return this.findStudentById(studentId!, app.branchId);
   }
 
   // ─── Students ─────────────────────────────────────────────────────────────
@@ -188,6 +230,8 @@ export class StudentsService {
     admissionDate?: string;
   }) {
     const admissionNumber = await this.generateAdmissionNumber(params.tenantId, params.branchId);
+    const encPhone = this.encrypt(params.phone);
+    const encEmail = this.encrypt(params.email);
     const [inserted] = await this.db.db.insert(schema.students).values({
       tenantId: params.tenantId, branchId: params.branchId,
       admissionNumber, firstName: params.firstName, middleName: params.middleName,
@@ -196,7 +240,7 @@ export class StudentsService {
       nationality: params.nationality, religion: params.religion,
       caste: params.caste, category: params.category,
       address: params.address, city: params.city, state: params.state, pincode: params.pincode,
-      phone: params.phone, email: params.email,
+      phone: encPhone, email: encEmail,
       admissionDate: params.admissionDate || new Date().toISOString().split('T')[0],
     }).returning({ id: schema.students.id });
     const studentId = inserted.id;
@@ -209,13 +253,16 @@ export class StudentsService {
       });
     }
 
-    return this.findStudentById(studentId);
+    return this.decryptRow(await this.findStudentById(studentId!, params.branchId), ['phone', 'email']);
   }
 
-  async findStudentById(id: string) {
-    const [result] = await this.db.db.select().from(schema.students).where(and(eq(schema.students.id, id), isNull(schema.students.deletedAt))).limit(1);
+  async findStudentById(id: string, branchId?: string) {
+    const conditions: any[] = [eq(schema.students.id, id), isNull(schema.students.deletedAt)];
+    if (branchId) conditions.push(eq(schema.students.branchId, branchId));
+
+    const [result] = await this.db.db.select().from(schema.students).where(and(...conditions)).limit(1);
     if (!result) throw new NotFoundException('Student not found');
-    return result;
+    return this.decryptRow(result, ['phone', 'email']);
   }
 
   async findStudentsByBranch(branchId: string, query: { page?: number; limit?: number; search?: string; classId?: string; sectionId?: string; status?: string; gender?: string }) {
@@ -234,7 +281,11 @@ export class StudentsService {
 
   async updateStudent(id: string, params: any) {
     await this.findStudentById(id);
-    await this.db.db.update(schema.students).set({ ...params, updatedAt: new Date() }).where(eq(schema.students.id, id));
+    const allowed: any = { updatedAt: new Date() };
+    for (const key of ['firstName', 'middleName', 'lastName', 'dateOfBirth', 'gender', 'bloodGroup', 'nationality', 'religion', 'caste', 'category', 'address', 'city', 'state', 'pincode', 'phone', 'email', 'rollNumber', 'isActive', 'status']) {
+      if (params[key] !== undefined) allowed[key] = params[key];
+    }
+    await this.db.db.update(schema.students).set(allowed).where(eq(schema.students.id, id));
     return this.findStudentById(id);
   }
 
@@ -268,25 +319,33 @@ export class StudentsService {
       tenantId: params.tenantId,
       name: params.name,
       relationship: params.relationship,
-      phone: params.phone,
-      email: params.email,
+      phone: this.encrypt(params.phone),
+      email: this.encrypt(params.email),
       occupation: params.occupation,
       income: params.income ? String(params.income) : null,
       address: params.address,
       isPrimary: params.isPrimary,
     }).returning({ id: schema.parents.id });
-    return this.findParentById(inserted.id);
+    return this.findParentById(inserted.id, params.tenantId);
   }
 
-  async findParentById(id: string) {
-    const [result] = await this.db.db.select().from(schema.parents).where(eq(schema.parents.id, id)).limit(1);
+  async findParentById(id: string, tenantId?: string) {
+    const conditions: any[] = [eq(schema.parents.id, id)];
+    if (tenantId) conditions.push(eq(schema.parents.tenantId, tenantId));
+
+    const [result] = await this.db.db.select().from(schema.parents).where(and(...conditions)).limit(1);
     if (!result) throw new NotFoundException('Parent not found');
-    return result;
+    return this.decryptRow(result, ['phone', 'email']);
   }
 
   async updateParent(id: string, params: any) {
     await this.findParentById(id);
-    await this.db.db.update(schema.parents).set({ ...params, updatedAt: new Date() }).where(eq(schema.parents.id, id));
+    const allowed: any = { updatedAt: new Date() };
+    for (const key of ['name', 'relationship', 'phone', 'email', 'occupation', 'income', 'address', 'isPrimary']) {
+      if (params[key] !== undefined) allowed[key] = params[key];
+    }
+    if (allowed.income !== undefined) allowed.income = String(params.income);
+    await this.db.db.update(schema.parents).set(allowed).where(eq(schema.parents.id, id));
     return this.findParentById(id);
   }
 
@@ -314,18 +373,25 @@ export class StudentsService {
 
   async createDocument(params: { tenantId: string; studentId: string; documentType: string; documentName?: string; documentNumber?: string; fileUrl: string; fileSize?: number; mimeType?: string }) {
     const [inserted] = await this.db.db.insert(schema.studentDocuments).values(params).returning({ id: schema.studentDocuments.id });
-    return this.findDocumentById(inserted.id);
+    return this.findDocumentById(inserted.id, params.tenantId);
   }
 
-  async findDocumentById(id: string) {
-    const [result] = await this.db.db.select().from(schema.studentDocuments).where(eq(schema.studentDocuments.id, id)).limit(1);
+  async findDocumentById(id: string, tenantId?: string) {
+    const conditions: any[] = [eq(schema.studentDocuments.id, id)];
+    if (tenantId) conditions.push(eq(schema.studentDocuments.tenantId, tenantId));
+
+    const [result] = await this.db.db.select().from(schema.studentDocuments).where(and(...conditions)).limit(1);
     if (!result) throw new NotFoundException('Document not found');
     return result;
   }
 
   async updateDocument(id: string, params: any) {
     await this.findDocumentById(id);
-    await this.db.db.update(schema.studentDocuments).set({ ...params, updatedAt: new Date() }).where(eq(schema.studentDocuments.id, id));
+    const allowed: any = { updatedAt: new Date() };
+    for (const key of ['documentType', 'documentName', 'documentNumber', 'fileUrl', 'fileSize', 'mimeType']) {
+      if (params[key] !== undefined) allowed[key] = params[key];
+    }
+    await this.db.db.update(schema.studentDocuments).set(allowed).where(eq(schema.studentDocuments.id, id));
     return this.findDocumentById(id);
   }
 
@@ -339,11 +405,15 @@ export class StudentsService {
   async createAcademicRecord(params: { tenantId: string; branchId: string; studentId: string; classId: string; sectionId?: string; academicYearId: string; rollNumber?: string; isPromoted?: boolean; promotedToClass?: string; promotionDate?: string }) {
     await this.findStudentById(params.studentId);
     const [inserted] = await this.db.db.insert(schema.studentAcademicRecords).values(params).returning({ id: schema.studentAcademicRecords.id });
-    return this.findAcademicRecordById(inserted.id);
+    return this.findAcademicRecordById(inserted.id, params.tenantId, params.branchId);
   }
 
-  async findAcademicRecordById(id: string) {
-    const [result] = await this.db.db.select().from(schema.studentAcademicRecords).where(eq(schema.studentAcademicRecords.id, id)).limit(1);
+  async findAcademicRecordById(id: string, tenantId?: string, branchId?: string) {
+    const conditions: any[] = [eq(schema.studentAcademicRecords.id, id)];
+    if (tenantId) conditions.push(eq(schema.studentAcademicRecords.tenantId, tenantId));
+    if (branchId) conditions.push(eq(schema.studentAcademicRecords.branchId, branchId));
+
+    const [result] = await this.db.db.select().from(schema.studentAcademicRecords).where(and(...conditions)).limit(1);
     if (!result) throw new NotFoundException('Academic record not found');
     return result;
   }
