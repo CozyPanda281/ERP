@@ -9,7 +9,10 @@ import { Reflector } from '@nestjs/core';
 import { Observable, tap } from 'rxjs';
 import { Request } from 'express';
 import { AuditService } from '../../modules/audit/audit.service';
-import { AUDIT_LOG_KEY, AuditLogOptions } from '../decorators/audit-log.decorator';
+import {
+  AUDIT_LOG_KEY,
+  AuditLogOptions,
+} from '../decorators/audit-log.decorator';
 import { TENANT_CONTEXT_KEY } from '../constants';
 
 @Injectable()
@@ -51,43 +54,47 @@ export class AuditLogInterceptor implements NestInterceptor {
     return next.handle().pipe(
       tap({
         next: () => {
-          this.auditService.log({
-            tenantId: tenantContext?.tenantId || user?.tenantId,
-            userId: user?.sub,
-            branchId: user?.branchId,
-            action: auditOptions.action,
-            module: auditOptions.module,
-            resourceType: auditOptions.resourceType,
-            resourceId,
-            description,
-            changes: auditOptions.includeBody
-              ? (request.body as Record<string, unknown>)
-              : undefined,
-            ipAddress: request.ip || request.socket?.remoteAddress,
-            userAgent: request.headers['user-agent'],
-            sessionId: user?.sessionId,
-            outcome: 'success',
-          }).catch((err) =>
-            this.logger.error(`Audit log failed: ${err.message}`),
-          );
+          this.auditService
+            .log({
+              tenantId: tenantContext?.tenantId || user?.tenantId,
+              userId: user?.sub,
+              branchId: user?.branchId,
+              action: auditOptions.action,
+              module: auditOptions.module,
+              resourceType: auditOptions.resourceType,
+              resourceId,
+              description,
+              changes: auditOptions.includeBody
+                ? (request.body as Record<string, unknown>)
+                : undefined,
+              ipAddress: request.ip || request.socket?.remoteAddress,
+              userAgent: request.headers['user-agent'],
+              sessionId: user?.sessionId,
+              outcome: 'success',
+            })
+            .catch((err) =>
+              this.logger.error(`Audit log failed: ${err.message}`),
+            );
         },
         error: (error) => {
-          this.auditService.log({
-            tenantId: tenantContext?.tenantId || user?.tenantId,
-            userId: user?.sub,
-            branchId: user?.branchId,
-            action: auditOptions.action,
-            module: auditOptions.module,
-            resourceType: auditOptions.resourceType,
-            resourceId,
-            description: `${description} — FAILED: ${error.message}`,
-            ipAddress: request.ip || request.socket?.remoteAddress,
-            userAgent: request.headers['user-agent'],
-            sessionId: user?.sessionId,
-            outcome: 'failure',
-          }).catch((err) =>
-            this.logger.error(`Audit log failed: ${err.message}`),
-          );
+          this.auditService
+            .log({
+              tenantId: tenantContext?.tenantId || user?.tenantId,
+              userId: user?.sub,
+              branchId: user?.branchId,
+              action: auditOptions.action,
+              module: auditOptions.module,
+              resourceType: auditOptions.resourceType,
+              resourceId,
+              description: `${description} — FAILED: ${error.message}`,
+              ipAddress: request.ip || request.socket?.remoteAddress,
+              userAgent: request.headers['user-agent'],
+              sessionId: user?.sessionId,
+              outcome: 'failure',
+            })
+            .catch((err) =>
+              this.logger.error(`Audit log failed: ${err.message}`),
+            );
         },
       }),
     );

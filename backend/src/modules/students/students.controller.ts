@@ -1,4 +1,13 @@
-import { Controller, Get, Post, Put, Delete, Param, Body, Query } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Put,
+  Delete,
+  Param,
+  Body,
+  Query,
+} from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { StudentsService } from './students.service';
 import { Roles } from '../../common/decorators/roles.decorator';
@@ -33,15 +42,25 @@ export class StudentsController {
   @Roles(ROLES.RECEPTION, ROLES.PRINCIPAL, ROLES.ORGANIZATION_OWNER)
   @ApiOperation({ summary: 'Create enquiry' })
   async createEnquiry(@CurrentUser() user: any, @Body() dto: CreateEnquiryDto) {
-    const data = await this.studentsService.createEnquiry({ ...dto, tenantId: user.tenantId, branchId: user.branchId || dto.classId });
+    const data = await this.studentsService.createEnquiry({
+      ...dto,
+      tenantId: user.tenantId,
+      branchId: user.branchId,
+    });
     return { success: true, data };
   }
 
   @Get('branches/:branchId/enquiries')
   @Roles(ROLES.RECEPTION, ROLES.PRINCIPAL, ROLES.ORGANIZATION_OWNER)
   @ApiOperation({ summary: 'List enquiries for a branch' })
-  async findEnquiries(@Param('branchId') branchId: string, @Query() query: ListEnquiriesQueryDto) {
-    const data = await this.studentsService.findEnquiriesByBranch(branchId, query);
+  async findEnquiries(
+    @Param('branchId') branchId: string,
+    @Query() query: ListEnquiriesQueryDto,
+  ) {
+    const data = await this.studentsService.findEnquiriesByBranch(
+      branchId,
+      query,
+    );
     return { success: true, ...data };
   }
 
@@ -74,16 +93,29 @@ export class StudentsController {
   @Post('applications')
   @Roles(ROLES.RECEPTION, ROLES.PRINCIPAL, ROLES.ORGANIZATION_OWNER)
   @ApiOperation({ summary: 'Submit application' })
-  async createApplication(@CurrentUser() user: any, @Body() dto: CreateApplicationDto) {
-    const data = await this.studentsService.createApplication({ ...dto, tenantId: user.tenantId, branchId: user.branchId });
+  async createApplication(
+    @CurrentUser() user: any,
+    @Body() dto: CreateApplicationDto,
+  ) {
+    const data = await this.studentsService.createApplication({
+      ...dto,
+      tenantId: user.tenantId,
+      branchId: user.branchId,
+    });
     return { success: true, data };
   }
 
   @Get('branches/:branchId/applications')
   @Roles(ROLES.RECEPTION, ROLES.PRINCIPAL, ROLES.ORGANIZATION_OWNER)
   @ApiOperation({ summary: 'List applications for a branch' })
-  async findApplications(@Param('branchId') branchId: string, @Query() query: ListApplicationsQueryDto) {
-    const data = await this.studentsService.findApplicationsByBranch(branchId, query);
+  async findApplications(
+    @Param('branchId') branchId: string,
+    @Query() query: ListApplicationsQueryDto,
+  ) {
+    const data = await this.studentsService.findApplicationsByBranch(
+      branchId,
+      query,
+    );
     return { success: true, ...data };
   }
 
@@ -98,7 +130,10 @@ export class StudentsController {
   @Put('applications/:id')
   @Roles(ROLES.RECEPTION, ROLES.PRINCIPAL)
   @ApiOperation({ summary: 'Update application' })
-  async updateApplication(@Param('id') id: string, @Body() dto: UpdateApplicationDto) {
+  async updateApplication(
+    @Param('id') id: string,
+    @Body() dto: UpdateApplicationDto,
+  ) {
     const data = await this.studentsService.updateApplication(id, dto);
     return { success: true, data };
   }
@@ -106,8 +141,17 @@ export class StudentsController {
   @Post('applications/:id/review')
   @Roles(ROLES.PRINCIPAL, ROLES.ORGANIZATION_OWNER)
   @ApiOperation({ summary: 'Review application' })
-  async reviewApplication(@CurrentUser() user: any, @Param('id') id: string, @Body() dto: ReviewApplicationDto) {
-    const data = await this.studentsService.reviewApplication(id, dto.status, dto.reviewRemarks, user.id);
+  async reviewApplication(
+    @CurrentUser() user: any,
+    @Param('id') id: string,
+    @Body() dto: ReviewApplicationDto,
+  ) {
+    const data = await this.studentsService.reviewApplication(
+      id,
+      dto.status,
+      dto.reviewRemarks,
+      user.id,
+    );
     return { success: true, data };
   }
 
@@ -125,15 +169,25 @@ export class StudentsController {
   @Roles(ROLES.PRINCIPAL, ROLES.ORGANIZATION_OWNER)
   @ApiOperation({ summary: 'Create student directly' })
   async createStudent(@CurrentUser() user: any, @Body() dto: CreateStudentDto) {
-    const data = await this.studentsService.createStudent({ ...dto, tenantId: user.tenantId, branchId: user.branchId || user.tenantId });
+    const data = await this.studentsService.createStudent({
+      ...dto,
+      tenantId: user.tenantId,
+      branchId: user.branchId || user.tenantId,
+    });
     return { success: true, data };
   }
 
   @Get('branches/:branchId/students')
   @Roles(ROLES.PRINCIPAL, ROLES.TEACHER, ROLES.ORGANIZATION_OWNER)
   @ApiOperation({ summary: 'List students for a branch' })
-  async findStudents(@Param('branchId') branchId: string, @Query() query: ListStudentsQueryDto) {
-    const data = await this.studentsService.findStudentsByBranch(branchId, query);
+  async findStudents(
+    @Param('branchId') branchId: string,
+    @Query() query: ListStudentsQueryDto,
+  ) {
+    const data = await this.studentsService.findStudentsByBranch(
+      branchId,
+      query,
+    );
     return { success: true, ...data };
   }
 
@@ -156,8 +210,15 @@ export class StudentsController {
   @Post('students/:id/withdraw')
   @Roles(ROLES.PRINCIPAL, ROLES.ORGANIZATION_OWNER)
   @ApiOperation({ summary: 'Withdraw student' })
-  async withdrawStudent(@Param('id') id: string, @Body() dto: WithdrawStudentDto) {
-    const data = await this.studentsService.withdrawStudent(id, dto.leavingDate, dto.leavingReason);
+  async withdrawStudent(
+    @Param('id') id: string,
+    @Body() dto: WithdrawStudentDto,
+  ) {
+    const data = await this.studentsService.withdrawStudent(
+      id,
+      dto.leavingDate,
+      dto.leavingReason,
+    );
     return { success: true, data };
   }
 
@@ -183,7 +244,10 @@ export class StudentsController {
   @Roles(ROLES.PRINCIPAL, ROLES.RECEPTION)
   @ApiOperation({ summary: 'Create parent' })
   async createParent(@CurrentUser() user: any, @Body() dto: CreateParentDto) {
-    const data = await this.studentsService.createParent({ ...dto, tenantId: user.tenantId });
+    const data = await this.studentsService.createParent({
+      ...dto,
+      tenantId: user.tenantId,
+    });
     return { success: true, data };
   }
 
@@ -206,9 +270,18 @@ export class StudentsController {
   @Post('students/:id/parents')
   @Roles(ROLES.PRINCIPAL, ROLES.RECEPTION)
   @ApiOperation({ summary: 'Link parent to student' })
-  async linkParent(@Param('id') studentId: string, @Body() dto: LinkParentDto) {
+  async linkParent(
+    @CurrentUser() user: any,
+    @Param('id') studentId: string,
+    @Body() dto: LinkParentDto,
+  ) {
     const data = await this.studentsService.linkParentToStudent(
-      studentId, dto.parentId, dto.relationship, dto.isPrimary, dto.isEmergencyContact,
+      studentId,
+      dto.parentId,
+      dto.relationship,
+      dto.isPrimary,
+      dto.isEmergencyContact,
+      user.tenantId,
     );
     return { success: true, data };
   }
@@ -226,15 +299,26 @@ export class StudentsController {
   @Post('students/:id/documents')
   @Roles(ROLES.PRINCIPAL, ROLES.RECEPTION)
   @ApiOperation({ summary: 'Add document to student' })
-  async createDocument(@CurrentUser() user: any, @Param('id') studentId: string, @Body() dto: CreateDocumentDto) {
-    const data = await this.studentsService.createDocument({ ...dto, tenantId: user.tenantId, studentId });
+  async createDocument(
+    @CurrentUser() user: any,
+    @Param('id') studentId: string,
+    @Body() dto: CreateDocumentDto,
+  ) {
+    const data = await this.studentsService.createDocument({
+      ...dto,
+      tenantId: user.tenantId,
+      studentId,
+    });
     return { success: true, data };
   }
 
   @Put('documents/:id')
   @Roles(ROLES.PRINCIPAL)
   @ApiOperation({ summary: 'Update document' })
-  async updateDocument(@Param('id') id: string, @Body() dto: CreateDocumentDto) {
+  async updateDocument(
+    @Param('id') id: string,
+    @Body() dto: CreateDocumentDto,
+  ) {
     const data = await this.studentsService.updateDocument(id, dto);
     return { success: true, data };
   }
@@ -252,16 +336,33 @@ export class StudentsController {
   @Post('students/:id/academic-records')
   @Roles(ROLES.PRINCIPAL, ROLES.ORGANIZATION_OWNER)
   @ApiOperation({ summary: 'Create academic record' })
-  async createAcademicRecord(@CurrentUser() user: any, @Param('id') studentId: string, @Body() dto: CreateAcademicRecordDto) {
-    const data = await this.studentsService.createAcademicRecord({ ...dto, tenantId: user.tenantId, branchId: user.branchId, studentId });
+  async createAcademicRecord(
+    @CurrentUser() user: any,
+    @Param('id') studentId: string,
+    @Body() dto: CreateAcademicRecordDto,
+  ) {
+    const data = await this.studentsService.createAcademicRecord({
+      ...dto,
+      tenantId: user.tenantId,
+      branchId: user.branchId,
+      studentId,
+    });
     return { success: true, data };
   }
 
   @Post('students/:id/promote')
   @Roles(ROLES.PRINCIPAL, ROLES.ORGANIZATION_OWNER)
   @ApiOperation({ summary: 'Promote student to next class' })
-  async promoteStudent(@Param('id') studentId: string, @Body() dto: PromoteStudentDto) {
-    const data = await this.studentsService.promoteStudent(studentId, dto.classId, dto.academicYearId, dto.sectionId);
+  async promoteStudent(
+    @Param('id') studentId: string,
+    @Body() dto: PromoteStudentDto,
+  ) {
+    const data = await this.studentsService.promoteStudent(
+      studentId,
+      dto.classId,
+      dto.academicYearId,
+      dto.sectionId,
+    );
     return { success: true, data };
   }
 }

@@ -1,4 +1,14 @@
-import { pgTable, uuid, varchar, text, integer, decimal, date, timestamp, boolean } from 'drizzle-orm/pg-core';
+import {
+  pgTable,
+  uuid,
+  varchar,
+  text,
+  integer,
+  decimal,
+  date,
+  timestamp,
+  boolean,
+} from 'drizzle-orm/pg-core';
 
 export const accountingAccounts = pgTable('accounting_accounts', {
   id: uuid('id').primaryKey().defaultRandom(),
@@ -9,7 +19,10 @@ export const accountingAccounts = pgTable('accounting_accounts', {
   accountType: varchar('account_type', { length: 50 }).notNull(),
   parentId: uuid('parent_id'),
   description: text('description'),
-  openingBalance: decimal('opening_balance', { precision: 14, scale: 2 }).default('0'),
+  openingBalance: decimal('opening_balance', {
+    precision: 14,
+    scale: 2,
+  }).default('0'),
   isActive: boolean('is_active').default(true),
   status: varchar('status', { length: 20 }).default('active'),
   createdAt: timestamp('created_at').defaultNow(),
@@ -32,14 +45,42 @@ export const accountingJournalEntries = pgTable('accounting_journal_entries', {
   updatedAt: timestamp('updated_at').defaultNow(),
 });
 
-export const accountingJournalEntryItems = pgTable('accounting_journal_entry_items', {
+export const accountingJournalEntryItems = pgTable(
+  'accounting_journal_entry_items',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    journalEntryId: uuid('journal_entry_id').notNull(),
+    accountId: uuid('account_id').notNull(),
+    debit: decimal('debit', { precision: 14, scale: 2 }).default('0'),
+    credit: decimal('credit', { precision: 14, scale: 2 }).default('0'),
+    description: text('description'),
+    createdAt: timestamp('created_at').defaultNow(),
+  },
+);
+
+export const assets = pgTable('assets', {
   id: uuid('id').primaryKey().defaultRandom(),
-  journalEntryId: uuid('journal_entry_id').notNull(),
-  accountId: uuid('account_id').notNull(),
-  debit: decimal('debit', { precision: 14, scale: 2 }).default('0'),
-  credit: decimal('credit', { precision: 14, scale: 2 }).default('0'),
+  tenantId: uuid('tenant_id').notNull(),
+  branchId: uuid('branch_id').notNull(),
+  name: varchar('name', { length: 255 }).notNull(),
+  assetType: varchar('asset_type', { length: 100 }).notNull(),
+  assetCode: varchar('asset_code', { length: 50 }),
   description: text('description'),
+  purchaseDate: date('purchase_date'),
+  purchasePrice: decimal('purchase_price', { precision: 12, scale: 2 }),
+  currentValue: decimal('current_value', { precision: 12, scale: 2 }),
+  depreciationMethod: varchar('depreciation_method', { length: 50 }),
+  depreciationRate: decimal('depreciation_rate', { precision: 5, scale: 2 }),
+  warrantyExpiry: date('warranty_expiry'),
+  warrantyDetails: text('warranty_details'),
+  location: varchar('location', { length: 255 }),
+  status: varchar('status', { length: 50 }).default('active'),
+  assignedTo: uuid('assigned_to'),
+  conditionNote: text('condition_note'),
+  isActive: boolean('is_active').default(true),
   createdAt: timestamp('created_at').defaultNow(),
+  updatedAt: timestamp('updated_at').defaultNow(),
+  deletedAt: timestamp('deleted_at'),
 });
 
 export const accountingBudgets = pgTable('accounting_budgets', {
@@ -48,8 +89,13 @@ export const accountingBudgets = pgTable('accounting_budgets', {
   branchId: uuid('branch_id').notNull(),
   fiscalYearId: uuid('fiscal_year_id'),
   accountId: uuid('account_id').notNull(),
-  budgetedAmount: decimal('budgeted_amount', { precision: 14, scale: 2 }).notNull(),
-  actualAmount: decimal('actual_amount', { precision: 14, scale: 2 }).default('0'),
+  budgetedAmount: decimal('budgeted_amount', {
+    precision: 14,
+    scale: 2,
+  }).notNull(),
+  actualAmount: decimal('actual_amount', { precision: 14, scale: 2 }).default(
+    '0',
+  ),
   notes: text('notes'),
   createdAt: timestamp('created_at').defaultNow(),
   updatedAt: timestamp('updated_at').defaultNow(),

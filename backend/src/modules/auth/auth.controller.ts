@@ -38,7 +38,20 @@ export class AuthController {
   }
 
   @Post('logout')
-  @Roles(ROLES.SUPER_ADMIN, ROLES.ORGANIZATION_OWNER, ROLES.PRINCIPAL, ROLES.TEACHER, ROLES.STUDENT, ROLES.PARENT)
+  @Roles(
+    ROLES.SUPER_ADMIN,
+    ROLES.ORGANIZATION_OWNER,
+    ROLES.PRINCIPAL,
+    ROLES.RECEPTION,
+    ROLES.TEACHER,
+    ROLES.ACCOUNTANT,
+    ROLES.HR,
+    ROLES.LIBRARIAN,
+    ROLES.TRANSPORT_MANAGER,
+    ROLES.HOSTEL_MANAGER,
+    ROLES.STUDENT,
+    ROLES.PARENT,
+  )
   @HttpCode(HttpStatus.OK)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Logout and invalidate session' })

@@ -1,4 +1,10 @@
-import { Injectable, Logger, NestMiddleware } from '@nestjs/common';
+import {
+  Injectable,
+  Logger,
+  NestMiddleware,
+  NotFoundException,
+  ForbiddenException,
+} from '@nestjs/common';
 import { Request, Response, NextFunction } from 'express';
 import { DatabaseProvider } from '../../database/database.provider';
 import { TENANT_CONTEXT_KEY } from '../constants';
@@ -25,7 +31,7 @@ export class TenantMiddleware implements NestMiddleware {
     );
 
     if (!tenant.rows.length) {
-      return next(new Error('Tenant not found'));
+      return next(new NotFoundException('Tenant not found'));
     }
 
     const tenantData = tenant.rows[0] as {
@@ -35,8 +41,12 @@ export class TenantMiddleware implements NestMiddleware {
       is_active: boolean;
     };
 
-    if (!tenantData.is_active) {
-      return next(new Error('Tenant is inactive'));
+    if (
+      !tenantData.is_active ||
+      tenantData.status === 'suspended' ||
+      tenantData.status === 'cancelled'
+    ) {
+      return next(new ForbiddenException('Tenant is inactive'));
     }
 
     req[TENANT_CONTEXT_KEY] = {

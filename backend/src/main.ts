@@ -42,7 +42,10 @@ async function bootstrap() {
     .setDescription('Multi-tenant Educational ERP Platform')
     .setVersion('1.0')
     .addBearerAuth()
-    .addApiKey({ type: 'apiKey', name: 'X-Tenant-Id', in: 'header' }, 'X-Tenant-Id')
+    .addApiKey(
+      { type: 'apiKey', name: 'X-Tenant-Id', in: 'header' },
+      'X-Tenant-Id',
+    )
     .build();
 
   const document = SwaggerModule.createDocument(app, swaggerConfig);

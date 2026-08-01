@@ -1,5 +1,9 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { NotFoundException, BadRequestException, ConflictException } from '@nestjs/common';
+import {
+  NotFoundException,
+  BadRequestException,
+  ConflictException,
+} from '@nestjs/common';
 import { HrService } from './hr.service';
 import { DatabaseProvider } from '../../database/database.provider';
 import { MockDatabaseProvider } from '../../common/test/mocks';
@@ -16,7 +20,10 @@ describe('HrService', () => {
     service = module.get<HrService>(HrService);
   });
 
-  afterEach(() => { mockDb.clearMocks(); jest.clearAllMocks(); });
+  afterEach(() => {
+    mockDb.clearMocks();
+    jest.clearAllMocks();
+  });
 
   const T = { tenantId: 't-1', branchId: 'b-1' };
 
@@ -25,13 +32,27 @@ describe('HrService', () => {
   // ═════════════════════════════════════════════════════════════════════════
 
   describe('createStaff', () => {
-    const base = () => ({ ...T, employeeCode: 'EMP001', firstName: 'John', lastName: 'Doe', designation: 'Teacher' });
+    const base = () => ({
+      ...T,
+      employeeCode: 'EMP001',
+      firstName: 'John',
+      lastName: 'Doe',
+      designation: 'Teacher',
+    });
 
     it('should create staff', async () => {
       mockDb.setDrizzleResults(
         [],
         [{ id: 's-1' }],
-        [{ id: 's-1', employeeCode: 'EMP001', firstName: 'John', lastName: 'Doe', designation: 'Teacher' }],
+        [
+          {
+            id: 's-1',
+            employeeCode: 'EMP001',
+            firstName: 'John',
+            lastName: 'Doe',
+            designation: 'Teacher',
+          },
+        ],
       );
       const result = await service.createStaff(base());
       expect(result.firstName).toBe('John');
@@ -40,7 +61,9 @@ describe('HrService', () => {
 
     it('should reject duplicate employee code', async () => {
       mockDb.setDrizzleResults([{ id: 'existing' }]);
-      await expect(service.createStaff(base())).rejects.toThrow(ConflictException);
+      await expect(service.createStaff(base())).rejects.toThrow(
+        ConflictException,
+      );
     });
   });
 
@@ -59,11 +82,15 @@ describe('HrService', () => {
   describe('findStaffById', () => {
     it('should throw on missing', async () => {
       mockDb.setDrizzleResults([]);
-      await expect(service.findStaffById('bad', T.branchId)).rejects.toThrow(NotFoundException);
+      await expect(service.findStaffById('bad', T.branchId)).rejects.toThrow(
+        NotFoundException,
+      );
     });
 
     it('should return staff', async () => {
-      mockDb.setDrizzleResults([{ id: 's-1', firstName: 'John', deletedAt: null }]);
+      mockDb.setDrizzleResults([
+        { id: 's-1', firstName: 'John', deletedAt: null },
+      ]);
       const result = await service.findStaffById('s-1', T.branchId);
       expect(result.id).toBe('s-1');
     });
@@ -76,25 +103,33 @@ describe('HrService', () => {
         [],
         [{ id: 's-1', firstName: 'Jane' }],
       );
-      const result = await service.updateStaff('s-1', T.branchId, { firstName: 'Jane' });
+      const result = await service.updateStaff('s-1', T.branchId, {
+        firstName: 'Jane',
+      });
       expect(result.firstName).toBe('Jane');
     });
 
     it('should throw on missing', async () => {
       mockDb.setDrizzleResults([]);
-      await expect(service.updateStaff('bad', T.branchId, {})).rejects.toThrow(NotFoundException);
+      await expect(service.updateStaff('bad', T.branchId, {})).rejects.toThrow(
+        NotFoundException,
+      );
     });
   });
 
   describe('deleteStaff', () => {
     it('should soft delete', async () => {
       mockDb.setDrizzleResults([{ id: 's-1' }]);
-      await expect(service.deleteStaff('s-1', T.branchId)).resolves.not.toThrow();
+      await expect(
+        service.deleteStaff('s-1', T.branchId),
+      ).resolves.not.toThrow();
     });
 
     it('should throw on missing', async () => {
       mockDb.setDrizzleResults([]);
-      await expect(service.deleteStaff('bad', T.branchId)).rejects.toThrow(NotFoundException);
+      await expect(service.deleteStaff('bad', T.branchId)).rejects.toThrow(
+        NotFoundException,
+      );
     });
   });
 
@@ -108,13 +143,21 @@ describe('HrService', () => {
         [{ id: 'doc-1' }],
         [{ id: 'doc-1', documentType: 'qualification' }],
       );
-      const result = await service.addStaffDocument('s-1', T.branchId, { documentType: 'qualification', fileUrl: 'http://example.com/doc.pdf' });
+      const result = await service.addStaffDocument('s-1', T.branchId, {
+        documentType: 'qualification',
+        fileUrl: 'http://example.com/doc.pdf',
+      });
       expect(result.id).toBe('doc-1');
     });
 
     it('should throw if staff missing', async () => {
       mockDb.setDrizzleResults([]);
-      await expect(service.addStaffDocument('bad', T.branchId, { documentType: 'test', fileUrl: 'http://x.com' })).rejects.toThrow(NotFoundException);
+      await expect(
+        service.addStaffDocument('bad', T.branchId, {
+          documentType: 'test',
+          fileUrl: 'http://x.com',
+        }),
+      ).rejects.toThrow(NotFoundException);
     });
   });
 
@@ -135,15 +178,16 @@ describe('HrService', () => {
         [{ id: 's-1', deletedAt: null }],
         [{ id: 'doc-1' }],
       );
-      await expect(service.deleteStaffDocument('doc-1', 's-1', T.branchId)).resolves.not.toThrow();
+      await expect(
+        service.deleteStaffDocument('doc-1', 's-1', T.branchId),
+      ).resolves.not.toThrow();
     });
 
     it('should throw on missing doc', async () => {
-      mockDb.setDrizzleResults(
-        [{ id: 's-1', deletedAt: null }],
-        [],
-      );
-      await expect(service.deleteStaffDocument('bad', 's-1', T.branchId)).rejects.toThrow(NotFoundException);
+      mockDb.setDrizzleResults([{ id: 's-1', deletedAt: null }], []);
+      await expect(
+        service.deleteStaffDocument('bad', 's-1', T.branchId),
+      ).rejects.toThrow(NotFoundException);
     });
   });
 
@@ -158,13 +202,25 @@ describe('HrService', () => {
         [{ id: 'lt-1' }],
         [{ id: 'lt-1', name: 'Annual', code: 'ANNUAL', daysAllowed: 20 }],
       );
-      const result = await service.createLeaveType({ tenantId: T.tenantId, name: 'Annual', code: 'ANNUAL', daysAllowed: 20 });
+      const result = await service.createLeaveType({
+        tenantId: T.tenantId,
+        name: 'Annual',
+        code: 'ANNUAL',
+        daysAllowed: 20,
+      });
       expect(result.name).toBe('Annual');
     });
 
     it('should reject duplicate code', async () => {
       mockDb.setDrizzleResults([{ id: 'lt-1' }]);
-      await expect(service.createLeaveType({ tenantId: T.tenantId, name: 'Annual', code: 'ANNUAL', daysAllowed: 20 })).rejects.toThrow(ConflictException);
+      await expect(
+        service.createLeaveType({
+          tenantId: T.tenantId,
+          name: 'Annual',
+          code: 'ANNUAL',
+          daysAllowed: 20,
+        }),
+      ).rejects.toThrow(ConflictException);
     });
   });
 
@@ -181,20 +237,50 @@ describe('HrService', () => {
       mockDb.setDrizzleResults(
         [{ id: 'lt-1', daysAllowed: 20 }],
         [{ id: 'lr-1' }],
-        [{ id: 'lr-1', startDate: '2026-08-01', endDate: '2026-08-03', totalDays: 3, status: 'pending' }],
+        [
+          {
+            id: 'lr-1',
+            startDate: '2026-08-01',
+            endDate: '2026-08-03',
+            totalDays: 3,
+            status: 'pending',
+          },
+        ],
       );
-      const result = await service.applyLeave({ ...T, staffId: 's-1', leaveTypeId: 'lt-1', startDate: '2026-08-01', endDate: '2026-08-03' });
+      const result = await service.applyLeave({
+        ...T,
+        staffId: 's-1',
+        leaveTypeId: 'lt-1',
+        startDate: '2026-08-01',
+        endDate: '2026-08-03',
+      });
       expect(result.totalDays).toBe(3);
     });
 
     it('should reject invalid leave type', async () => {
       mockDb.setDrizzleResults([]);
-      await expect(service.applyLeave({ ...T, staffId: 's-1', leaveTypeId: 'bad', startDate: '2026-08-01', endDate: '2026-08-03' })).rejects.toThrow(NotFoundException);
+      await expect(
+        service.applyLeave({
+          ...T,
+          staffId: 's-1',
+          leaveTypeId: 'bad',
+          startDate: '2026-08-01',
+          endDate: '2026-08-03',
+        }),
+      ).rejects.toThrow(NotFoundException);
     });
 
     it('should reject end before start', async () => {
       mockDb.setDrizzleResults([{ id: 'lt-1', daysAllowed: 20 }]);
-      await expect(service.applyLeave({ ...T, staffId: 's-1', leaveTypeId: 'lt-1', startDate: '2026-08-05', endDate: '2026-08-03' })).rejects.toThrow(BadRequestException);
+      await expect(
+        service.applyLeave({
+          ...T,
+          staffId: 's-1',
+          leaveTypeId: 'lt-1',
+          startDate: '2026-08-05',
+          endDate: '2026-08-03',
+        }),
+      ).rejects.toThrow(BadRequestException);
     });
   });
 
@@ -205,18 +291,27 @@ describe('HrService', () => {
         [],
         [{ id: 'lr-1', status: 'approved' }],
       );
-      const result = await service.reviewLeave('lr-1', T.branchId, 'approved', 'u-1');
+      const result = await service.reviewLeave(
+        'lr-1',
+        T.branchId,
+        'approved',
+        'u-1',
+      );
       expect(result.status).toBe('approved');
     });
 
     it('should reject already reviewed leave', async () => {
       mockDb.setDrizzleResults([{ id: 'lr-1', status: 'approved' }]);
-      await expect(service.reviewLeave('lr-1', T.branchId, 'approved', 'u-1')).rejects.toThrow(BadRequestException);
+      await expect(
+        service.reviewLeave('lr-1', T.branchId, 'approved', 'u-1'),
+      ).rejects.toThrow(BadRequestException);
     });
 
     it('should throw on missing', async () => {
       mockDb.setDrizzleResults([]);
-      await expect(service.reviewLeave('bad', T.branchId, 'approved', 'u-1')).rejects.toThrow(NotFoundException);
+      await expect(
+        service.reviewLeave('bad', T.branchId, 'approved', 'u-1'),
+      ).rejects.toThrow(NotFoundException);
     });
   });
 
@@ -230,14 +325,20 @@ describe('HrService', () => {
         [{ id: 'comp-1' }],
         [{ id: 'comp-1', name: 'Basic', type: 'earning' }],
       );
-      const result = await service.createSalaryComponent({ ...T, name: 'Basic', type: 'earning' });
+      const result = await service.createSalaryComponent({
+        ...T,
+        name: 'Basic',
+        type: 'earning',
+      });
       expect(result.name).toBe('Basic');
     });
   });
 
   describe('findSalaryComponents', () => {
     it('should list components', async () => {
-      mockDb.setDrizzleResults([{ id: 'comp-1', name: 'Basic', type: 'earning', isActive: true }]);
+      mockDb.setDrizzleResults([
+        { id: 'comp-1', name: 'Basic', type: 'earning', isActive: true },
+      ]);
       const result = await service.findSalaryComponents(T.branchId);
       expect(result).toHaveLength(1);
     });
@@ -249,10 +350,23 @@ describe('HrService', () => {
         [],
         [{ basicSalary: '50000' }],
         [{ id: 'pr-1' }],
-        [{ id: 'pr-1', staffId: 's-1', month: 7, year: 2026, status: 'processed', netPay: '45000' }],
+        [
+          {
+            id: 'pr-1',
+            staffId: 's-1',
+            month: 7,
+            year: 2026,
+            status: 'processed',
+            netPay: '45000',
+          },
+        ],
       );
       const result = await service.processPayroll({
-        ...T, staffId: 's-1', month: 7, year: 2026, basicPay: 50000,
+        ...T,
+        staffId: 's-1',
+        month: 7,
+        year: 2026,
+        basicPay: 50000,
         allowances: [{ componentId: 'c1', amount: 5000 }],
         deductions: [{ componentId: 'c2', amount: 10000 }],
         processedBy: 'u-1',
@@ -263,16 +377,30 @@ describe('HrService', () => {
 
     it('should reject duplicate payroll', async () => {
       mockDb.setDrizzleResults([{ id: 'pr-1' }]);
-      await expect(service.processPayroll({
-        ...T, staffId: 's-1', month: 7, year: 2026, processedBy: 'u-1',
-      })).rejects.toThrow(ConflictException);
+      await expect(
+        service.processPayroll({
+          ...T,
+          staffId: 's-1',
+          month: 7,
+          year: 2026,
+          processedBy: 'u-1',
+        }),
+      ).rejects.toThrow(ConflictException);
     });
   });
 
   describe('findPayrollsByBranch', () => {
     it('should return payroll records', async () => {
       mockDb.setDrizzleResults(
-        [{ id: 'pr-1', staffId: 's-1', month: 7, year: 2026, status: 'processed' }],
+        [
+          {
+            id: 'pr-1',
+            staffId: 's-1',
+            month: 7,
+            year: 2026,
+            status: 'processed',
+          },
+        ],
         [{ count: '1' }],
       );
       const result = await service.findPayrollsByBranch(T.branchId, {});

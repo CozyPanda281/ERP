@@ -3,52 +3,52 @@ import { ParsedRow } from '../import-engine';
 
 const HEADER_MAP: Record<string, string> = {
   'first name': 'firstName',
-  'first_name': 'firstName',
-  'firstname': 'firstName',
+  first_name: 'firstName',
+  firstname: 'firstName',
   'last name': 'lastName',
-  'last_name': 'lastName',
-  'lastname': 'lastName',
+  last_name: 'lastName',
+  lastname: 'lastName',
   'date of birth': 'dateOfBirth',
-  'date_of_birth': 'dateOfBirth',
-  'dob': 'dateOfBirth',
-  'gender': 'gender',
+  date_of_birth: 'dateOfBirth',
+  dob: 'dateOfBirth',
+  gender: 'gender',
   'blood group': 'bloodGroup',
-  'blood_group': 'bloodGroup',
+  blood_group: 'bloodGroup',
   'admission number': 'admissionNumber',
-  'admission_number': 'admissionNumber',
+  admission_number: 'admissionNumber',
   'roll number': 'rollNumber',
-  'roll_number': 'rollNumber',
-  'phone': 'phone',
-  'mobile': 'phone',
-  'email': 'email',
-  'address': 'address',
-  'city': 'city',
-  'state': 'state',
-  'pincode': 'pincode',
-  'nationality': 'nationality',
-  'religion': 'religion',
-  'caste': 'caste',
-  'category': 'category',
+  roll_number: 'rollNumber',
+  phone: 'phone',
+  mobile: 'phone',
+  email: 'email',
+  address: 'address',
+  city: 'city',
+  state: 'state',
+  pincode: 'pincode',
+  nationality: 'nationality',
+  religion: 'religion',
+  caste: 'caste',
+  category: 'category',
   'father name': 'fatherName',
-  'father_name': 'fatherName',
+  father_name: 'fatherName',
   'father phone': 'fatherPhone',
-  'father_phone': 'fatherPhone',
+  father_phone: 'fatherPhone',
   'mother name': 'motherName',
-  'mother_name': 'motherName',
+  mother_name: 'motherName',
   'mother phone': 'motherPhone',
-  'mother_phone': 'motherPhone',
+  mother_phone: 'motherPhone',
   'guardian name': 'guardianName',
-  'guardian_name': 'guardianName',
+  guardian_name: 'guardianName',
   'guardian phone': 'guardianPhone',
-  'guardian_phone': 'guardianPhone',
+  guardian_phone: 'guardianPhone',
   'previous school': 'previousSchool',
-  'previous_school': 'previousSchool',
-  'class': 'classId',
+  previous_school: 'previousSchool',
+  class: 'classId',
   'class name': 'classId',
-  'class_name': 'classId',
-  'section': 'sectionId',
+  class_name: 'classId',
+  section: 'sectionId',
   'academic year': 'academicYearId',
-  'academic_year': 'academicYearId',
+  academic_year: 'academicYearId',
 };
 
 export class StudentValidator implements EntityValidator {
@@ -71,7 +71,11 @@ export class StudentValidator implements EntityValidator {
     return mapping;
   }
 
-  async validate(row: ParsedRow, _tenantId: string, _branchId?: string): Promise<ValidationResult> {
+  async validate(
+    row: ParsedRow,
+    _tenantId: string,
+    _branchId?: string,
+  ): Promise<ValidationResult> {
     const errors: string[] = [];
     const fields = row.data;
 
@@ -86,11 +90,19 @@ export class StudentValidator implements EntityValidator {
       errors.push('Invalid email format');
     }
 
-    if (fields.dateOfBirth && isNaN(Date.parse(fields.dateOfBirth)) && fields.date_of_birth && isNaN(Date.parse(fields.date_of_birth))) {
+    if (
+      fields.dateOfBirth &&
+      isNaN(Date.parse(fields.dateOfBirth)) &&
+      fields.date_of_birth &&
+      isNaN(Date.parse(fields.date_of_birth))
+    ) {
       errors.push('Invalid date of birth format (use YYYY-MM-DD)');
     }
 
-    if (fields.gender && !['male', 'female', 'other'].includes(fields.gender.toLowerCase())) {
+    if (
+      fields.gender &&
+      !['male', 'female', 'other'].includes(fields.gender.toLowerCase())
+    ) {
       errors.push('Gender must be Male, Female, or Other');
     }
 

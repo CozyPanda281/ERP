@@ -3,22 +3,22 @@ import { ParsedRow } from '../import-engine';
 
 const HEADER_MAP: Record<string, string> = {
   'first name': 'firstName',
-  'first_name': 'firstName',
-  'firstname': 'firstName',
+  first_name: 'firstName',
+  firstname: 'firstName',
   'last name': 'lastName',
-  'last_name': 'lastName',
-  'lastname': 'lastName',
-  'email': 'email',
+  last_name: 'lastName',
+  lastname: 'lastName',
+  email: 'email',
   'e-mail': 'email',
-  'phone': 'phone',
-  'mobile': 'phone',
-  'password': 'password',
-  'role': 'roleSlug',
+  phone: 'phone',
+  mobile: 'phone',
+  password: 'password',
+  role: 'roleSlug',
   'role slug': 'roleSlug',
-  'role_slug': 'roleSlug',
-  'branch': 'branchId',
+  role_slug: 'roleSlug',
+  branch: 'branchId',
   'branch code': 'branchId',
-  'branch_code': 'branchId',
+  branch_code: 'branchId',
 };
 
 export class UserValidator implements EntityValidator {
@@ -41,12 +41,18 @@ export class UserValidator implements EntityValidator {
     return mapping;
   }
 
-  async validate(row: ParsedRow, _tenantId: string, _branchId?: string): Promise<ValidationResult> {
+  async validate(
+    row: ParsedRow,
+    _tenantId: string,
+    _branchId?: string,
+  ): Promise<ValidationResult> {
     const errors: string[] = [];
     const fields = row.data;
 
-    if (!fields.firstName && !fields.first_name) errors.push('First name is required');
-    if (!fields.lastName && !fields.last_name) errors.push('Last name is required');
+    if (!fields.firstName && !fields.first_name)
+      errors.push('First name is required');
+    if (!fields.lastName && !fields.last_name)
+      errors.push('Last name is required');
     if (!fields.email) errors.push('Email is required');
 
     if (fields.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(fields.email)) {

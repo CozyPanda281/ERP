@@ -1,4 +1,12 @@
-import { Controller, Get, Post, Put, Delete, Param, Body } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Put,
+  Delete,
+  Param,
+  Body,
+} from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { RolesService } from './roles.service';
 import { Roles } from '../../common/decorators/roles.decorator';
@@ -18,7 +26,10 @@ export class RolesController {
   @Roles(ROLES.ORGANIZATION_OWNER, ROLES.SUPER_ADMIN)
   @ApiOperation({ summary: 'Create a role' })
   async create(@CurrentUser() user: any, @Body() dto: CreateRoleDto) {
-    const data = await this.rolesService.create({ ...dto, tenantId: user.tenantId });
+    const data = await this.rolesService.create({
+      ...dto,
+      tenantId: user.tenantId,
+    });
     return { success: true, data };
   }
 
@@ -41,7 +52,11 @@ export class RolesController {
   @Put(':id')
   @Roles(ROLES.ORGANIZATION_OWNER, ROLES.SUPER_ADMIN)
   @ApiOperation({ summary: 'Update a role' })
-  async update(@Param('id') id: string, @Body() dto: UpdateRoleDto, @CurrentUser() user: any) {
+  async update(
+    @Param('id') id: string,
+    @Body() dto: UpdateRoleDto,
+    @CurrentUser() user: any,
+  ) {
     const data = await this.rolesService.update(id, user.tenantId, dto);
     return { success: true, data };
   }
@@ -65,7 +80,10 @@ export class RolesController {
   @Post(':id/permissions')
   @Roles(ROLES.ORGANIZATION_OWNER, ROLES.SUPER_ADMIN)
   @ApiOperation({ summary: 'Assign permissions to a role' })
-  async assignPermissions(@Param('id') id: string, @Body() dto: AssignPermissionsDto) {
+  async assignPermissions(
+    @Param('id') id: string,
+    @Body() dto: AssignPermissionsDto,
+  ) {
     await this.rolesService.assignPermissions(id, dto.permissionIds);
     return { success: true, message: 'Permissions updated' };
   }

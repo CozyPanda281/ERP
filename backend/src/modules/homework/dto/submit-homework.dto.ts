@@ -1,5 +1,11 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsOptional, IsString, IsBoolean, IsArray, IsNotEmpty } from 'class-validator';
+import {
+  IsOptional,
+  IsString,
+  IsBoolean,
+  IsArray,
+  IsNotEmpty,
+} from 'class-validator';
 
 export class SubmitHomeworkDto {
   @ApiProperty() @IsString() @IsNotEmpty() studentId: string;

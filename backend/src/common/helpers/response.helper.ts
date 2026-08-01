@@ -30,7 +30,10 @@ export class ApiResponse<T = unknown> {
     return new ApiResponse<T>(true, message, data);
   }
 
-  static created<T>(data?: T, message = 'Created successfully'): ApiResponse<T> {
+  static created<T>(
+    data?: T,
+    message = 'Created successfully',
+  ): ApiResponse<T> {
     return new ApiResponse<T>(true, message, data);
   }
 
@@ -44,14 +47,14 @@ export class ApiResponse<T = unknown> {
     return response;
   }
 
-  static error(message = 'Internal server error', error?: string): ApiResponse<never> {
+  static error(
+    message = 'Internal server error',
+    error?: string,
+  ): ApiResponse<never> {
     return new ApiResponse<never>(false, message, undefined, error);
   }
 
-  static validationError(
-    message: string,
-    errors: unknown,
-  ): ApiResponse<never> {
+  static validationError(message: string, errors: unknown): ApiResponse<never> {
     return new ApiResponse<never>(false, message, undefined, undefined, errors);
   }
 }

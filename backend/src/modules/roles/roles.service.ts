@@ -1,4 +1,8 @@
-import { Injectable, NotFoundException, ConflictException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  ConflictException,
+} from '@nestjs/common';
 import { DatabaseProvider } from '../../database/database.provider';
 import { v4 as uuidv4 } from 'uuid';
 import * as schema from '../../database/schema';
@@ -12,7 +16,12 @@ export class RolesService {
     const result = await this.db.db
       .select()
       .from(schema.roles)
-      .where(or(eq(schema.roles.tenantId, tenantId), and(isNull(schema.roles.tenantId), eq(schema.roles.isSystem, true))))
+      .where(
+        or(
+          eq(schema.roles.tenantId, tenantId),
+          and(isNull(schema.roles.tenantId), eq(schema.roles.isSystem, true)),
+        ),
+      )
       .orderBy(schema.roles.hierarchyLevel, schema.roles.name);
     return result;
   }
@@ -42,22 +51,43 @@ export class RolesService {
         createdAt: schema.permissions.createdAt,
       })
       .from(schema.permissions)
-      .innerJoin(schema.rolePermissions, eq(schema.rolePermissions.permissionId, schema.permissions.id))
+      .innerJoin(
+        schema.rolePermissions,
+        eq(schema.rolePermissions.permissionId, schema.permissions.id),
+      )
       .where(eq(schema.rolePermissions.roleId, roleId));
     return result;
   }
 
-  async create(params: { tenantId: string; name: string; slug: string; description?: string; hierarchyLevel?: number; isSystem?: boolean }) {
-    const [existing] = await this.db.db.select({ id: schema.roles.id })
+  async create(params: {
+    tenantId: string;
+    name: string;
+    slug: string;
+    description?: string;
+    hierarchyLevel?: number;
+    isSystem?: boolean;
+  }) {
+    const [existing] = await this.db.db
+      .select({ id: schema.roles.id })
       .from(schema.roles)
-      .where(and(eq(schema.roles.tenantId, params.tenantId), eq(schema.roles.slug, params.slug)))
+      .where(
+        and(
+          eq(schema.roles.tenantId, params.tenantId),
+          eq(schema.roles.slug, params.slug),
+        ),
+      )
       .limit(1);
-    if (existing) throw new ConflictException('Role with this slug already exists');
+    if (existing)
+      throw new ConflictException('Role with this slug already exists');
 
     const id = uuidv4();
     await this.db.db.insert(schema.roles).values({
-      id, tenantId: params.tenantId, name: params.name, slug: params.slug,
-      description: params.description, hierarchyLevel: params.hierarchyLevel || 0,
+      id,
+      tenantId: params.tenantId,
+      name: params.name,
+      slug: params.slug,
+      description: params.description,
+      hierarchyLevel: params.hierarchyLevel || 0,
       isSystem: params.isSystem || false,
     });
     return this.findById(id, params.tenantId);
@@ -67,17 +97,27 @@ export class RolesService {
     await this.findById(id, tenantId);
     const allowed: any = {};
     if (params.name !== undefined) allowed.name = params.name;
-    if (params.description !== undefined) allowed.description = params.description;
-    if (params.hierarchyLevel !== undefined) allowed.hierarchyLevel = params.hierarchyLevel;
+    if (params.description !== undefined)
+      allowed.description = params.description;
+    if (params.hierarchyLevel !== undefined)
+      allowed.hierarchyLevel = params.hierarchyLevel;
     if (params.isSystem !== undefined) allowed.isSystem = params.isSystem;
-    await this.db.db.update(schema.roles).set(allowed).where(eq(schema.roles.id, id));
+    await this.db.db
+      .update(schema.roles)
+      .set(allowed)
+      .where(eq(schema.roles.id, id));
     return this.findById(id, tenantId);
   }
 
   async softDelete(id: string) {
-    const [existing] = await this.db.db.select({ isSystem: schema.roles.isSystem }).from(schema.roles).where(eq(schema.roles.id, id)).limit(1);
+    const [existing] = await this.db.db
+      .select({ isSystem: schema.roles.isSystem })
+      .from(schema.roles)
+      .where(eq(schema.roles.id, id))
+      .limit(1);
     if (!existing) throw new NotFoundException('Role not found');
-    if (existing.isSystem) throw new ConflictException('Cannot delete system roles');
+    if (existing.isSystem)
+      throw new ConflictException('Cannot delete system roles');
     await this.db.db.delete(schema.roles).where(eq(schema.roles.id, id));
   }
 

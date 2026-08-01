@@ -17,7 +17,11 @@ export class VisitorsController {
   @Roles(ROLES.SUPER_ADMIN, ROLES.PRINCIPAL, ROLES.ORGANIZATION_OWNER)
   @ApiOperation({ summary: 'Check in a visitor' })
   async checkIn(@Body() body: CheckInDto, @CurrentUser() user: any) {
-    const data = await this.service.checkIn({ ...body, tenantId: user.tenantId, branchId: user.branchId });
+    const data = await this.service.checkIn({
+      ...body,
+      tenantId: user.tenantId,
+      branchId: user.branchId,
+    });
     return { success: true, data };
   }
 

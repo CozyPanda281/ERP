@@ -1,4 +1,8 @@
-import { Injectable, NotFoundException, ConflictException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  ConflictException,
+} from '@nestjs/common';
 import { DatabaseProvider } from '../../database/database.provider';
 import { v4 as uuidv4 } from 'uuid';
 import * as schema from '../../database/schema';
@@ -10,19 +14,40 @@ export class AcademicService {
 
   // ─── Academic Years ──────────────────────────────────────────────────────
 
-  async createAcademicYear(params: { tenantId: string; branchId: string; name: string; startDate: string; endDate: string; isCurrent?: boolean }) {
+  async createAcademicYear(params: {
+    tenantId: string;
+    branchId: string;
+    name: string;
+    startDate: string;
+    endDate: string;
+    isCurrent?: boolean;
+  }) {
     const existing = await this.db.db
       .select({ id: schema.academicYears.id })
       .from(schema.academicYears)
-      .where(and(eq(schema.academicYears.tenantId, params.tenantId), eq(schema.academicYears.branchId, params.branchId), eq(schema.academicYears.name, params.name)))
+      .where(
+        and(
+          eq(schema.academicYears.tenantId, params.tenantId),
+          eq(schema.academicYears.branchId, params.branchId),
+          eq(schema.academicYears.name, params.name),
+        ),
+      )
       .limit(1);
-    if (existing.length) throw new ConflictException('Academic year with this name already exists');
+    if (existing.length)
+      throw new ConflictException(
+        'Academic year with this name already exists',
+      );
 
     if (params.isCurrent) {
       await this.db.db
         .update(schema.academicYears)
         .set({ isCurrent: false })
-        .where(and(eq(schema.academicYears.tenantId, params.tenantId), eq(schema.academicYears.branchId, params.branchId)));
+        .where(
+          and(
+            eq(schema.academicYears.tenantId, params.tenantId),
+            eq(schema.academicYears.branchId, params.branchId),
+          ),
+        );
     }
 
     const id = uuidv4();
@@ -65,7 +90,12 @@ export class AcademicService {
     await this.db.db
       .update(schema.academicYears)
       .set({ isCurrent: false })
-      .where(and(eq(schema.academicYears.tenantId, tenantId), eq(schema.academicYears.branchId, branchId)));
+      .where(
+        and(
+          eq(schema.academicYears.tenantId, tenantId),
+          eq(schema.academicYears.branchId, branchId),
+        ),
+      );
     await this.db.db
       .update(schema.academicYears)
       .set({ isCurrent: true })
@@ -75,13 +105,27 @@ export class AcademicService {
 
   // ─── Departments ─────────────────────────────────────────────────────────
 
-  async createDepartment(params: { tenantId: string; branchId: string; name: string; code?: string; description?: string; hodId?: string }) {
+  async createDepartment(params: {
+    tenantId: string;
+    branchId: string;
+    name: string;
+    code?: string;
+    description?: string;
+    hodId?: string;
+  }) {
     const existing = await this.db.db
       .select({ id: schema.departments.id })
       .from(schema.departments)
-      .where(and(eq(schema.departments.tenantId, params.tenantId), eq(schema.departments.branchId, params.branchId), eq(schema.departments.name, params.name)))
+      .where(
+        and(
+          eq(schema.departments.tenantId, params.tenantId),
+          eq(schema.departments.branchId, params.branchId),
+          eq(schema.departments.name, params.name),
+        ),
+      )
       .limit(1);
-    if (existing.length) throw new ConflictException('Department with this name already exists');
+    if (existing.length)
+      throw new ConflictException('Department with this name already exists');
 
     const id = uuidv4();
     await this.db.db.insert(schema.departments).values({
@@ -97,7 +141,10 @@ export class AcademicService {
   }
 
   async findDepartmentById(id: string, branchId?: string) {
-    const conditions: any[] = [eq(schema.departments.id, id), isNull(schema.departments.deletedAt)];
+    const conditions: any[] = [
+      eq(schema.departments.id, id),
+      isNull(schema.departments.deletedAt),
+    ];
     if (branchId) conditions.push(eq(schema.departments.branchId, branchId));
 
     const result = await this.db.db
@@ -113,18 +160,30 @@ export class AcademicService {
     const result = await this.db.db
       .select()
       .from(schema.departments)
-      .where(and(eq(schema.departments.branchId, branchId), isNull(schema.departments.deletedAt)))
+      .where(
+        and(
+          eq(schema.departments.branchId, branchId),
+          isNull(schema.departments.deletedAt),
+        ),
+      )
       .orderBy(schema.departments.name);
     return result;
   }
 
-  async updateDepartment(id: string, params: Partial<{ name: string; code: string; description: string; hodId: string }>) {
+  async updateDepartment(
+    id: string,
+    params: Partial<{
+      name: string;
+      code: string;
+      description: string;
+      hodId: string;
+    }>,
+  ) {
     await this.findDepartmentById(id);
     const values: any = {};
     for (const [key, value] of Object.entries(params)) {
       if (value !== undefined) {
-        const col = key.replace(/[A-Z]/g, (c) => `_${c.toLowerCase()}`);
-        (values as any)[col] = value;
+        values[key] = value;
       }
     }
     if (Object.keys(values).length === 0) return this.findDepartmentById(id);
@@ -145,13 +204,27 @@ export class AcademicService {
 
   // ─── Classes ─────────────────────────────────────────────────────────────
 
-  async createClass(params: { tenantId: string; branchId: string; name: string; code?: string; description?: string; displayOrder?: number }) {
+  async createClass(params: {
+    tenantId: string;
+    branchId: string;
+    name: string;
+    code?: string;
+    description?: string;
+    displayOrder?: number;
+  }) {
     const existing = await this.db.db
       .select({ id: schema.classes.id })
       .from(schema.classes)
-      .where(and(eq(schema.classes.tenantId, params.tenantId), eq(schema.classes.branchId, params.branchId), eq(schema.classes.name, params.name)))
+      .where(
+        and(
+          eq(schema.classes.tenantId, params.tenantId),
+          eq(schema.classes.branchId, params.branchId),
+          eq(schema.classes.name, params.name),
+        ),
+      )
       .limit(1);
-    if (existing.length) throw new ConflictException('Class with this name already exists');
+    if (existing.length)
+      throw new ConflictException('Class with this name already exists');
 
     const id = uuidv4();
     await this.db.db.insert(schema.classes).values({
@@ -167,7 +240,10 @@ export class AcademicService {
   }
 
   async findClassById(id: string, branchId?: string) {
-    const conditions: any[] = [eq(schema.classes.id, id), isNull(schema.classes.deletedAt)];
+    const conditions: any[] = [
+      eq(schema.classes.id, id),
+      isNull(schema.classes.deletedAt),
+    ];
     if (branchId) conditions.push(eq(schema.classes.branchId, branchId));
 
     const result = await this.db.db
@@ -183,18 +259,30 @@ export class AcademicService {
     const result = await this.db.db
       .select()
       .from(schema.classes)
-      .where(and(eq(schema.classes.branchId, branchId), isNull(schema.classes.deletedAt)))
+      .where(
+        and(
+          eq(schema.classes.branchId, branchId),
+          isNull(schema.classes.deletedAt),
+        ),
+      )
       .orderBy(schema.classes.displayOrder, schema.classes.name);
     return result;
   }
 
-  async updateClass(id: string, params: Partial<{ name: string; code: string; description: string; displayOrder: number }>) {
+  async updateClass(
+    id: string,
+    params: Partial<{
+      name: string;
+      code: string;
+      description: string;
+      displayOrder: number;
+    }>,
+  ) {
     await this.findClassById(id);
     const values: any = {};
     for (const [key, value] of Object.entries(params)) {
       if (value !== undefined) {
-        const col = key.replace(/[A-Z]/g, (c) => `_${c.toLowerCase()}`);
-        (values as any)[col] = value;
+        values[key] = value;
       }
     }
     if (Object.keys(values).length === 0) return this.findClassById(id);
@@ -215,7 +303,15 @@ export class AcademicService {
 
   // ─── Sections ────────────────────────────────────────────────────────────
 
-  async createSection(params: { tenantId: string; branchId: string; classId: string; name: string; code?: string; capacity?: number; roomNumber?: string }) {
+  async createSection(params: {
+    tenantId: string;
+    branchId: string;
+    classId: string;
+    name: string;
+    code?: string;
+    capacity?: number;
+    roomNumber?: string;
+  }) {
     const id = uuidv4();
     await this.db.db.insert(schema.sections).values({
       id,
@@ -231,7 +327,10 @@ export class AcademicService {
   }
 
   async findSectionById(id: string, branchId?: string) {
-    const conditions: any[] = [eq(schema.sections.id, id), isNull(schema.sections.deletedAt)];
+    const conditions: any[] = [
+      eq(schema.sections.id, id),
+      isNull(schema.sections.deletedAt),
+    ];
     if (branchId) conditions.push(eq(schema.sections.branchId, branchId));
 
     const result = await this.db.db
@@ -247,15 +346,31 @@ export class AcademicService {
     const result = await this.db.db
       .select()
       .from(schema.sections)
-      .where(and(eq(schema.sections.classId, classId), isNull(schema.sections.deletedAt)))
+      .where(
+        and(
+          eq(schema.sections.classId, classId),
+          isNull(schema.sections.deletedAt),
+        ),
+      )
       .orderBy(schema.sections.name);
     return result;
   }
 
   // ─── Subjects ────────────────────────────────────────────────────────────
 
-  async createSubject(params: { tenantId: string; branchId: string; name: string; code?: string; subjectType?: string; isLanguage?: boolean; description?: string }) {
-    const conditions: any[] = [eq(schema.subjects.tenantId, params.tenantId), eq(schema.subjects.branchId, params.branchId)];
+  async createSubject(params: {
+    tenantId: string;
+    branchId: string;
+    name: string;
+    code?: string;
+    subjectType?: string;
+    isLanguage?: boolean;
+    description?: string;
+  }) {
+    const conditions: any[] = [
+      eq(schema.subjects.tenantId, params.tenantId),
+      eq(schema.subjects.branchId, params.branchId),
+    ];
     if (params.code !== undefined) {
       conditions.push(eq(schema.subjects.code, params.code));
     }
@@ -264,7 +379,8 @@ export class AcademicService {
       .from(schema.subjects)
       .where(and(...conditions))
       .limit(1);
-    if (existing.length) throw new ConflictException('Subject with this code already exists');
+    if (existing.length)
+      throw new ConflictException('Subject with this code already exists');
 
     const id = uuidv4();
     await this.db.db.insert(schema.subjects).values({
@@ -281,7 +397,10 @@ export class AcademicService {
   }
 
   async findSubjectById(id: string, branchId?: string) {
-    const conditions: any[] = [eq(schema.subjects.id, id), isNull(schema.subjects.deletedAt)];
+    const conditions: any[] = [
+      eq(schema.subjects.id, id),
+      isNull(schema.subjects.deletedAt),
+    ];
     if (branchId) conditions.push(eq(schema.subjects.branchId, branchId));
 
     const result = await this.db.db
@@ -297,7 +416,12 @@ export class AcademicService {
     const result = await this.db.db
       .select()
       .from(schema.subjects)
-      .where(and(eq(schema.subjects.branchId, branchId), isNull(schema.subjects.deletedAt)))
+      .where(
+        and(
+          eq(schema.subjects.branchId, branchId),
+          isNull(schema.subjects.deletedAt),
+        ),
+      )
       .orderBy(schema.subjects.name);
     return result;
   }

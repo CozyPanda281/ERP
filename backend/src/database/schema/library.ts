@@ -1,4 +1,24 @@
-import { pgTable, uuid, varchar, text, integer, decimal, date, timestamp, boolean } from 'drizzle-orm/pg-core';
+import {
+  pgTable,
+  uuid,
+  varchar,
+  text,
+  integer,
+  decimal,
+  date,
+  timestamp,
+  boolean,
+} from 'drizzle-orm/pg-core';
+
+export const bookCategories = pgTable('book_categories', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  tenantId: uuid('tenant_id').notNull(),
+  name: varchar('name', { length: 100 }).notNull(),
+  description: text('description'),
+  isActive: boolean('is_active').default(true),
+  createdAt: timestamp('created_at').defaultNow(),
+  updatedAt: timestamp('updated_at').defaultNow(),
+});
 
 export const libraryBooks = pgTable('library_books', {
   id: uuid('id').primaryKey().defaultRandom(),

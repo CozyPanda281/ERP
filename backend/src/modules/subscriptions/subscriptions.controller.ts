@@ -7,10 +7,12 @@ import {
   Param,
   Body,
   Query,
+  ForbiddenException,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { SubscriptionsService } from './subscriptions.service';
 import { Roles } from '../../common/decorators/roles.decorator';
+import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { Public } from '../../common/decorators/public.decorator';
 import { ROLES } from '../../common/constants';
 import { CreatePlanDto } from './dto/create-plan.dto';
@@ -23,9 +25,7 @@ import { ChangePlanDto } from './dto/change-plan.dto';
 @ApiBearerAuth()
 @Controller('subscriptions')
 export class SubscriptionsController {
-  constructor(
-    private readonly subscriptionsService: SubscriptionsService,
-  ) {}
+  constructor(private readonly subscriptionsService: SubscriptionsService) {}
 
   // ─── Plans ───────────────────────────────────────────────────────────────
 
@@ -74,10 +74,17 @@ export class SubscriptionsController {
   @Get('tenant/:tenantId')
   @Roles(ROLES.SUPER_ADMIN, ROLES.ORGANIZATION_OWNER)
   @ApiOperation({ summary: 'Get current subscription for a tenant' })
-  async getTenantSubscription(@Param('tenantId') tenantId: string) {
-    const data = await this.subscriptionsService.getTenantSubscription(
-      tenantId,
-    );
+  async getTenantSubscription(
+    @Param('tenantId') tenantId: string,
+    @CurrentUser() user: any,
+  ) {
+    if (!user.isSuperAdmin && user.tenantId !== tenantId) {
+      throw new ForbiddenException(
+        'You can only view your own tenant subscription',
+      );
+    }
+    const data =
+      await this.subscriptionsService.getTenantSubscription(tenantId);
     return { success: true, data };
   }
 
@@ -175,9 +182,7 @@ export class SubscriptionsController {
   @Roles(ROLES.SUPER_ADMIN)
   @ApiOperation({ summary: 'Get expiring subscriptions' })
   async getExpiring(@Query('days') days: number = 30) {
-    const data = await this.subscriptionsService.getExpiringSubscriptions(
-      days,
-    );
+    const data = await this.subscriptionsService.getExpiringSubscriptions(days);
     return { success: true, data };
   }
 

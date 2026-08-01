@@ -1,4 +1,12 @@
-import { Controller, Get, Post, Put, Delete, Param, Body } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Put,
+  Delete,
+  Param,
+  Body,
+} from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { AcademicService } from './academic.service';
 import { Roles } from '../../common/decorators/roles.decorator';
@@ -22,8 +30,14 @@ export class AcademicController {
   @Post('academic-years')
   @Roles(ROLES.ORGANIZATION_OWNER, ROLES.PRINCIPAL, ROLES.SUPER_ADMIN)
   @ApiOperation({ summary: 'Create academic year' })
-  async createAcademicYear(@CurrentUser() user: any, @Body() dto: CreateAcademicYearDto) {
-    const data = await this.academicService.createAcademicYear({ ...dto, tenantId: user.tenantId });
+  async createAcademicYear(
+    @CurrentUser() user: any,
+    @Body() dto: CreateAcademicYearDto,
+  ) {
+    const data = await this.academicService.createAcademicYear({
+      ...dto,
+      tenantId: user.tenantId,
+    });
     return { success: true, data };
   }
 
@@ -38,16 +52,30 @@ export class AcademicController {
   @Put('academic-years/:id/set-current')
   @Roles(ROLES.ORGANIZATION_OWNER, ROLES.PRINCIPAL)
   @ApiOperation({ summary: 'Set current academic year' })
-  async setCurrentAcademicYear(@CurrentUser() user: any, @Param('id') id: string, @Body() dto: SetCurrentAcademicYearDto) {
-    const data = await this.academicService.setCurrentAcademicYear(id, user.tenantId, dto.branchId);
+  async setCurrentAcademicYear(
+    @CurrentUser() user: any,
+    @Param('id') id: string,
+    @Body() dto: SetCurrentAcademicYearDto,
+  ) {
+    const data = await this.academicService.setCurrentAcademicYear(
+      id,
+      user.tenantId,
+      dto.branchId,
+    );
     return { success: true, data };
   }
 
   @Post('departments')
   @Roles(ROLES.ORGANIZATION_OWNER, ROLES.PRINCIPAL)
   @ApiOperation({ summary: 'Create department' })
-  async createDepartment(@CurrentUser() user: any, @Body() dto: CreateDepartmentDto) {
-    const data = await this.academicService.createDepartment({ ...dto, tenantId: user.tenantId });
+  async createDepartment(
+    @CurrentUser() user: any,
+    @Body() dto: CreateDepartmentDto,
+  ) {
+    const data = await this.academicService.createDepartment({
+      ...dto,
+      tenantId: user.tenantId,
+    });
     return { success: true, data };
   }
 
@@ -62,7 +90,10 @@ export class AcademicController {
   @Put('departments/:id')
   @Roles(ROLES.ORGANIZATION_OWNER, ROLES.PRINCIPAL)
   @ApiOperation({ summary: 'Update department' })
-  async updateDepartment(@Param('id') id: string, @Body() dto: UpdateDepartmentDto) {
+  async updateDepartment(
+    @Param('id') id: string,
+    @Body() dto: UpdateDepartmentDto,
+  ) {
     const data = await this.academicService.updateDepartment(id, dto);
     return { success: true, data };
   }
@@ -79,12 +110,20 @@ export class AcademicController {
   @Roles(ROLES.ORGANIZATION_OWNER, ROLES.PRINCIPAL)
   @ApiOperation({ summary: 'Create class' })
   async createClass(@CurrentUser() user: any, @Body() dto: CreateClassDto) {
-    const data = await this.academicService.createClass({ ...dto, tenantId: user.tenantId });
+    const data = await this.academicService.createClass({
+      ...dto,
+      tenantId: user.tenantId,
+    });
     return { success: true, data };
   }
 
   @Get('branches/:branchId/classes')
-  @Roles(ROLES.ORGANIZATION_OWNER, ROLES.PRINCIPAL, ROLES.TEACHER, ROLES.STUDENT)
+  @Roles(
+    ROLES.ORGANIZATION_OWNER,
+    ROLES.PRINCIPAL,
+    ROLES.TEACHER,
+    ROLES.STUDENT,
+  )
   @ApiOperation({ summary: 'List classes for a branch' })
   async getClasses(@Param('branchId') branchId: string) {
     const data = await this.academicService.findClassesByBranch(branchId);
@@ -111,7 +150,10 @@ export class AcademicController {
   @Roles(ROLES.ORGANIZATION_OWNER, ROLES.PRINCIPAL)
   @ApiOperation({ summary: 'Create section' })
   async createSection(@CurrentUser() user: any, @Body() dto: CreateSectionDto) {
-    const data = await this.academicService.createSection({ ...dto, tenantId: user.tenantId });
+    const data = await this.academicService.createSection({
+      ...dto,
+      tenantId: user.tenantId,
+    });
     return { success: true, data };
   }
 
@@ -127,7 +169,10 @@ export class AcademicController {
   @Roles(ROLES.ORGANIZATION_OWNER, ROLES.PRINCIPAL)
   @ApiOperation({ summary: 'Create subject' })
   async createSubject(@CurrentUser() user: any, @Body() dto: CreateSubjectDto) {
-    const data = await this.academicService.createSubject({ ...dto, tenantId: user.tenantId });
+    const data = await this.academicService.createSubject({
+      ...dto,
+      tenantId: user.tenantId,
+    });
     return { success: true, data };
   }
 

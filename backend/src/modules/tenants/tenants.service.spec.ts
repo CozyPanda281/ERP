@@ -1,5 +1,9 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { ConflictException, NotFoundException, BadRequestException } from '@nestjs/common';
+import {
+  ConflictException,
+  NotFoundException,
+  BadRequestException,
+} from '@nestjs/common';
 import { TenantsService } from './tenants.service';
 import { DatabaseProvider } from '../../database/database.provider';
 import { MockDatabaseProvider } from '../../common/test/mocks';
@@ -66,9 +70,15 @@ describe('TenantsService', () => {
 
   describe('getTenantStats', () => {
     it('should return aggregated stats', async () => {
-      mockDb.setDrizzleResults([{
-        total: 10, active: 7, trial: 2, suspended: 1, newLast30Days: 3,
-      }]);
+      mockDb.setDrizzleResults([
+        {
+          total: 10,
+          active: 7,
+          trial: 2,
+          suspended: 1,
+          newLast30Days: 3,
+        },
+      ]);
 
       const stats = await service.getTenantStats();
       expect(stats.total).toBe(10);
@@ -118,14 +128,54 @@ describe('TenantsService', () => {
 
   describe('softDelete', () => {
     it('should soft delete a tenant', async () => {
+      mockDb.setDrizzleResults([{ id: 't-1', name: 'Test' }], [], [], []);
+
+      await expect(service.softDelete('t-1')).resolves.not.toThrow();
+    });
+  });
+
+  describe('firstRunSetup', () => {
+    it('should create branch, academic year and assign branchId to owner role', async () => {
       mockDb.setDrizzleResults(
-        [{ id: 't-1', name: 'Test' }],
+        [{ id: 't-1', name: 'Test School', slug: 'test-school' }],
         [],
         [],
+        [],
+        [],
+        [{ id: 'ur-1' }],
         [],
       );
 
-      await expect(service.softDelete('t-1')).resolves.not.toThrow();
+      const result = await service.firstRunSetup('t-1', {
+        branchName: 'Main Branch',
+        branchCode: 'MB-01',
+        academicYearName: '2026-27',
+        academicYearStart: '2026-04-01',
+        academicYearEnd: '2027-03-31',
+      });
+
+      expect(result.tenantId).toBe('t-1');
+      expect(result.branchId).toBeTruthy();
+      expect(result.academicYearId).toBeTruthy();
+      expect(result.classId).toBeUndefined();
+      expect(result.message).toBe('Tenant setup complete');
+    });
+
+    it('should throw when tenant already has branches', async () => {
+      mockDb.setDrizzleResults(
+        [{ id: 't-1', name: 'Test School' }],
+        [{ id: 'b-1' }],
+      );
+
+      await expect(
+        service.firstRunSetup('t-1', {
+          branchName: 'Main Branch',
+          branchCode: 'MB-01',
+          academicYearName: '2026-27',
+          academicYearStart: '2026-04-01',
+          academicYearEnd: '2027-03-31',
+        }),
+      ).rejects.toThrow(BadRequestException);
     });
   });
 });

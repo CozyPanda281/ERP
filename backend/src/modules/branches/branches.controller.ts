@@ -1,4 +1,13 @@
-import { Controller, Get, Post, Put, Delete, Param, Body, Query } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Put,
+  Delete,
+  Param,
+  Body,
+  Query,
+} from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { BranchesService } from './branches.service';
 import { Roles } from '../../common/decorators/roles.decorator';
@@ -17,14 +26,21 @@ export class BranchesController {
   @Roles(ROLES.ORGANIZATION_OWNER, ROLES.SUPER_ADMIN)
   @ApiOperation({ summary: 'Create a branch' })
   async create(@CurrentUser() user: any, @Body() dto: CreateBranchDto) {
-    const data = await this.branchesService.create({ ...dto, tenantId: user.tenantId });
+    const data = await this.branchesService.create({
+      ...dto,
+      tenantId: user.tenantId,
+    });
     return { success: true, data };
   }
 
   @Get()
   @Roles(ROLES.ORGANIZATION_OWNER, ROLES.PRINCIPAL, ROLES.SUPER_ADMIN)
   @ApiOperation({ summary: 'List branches for current tenant' })
-  async findAll(@CurrentUser() user: any, @Query('page') page = 1, @Query('limit') limit = 20) {
+  async findAll(
+    @CurrentUser() user: any,
+    @Query('page') page = 1,
+    @Query('limit') limit = 20,
+  ) {
     return this.branchesService.findByTenant(user.tenantId, page, limit);
   }
 

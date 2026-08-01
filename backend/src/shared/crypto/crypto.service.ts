@@ -11,7 +11,9 @@ export class CryptoService {
   private readonly key: Buffer;
 
   constructor(configService: ConfigService) {
-    const raw = configService.get<string>('encryption.key') || 'default-dev-key-change-in-production';
+    const raw =
+      configService.get<string>('encryption.key') ||
+      'default-dev-key-change-in-production';
     this.key = crypto.scryptSync(raw, 'erp-salt', 32);
   }
 

@@ -1,5 +1,11 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsString, IsNotEmpty, IsOptional, IsDateString, IsNumber } from 'class-validator';
+import {
+  IsString,
+  IsNotEmpty,
+  IsOptional,
+  IsDateString,
+  IsNumber,
+} from 'class-validator';
 
 export class ApplyLeaveDto {
   @ApiProperty() @IsString() @IsNotEmpty() leaveTypeId: string;

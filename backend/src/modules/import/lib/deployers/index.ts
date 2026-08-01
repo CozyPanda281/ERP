@@ -10,7 +10,14 @@ export interface DeployResult {
 
 export interface EntityDeployer {
   entityType: string;
-  deploy(batchId: string, rows: ParsedRow[], columnMapping: Record<string, string>, db: DatabaseProvider, tenantId: string, branchId?: string): Promise<DeployResult>;
+  deploy(
+    batchId: string,
+    rows: ParsedRow[],
+    columnMapping: Record<string, string>,
+    db: DatabaseProvider,
+    tenantId: string,
+    branchId?: string,
+  ): Promise<DeployResult>;
 }
 
 import { StudentDeployer } from './student.deployer';
@@ -24,7 +31,8 @@ export function registerDeployer(d: EntityDeployer) {
 
 export function getDeployer(entityType: string): EntityDeployer {
   const d = deployers.get(entityType);
-  if (!d) throw new Error(`No deployer registered for entity type: ${entityType}`);
+  if (!d)
+    throw new Error(`No deployer registered for entity type: ${entityType}`);
   return d;
 }
 

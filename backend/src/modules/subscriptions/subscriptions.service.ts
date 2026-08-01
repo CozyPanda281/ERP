@@ -548,7 +548,10 @@ export class SubscriptionsService {
         planCode: schema.plans.code,
       })
       .from(schema.subscriptions)
-      .innerJoin(schema.tenants, eq(schema.tenants.id, schema.subscriptions.tenantId))
+      .innerJoin(
+        schema.tenants,
+        eq(schema.tenants.id, schema.subscriptions.tenantId),
+      )
       .innerJoin(schema.plans, eq(schema.plans.id, schema.subscriptions.planId))
       .orderBy(desc(schema.subscriptions.createdAt))
       .limit(limit)
@@ -576,7 +579,10 @@ export class SubscriptionsService {
         tenantEmail: schema.tenants.email,
       })
       .from(schema.subscriptions)
-      .innerJoin(schema.tenants, eq(schema.tenants.id, schema.subscriptions.tenantId))
+      .innerJoin(
+        schema.tenants,
+        eq(schema.tenants.id, schema.subscriptions.tenantId),
+      )
       .where(
         and(
           eq(schema.subscriptions.status, 'active'),
@@ -595,16 +601,11 @@ export class SubscriptionsService {
   async getSubscriptionStats() {
     const result = await this.db.db
       .select({
-        activeCount:
-          sql`COUNT(*) FILTER (WHERE ${schema.subscriptions.status} = 'active')`,
-        trialCount:
-          sql`COUNT(*) FILTER (WHERE ${schema.subscriptions.status} = 'trial')`,
-        expiredCount:
-          sql`COUNT(*) FILTER (WHERE ${schema.subscriptions.status} = 'expired')`,
-        cancelledCount:
-          sql`COUNT(*) FILTER (WHERE ${schema.subscriptions.status} = 'cancelled')`,
-        overdueCount:
-          sql`COUNT(*) FILTER (WHERE ${schema.subscriptions.endDate} < NOW() AND ${schema.subscriptions.status} = 'active')`,
+        activeCount: sql`COUNT(*) FILTER (WHERE ${schema.subscriptions.status} = 'active')`,
+        trialCount: sql`COUNT(*) FILTER (WHERE ${schema.subscriptions.status} = 'trial')`,
+        expiredCount: sql`COUNT(*) FILTER (WHERE ${schema.subscriptions.status} = 'expired')`,
+        cancelledCount: sql`COUNT(*) FILTER (WHERE ${schema.subscriptions.status} = 'cancelled')`,
+        overdueCount: sql`COUNT(*) FILTER (WHERE ${schema.subscriptions.endDate} < NOW() AND ${schema.subscriptions.status} = 'active')`,
       })
       .from(schema.subscriptions);
 

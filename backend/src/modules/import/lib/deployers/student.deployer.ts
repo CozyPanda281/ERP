@@ -5,7 +5,11 @@ import * as schema from '../../../../database/schema';
 import { v4 as uuidv4 } from 'uuid';
 import { eq, and, ilike } from 'drizzle-orm';
 
-function mapField(data: Record<string, string>, mapping: Record<string, string>, field: string): string | undefined {
+function mapField(
+  data: Record<string, string>,
+  mapping: Record<string, string>,
+  field: string,
+): string | undefined {
   const src = Object.entries(mapping).find(([, v]) => v === field)?.[0];
   return src ? data[src] : undefined;
 }
@@ -30,20 +34,36 @@ export class StudentDeployer implements EntityDeployer {
         const fn = mapField(row.data, columnMapping, 'firstName') || '';
         const ln = mapField(row.data, columnMapping, 'lastName') || '';
 
-        const [existing] = await db.db.select({ id: schema.students.id })
+        const [existing] = await db.db
+          .select({ id: schema.students.id })
           .from(schema.students)
-          .where(and(eq(schema.students.tenantId, tenantId), eq(schema.students.firstName, fn), eq(schema.students.lastName, ln)))
+          .where(
+            and(
+              eq(schema.students.tenantId, tenantId),
+              eq(schema.students.firstName, fn),
+              eq(schema.students.lastName, ln),
+            ),
+          )
           .limit(1);
 
         if (existing) {
-          errors.push({ row: row.rowNumber, error: `Student ${fn} ${ln} already exists` });
+          errors.push({
+            row: row.rowNumber,
+            error: `Student ${fn} ${ln} already exists`,
+          });
           failed++;
           continue;
         }
 
-        const [yearRows] = await db.db.select({ id: schema.academicYears.id })
+        const [yearRows] = await db.db
+          .select({ id: schema.academicYears.id })
           .from(schema.academicYears)
-          .where(and(eq(schema.academicYears.tenantId, tenantId), eq(schema.academicYears.isCurrent, true)))
+          .where(
+            and(
+              eq(schema.academicYears.tenantId, tenantId),
+              eq(schema.academicYears.isCurrent, true),
+            ),
+          )
           .limit(1);
 
         await db.db.insert(schema.students).values({
@@ -61,14 +81,18 @@ export class StudentDeployer implements EntityDeployer {
           city: mapField(row.data, columnMapping, 'city'),
           state: mapField(row.data, columnMapping, 'state'),
           pincode: mapField(row.data, columnMapping, 'pincode'),
-          nationality: mapField(row.data, columnMapping, 'nationality') || 'Indian',
+          nationality:
+            mapField(row.data, columnMapping, 'nationality') || 'Indian',
           religion: mapField(row.data, columnMapping, 'religion'),
           caste: mapField(row.data, columnMapping, 'caste'),
           category: mapField(row.data, columnMapping, 'category'),
         });
         inserted++;
       } catch (err: any) {
-        errors.push({ row: row.rowNumber, error: err.message || 'Unknown error' });
+        errors.push({
+          row: row.rowNumber,
+          error: err.message || 'Unknown error',
+        });
         failed++;
       }
     }

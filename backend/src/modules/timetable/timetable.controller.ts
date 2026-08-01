@@ -1,4 +1,13 @@
-import { Controller, Get, Post, Put, Delete, Param, Body, Query } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Put,
+  Delete,
+  Param,
+  Body,
+  Query,
+} from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { TimetableService } from './timetable.service';
 import { Roles } from '../../common/decorators/roles.decorator';
@@ -21,14 +30,21 @@ export class TimetableController {
   @Roles(ROLES.PRINCIPAL, ROLES.ORGANIZATION_OWNER)
   @ApiOperation({ summary: 'Create timetable' })
   async create(@CurrentUser() user: any, @Body() dto: CreateTimetableDto) {
-    const data = await this.timetableService.create({ ...dto, tenantId: user.tenantId, branchId: user.branchId });
+    const data = await this.timetableService.create({
+      ...dto,
+      tenantId: user.tenantId,
+      branchId: user.branchId,
+    });
     return { success: true, data };
   }
 
   @Get('branches/:branchId/timetables')
   @Roles(ROLES.PRINCIPAL, ROLES.TEACHER)
   @ApiOperation({ summary: 'List timetables for a branch' })
-  async findByBranch(@Param('branchId') branchId: string, @Query() query: ListTimetablesQueryDto) {
+  async findByBranch(
+    @Param('branchId') branchId: string,
+    @Query() query: ListTimetablesQueryDto,
+  ) {
     return this.timetableService.findByBranch(branchId, query);
   }
 
@@ -92,7 +108,11 @@ export class TimetableController {
   @Roles(ROLES.PRINCIPAL)
   @ApiOperation({ summary: 'Batch update entries for a day' })
   async batchUpdate(@Param('id') id: string, @Body() dto: BatchEntriesDto) {
-    const data = await this.timetableService.batchUpdateEntries(id, dto.dayOfWeek, dto.entries);
+    const data = await this.timetableService.batchUpdateEntries(
+      id,
+      dto.dayOfWeek,
+      dto.entries,
+    );
     return { success: true, data };
   }
 
@@ -107,8 +127,14 @@ export class TimetableController {
   @Get('teachers/:teacherId/timetable')
   @Roles(ROLES.PRINCIPAL, ROLES.TEACHER)
   @ApiOperation({ summary: 'Get teacher timetable across classes' })
-  async findByTeacher(@Param('teacherId') teacherId: string, @CurrentUser() user: any) {
-    const data = await this.timetableService.findByTeacher(teacherId, user.branchId);
+  async findByTeacher(
+    @Param('teacherId') teacherId: string,
+    @CurrentUser() user: any,
+  ) {
+    const data = await this.timetableService.findByTeacher(
+      teacherId,
+      user.branchId,
+    );
     return { success: true, data };
   }
 }

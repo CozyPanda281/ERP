@@ -20,6 +20,10 @@ export class DatabaseProvider implements OnModuleInit, OnModuleDestroy {
       database: this.configService.get('database.database'),
       ssl: this.configService.get('database.ssl'),
       max: this.configService.get('database.maxConnections'),
+      connectionTimeoutMillis:
+        this.configService.get('database.connectionTimeoutMillis') ?? 10_000,
+      idleTimeoutMillis:
+        this.configService.get('database.idleTimeoutMillis') ?? 30_000,
     });
 
     this.db = drizzle(this.pool, { schema });

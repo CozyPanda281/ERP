@@ -14,12 +14,15 @@ export abstract class CrudService {
     return this.db;
   }
 
-  protected async count(whereClause: string, params: unknown[]): Promise<number> {
+  protected async count(
+    whereClause: string,
+    params: unknown[],
+  ): Promise<number> {
     const result = await this.query.query(
       `SELECT COUNT(*) FROM ${this.tableName} WHERE ${whereClause}`,
       params,
     );
-    return parseInt(String((result.rows[0] as any).count), 10);
+    return parseInt(String(result.rows[0].count), 10);
   }
 
   protected async findMany(
@@ -68,10 +71,7 @@ export abstract class CrudService {
     return (result.rows[0] as Record<string, unknown>) || null;
   }
 
-  protected async softDelete(
-    id: string,
-    tenantId?: string,
-  ): Promise<boolean> {
+  protected async softDelete(id: string, tenantId?: string): Promise<boolean> {
     let queryStr = `UPDATE ${this.tableName} SET deleted_at = NOW() WHERE id = $1 AND deleted_at IS NULL`;
     const params: unknown[] = [id];
 
@@ -84,10 +84,7 @@ export abstract class CrudService {
     return (result.rowCount || 0) > 0;
   }
 
-  protected async exists(
-    id: string,
-    tenantId?: string,
-  ): Promise<boolean> {
+  protected async exists(id: string, tenantId?: string): Promise<boolean> {
     let queryStr = `SELECT 1 FROM ${this.tableName} WHERE id = $1 AND deleted_at IS NULL`;
     const params: unknown[] = [id];
 

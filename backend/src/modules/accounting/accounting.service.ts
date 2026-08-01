@@ -1,4 +1,8 @@
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  BadRequestException,
+} from '@nestjs/common';
 import { DatabaseProvider } from '../../database/database.provider';
 import * as schema from '../../database/schema';
 import { eq, and, desc, count, sql, isNull } from 'drizzle-orm';
@@ -13,22 +17,31 @@ export class AccountingService {
   // ═══════════════════════════════════════════════════════════════════════════
 
   async createAccount(params: {
-    tenantId: string; branchId: string;
-    accountCode: string; accountName: string;
+    tenantId: string;
+    branchId: string;
+    accountCode: string;
+    accountName: string;
     accountType: 'asset' | 'liability' | 'equity' | 'income' | 'expense';
-    parentId?: string; description?: string; openingBalance?: number;
+    parentId?: string;
+    description?: string;
+    openingBalance?: number;
   }) {
     const [existing] = await this.db.db
       .select({ id: schema.accountingAccounts.id })
       .from(schema.accountingAccounts)
-      .where(and(
-        eq(schema.accountingAccounts.tenantId, params.tenantId),
-        eq(schema.accountingAccounts.branchId, params.branchId),
-        eq(schema.accountingAccounts.accountCode, params.accountCode),
-        isNull(schema.accountingAccounts.deletedAt),
-      ))
+      .where(
+        and(
+          eq(schema.accountingAccounts.tenantId, params.tenantId),
+          eq(schema.accountingAccounts.branchId, params.branchId),
+          eq(schema.accountingAccounts.accountCode, params.accountCode),
+          isNull(schema.accountingAccounts.deletedAt),
+        ),
+      )
       .limit(1);
-    if (existing) throw new BadRequestException('Account code already exists for this branch');
+    if (existing)
+      throw new BadRequestException(
+        'Account code already exists for this branch',
+      );
 
     const id = uuidv4();
     await this.db.db.insert(schema.accountingAccounts).values({
@@ -40,7 +53,10 @@ export class AccountingService {
       accountType: params.accountType,
       parentId: params.parentId,
       description: params.description,
-      openingBalance: params.openingBalance !== undefined ? String(params.openingBalance) : '0',
+      openingBalance:
+        params.openingBalance !== undefined
+          ? String(params.openingBalance)
+          : '0',
     });
 
     return this.findAccountById(id);
@@ -50,13 +66,21 @@ export class AccountingService {
     const [result] = await this.db.db
       .select()
       .from(schema.accountingAccounts)
-      .where(and(eq(schema.accountingAccounts.id, id), isNull(schema.accountingAccounts.deletedAt)))
+      .where(
+        and(
+          eq(schema.accountingAccounts.id, id),
+          isNull(schema.accountingAccounts.deletedAt),
+        ),
+      )
       .limit(1);
     if (!result) throw new NotFoundException('Account not found');
     return result;
   }
 
-  async findAccountsByBranch(branchId: string, query?: { page?: number; limit?: number; accountType?: string }) {
+  async findAccountsByBranch(
+    branchId: string,
+    query?: { page?: number; limit?: number; accountType?: string },
+  ) {
     const page = query?.page || 1;
     const limit = Math.min(query?.limit || 100, 200);
     const offset = (page - 1) * limit;
@@ -64,7 +88,10 @@ export class AccountingService {
       eq(schema.accountingAccounts.branchId, branchId),
       isNull(schema.accountingAccounts.deletedAt),
     ];
-    if (query?.accountType) conditions.push(eq(schema.accountingAccounts.accountType, query.accountType));
+    if (query?.accountType)
+      conditions.push(
+        eq(schema.accountingAccounts.accountType, query.accountType),
+      );
 
     const data = await this.db.db
       .select()
@@ -86,32 +113,49 @@ export class AccountingService {
     return this.db.db
       .select()
       .from(schema.accountingAccounts)
-      .where(and(
-        eq(schema.accountingAccounts.branchId, branchId),
-        eq(schema.accountingAccounts.accountType, accountType),
-        isNull(schema.accountingAccounts.deletedAt),
-      ))
+      .where(
+        and(
+          eq(schema.accountingAccounts.branchId, branchId),
+          eq(schema.accountingAccounts.accountType, accountType),
+          isNull(schema.accountingAccounts.deletedAt),
+        ),
+      )
       .orderBy(schema.accountingAccounts.accountCode);
   }
 
-  async updateAccount(id: string, params: {
-    accountCode?: string; accountName?: string;
-    accountType?: 'asset' | 'liability' | 'equity' | 'income' | 'expense';
-    parentId?: string; description?: string; openingBalance?: number; status?: string;
-  }) {
+  async updateAccount(
+    id: string,
+    params: {
+      accountCode?: string;
+      accountName?: string;
+      accountType?: 'asset' | 'liability' | 'equity' | 'income' | 'expense';
+      parentId?: string;
+      description?: string;
+      openingBalance?: number;
+      status?: string;
+    },
+  ) {
     await this.findAccountById(id);
     const values: any = {};
-    if (params.accountCode !== undefined) values.accountCode = params.accountCode;
-    if (params.accountName !== undefined) values.accountName = params.accountName;
-    if (params.accountType !== undefined) values.accountType = params.accountType;
+    if (params.accountCode !== undefined)
+      values.accountCode = params.accountCode;
+    if (params.accountName !== undefined)
+      values.accountName = params.accountName;
+    if (params.accountType !== undefined)
+      values.accountType = params.accountType;
     if (params.parentId !== undefined) values.parentId = params.parentId;
-    if (params.description !== undefined) values.description = params.description;
-    if (params.openingBalance !== undefined) values.openingBalance = String(params.openingBalance);
+    if (params.description !== undefined)
+      values.description = params.description;
+    if (params.openingBalance !== undefined)
+      values.openingBalance = String(params.openingBalance);
     if (params.status !== undefined) values.status = params.status;
     values.updatedAt = new Date();
 
     if (Object.keys(values).length > 1) {
-      await this.db.db.update(schema.accountingAccounts).set(values).where(eq(schema.accountingAccounts.id, id));
+      await this.db.db
+        .update(schema.accountingAccounts)
+        .set(values)
+        .where(eq(schema.accountingAccounts.id, id));
     }
     return this.findAccountById(id);
   }
@@ -129,9 +173,18 @@ export class AccountingService {
   // ═══════════════════════════════════════════════════════════════════════════
 
   async createJournalEntry(params: {
-    tenantId: string; branchId: string;
-    entryDate: string; reference?: string; description?: string; entryType?: string;
-    items: { accountId: string; debit: number; credit: number; description?: string }[];
+    tenantId: string;
+    branchId: string;
+    entryDate: string;
+    reference?: string;
+    description?: string;
+    entryType?: string;
+    items: {
+      accountId: string;
+      debit: number;
+      credit: number;
+      description?: string;
+    }[];
     createdBy?: string;
   }) {
     if (!params.items || params.items.length < 2) {
@@ -142,15 +195,21 @@ export class AccountingService {
     const totalCredit = params.items.reduce((s, i) => s + (i.credit || 0), 0);
 
     if (Math.abs(totalDebit - totalCredit) > 0.01) {
-      throw new BadRequestException(`Debits (${totalDebit}) must equal credits (${totalCredit})`);
+      throw new BadRequestException(
+        `Debits (${totalDebit}) must equal credits (${totalCredit})`,
+      );
     }
 
     for (const item of params.items) {
       if ((item.debit || 0) > 0 && (item.credit || 0) > 0) {
-        throw new BadRequestException('An item cannot have both debit and credit values');
+        throw new BadRequestException(
+          'An item cannot have both debit and credit values',
+        );
       }
       if ((item.debit || 0) === 0 && (item.credit || 0) === 0) {
-        throw new BadRequestException('Each item must have either a debit or credit value');
+        throw new BadRequestException(
+          'Each item must have either a debit or credit value',
+        );
       }
     }
 
@@ -199,22 +258,41 @@ export class AccountingService {
     return { ...entry, items };
   }
 
-  async findJournalEntriesByBranch(branchId: string, query?: {
-    page?: number; limit?: number; fromDate?: string; toDate?: string; accountId?: string;
-  }) {
+  async findJournalEntriesByBranch(
+    branchId: string,
+    query?: {
+      page?: number;
+      limit?: number;
+      fromDate?: string;
+      toDate?: string;
+      accountId?: string;
+    },
+  ) {
     const page = query?.page || 1;
     const limit = Math.min(query?.limit || 20, 100);
     const offset = (page - 1) * limit;
-    const conditions: any[] = [eq(schema.accountingJournalEntries.branchId, branchId)];
+    const conditions: any[] = [
+      eq(schema.accountingJournalEntries.branchId, branchId),
+    ];
 
-    if (query?.fromDate) conditions.push(sql`${schema.accountingJournalEntries.entryDate} >= ${query.fromDate}`);
-    if (query?.toDate) conditions.push(sql`${schema.accountingJournalEntries.entryDate} <= ${query.toDate}`);
+    if (query?.fromDate)
+      conditions.push(
+        sql`${schema.accountingJournalEntries.entryDate} >= ${query.fromDate}`,
+      );
+    if (query?.toDate)
+      conditions.push(
+        sql`${schema.accountingJournalEntries.entryDate} <= ${query.toDate}`,
+      );
     if (query?.accountId) {
       const subQuery = this.db.db
         .select({ id: schema.accountingJournalEntryItems.journalEntryId })
         .from(schema.accountingJournalEntryItems)
-        .where(eq(schema.accountingJournalEntryItems.accountId, query.accountId));
-      conditions.push(sql`${schema.accountingJournalEntries.id} IN (${subQuery})`);
+        .where(
+          eq(schema.accountingJournalEntryItems.accountId, query.accountId),
+        );
+      conditions.push(
+        sql`${schema.accountingJournalEntries.id} IN (${subQuery})`,
+      );
     }
 
     const data = await this.db.db
@@ -238,9 +316,7 @@ export class AccountingService {
   // ═══════════════════════════════════════════════════════════════════════════
 
   async getTrialBalance(branchId: string, fromDate?: string, toDate?: string) {
-    const conditions: any[] = [
-      'a.branch_id = $1',
-    ];
+    const conditions: any[] = ['a.branch_id = $1'];
     const params: any[] = [branchId];
     let paramIndex = 2;
 
@@ -277,7 +353,8 @@ export class AccountingService {
   // ═══════════════════════════════════════════════════════════════════════════
 
   async getIncomeStatement(branchId: string, fromDate: string, toDate: string) {
-    const result = await this.db.query(`
+    const result = await this.db.query(
+      `
       SELECT
         a.account_type,
         a.id, a.account_code, a.account_name,
@@ -296,7 +373,9 @@ export class AccountingService {
         AND je.entry_date >= $2 AND je.entry_date <= $3
       GROUP BY a.id, a.account_code, a.account_name, a.account_type
       ORDER BY a.account_type, a.account_code
-    `, [branchId, fromDate, toDate]);
+    `,
+      [branchId, fromDate, toDate],
+    );
 
     const rows = result.rows;
     const totalIncome = rows
@@ -321,7 +400,8 @@ export class AccountingService {
   // ═══════════════════════════════════════════════════════════════════════════
 
   async getBalanceSheet(branchId: string, asOfDate: string) {
-    const result = await this.db.query(`
+    const result = await this.db.query(
+      `
       SELECT
         a.account_type,
         a.id, a.account_code, a.account_name,
@@ -340,7 +420,9 @@ export class AccountingService {
         AND (je.entry_date <= $2 OR je.entry_date IS NULL)
       GROUP BY a.id, a.account_code, a.account_name, a.account_type, a.opening_balance
       ORDER BY a.account_type, a.account_code
-    `, [branchId, asOfDate]);
+    `,
+      [branchId, asOfDate],
+    );
 
     const rows = result.rows;
     const totalAssets = rows

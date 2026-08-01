@@ -1,5 +1,11 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsString, IsNotEmpty, IsOptional, IsBoolean, IsArray } from 'class-validator';
+import {
+  IsString,
+  IsNotEmpty,
+  IsOptional,
+  IsBoolean,
+  IsArray,
+} from 'class-validator';
 
 export class CreateAnnouncementDto {
   @ApiProperty() @IsString() @IsNotEmpty() title: string;

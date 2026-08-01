@@ -1,4 +1,14 @@
-import { pgTable, uuid, varchar, text, integer, decimal, date, timestamp, boolean } from 'drizzle-orm/pg-core';
+import {
+  pgTable,
+  uuid,
+  varchar,
+  text,
+  integer,
+  decimal,
+  date,
+  timestamp,
+  boolean,
+} from 'drizzle-orm/pg-core';
 
 export const hostels = pgTable('hostels', {
   id: uuid('id').primaryKey().defaultRandom(),
@@ -62,6 +72,23 @@ export const hostelAttendance = pgTable('hostel_attendance', {
   checkOut: timestamp('check_out'),
   status: varchar('status', { length: 20 }).default('present'),
   remarks: text('remarks'),
+  createdAt: timestamp('created_at').defaultNow(),
+});
+
+export const hostelVisitors = pgTable('hostel_visitors', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  tenantId: uuid('tenant_id').notNull(),
+  branchId: uuid('branch_id').notNull(),
+  studentId: uuid('student_id').notNull(),
+  visitorName: varchar('visitor_name', { length: 255 }).notNull(),
+  relationship: varchar('relationship', { length: 100 }),
+  phone: varchar('phone', { length: 20 }),
+  visitDate: date('visit_date').notNull(),
+  checkInTime: timestamp('check_in_time'),
+  checkOutTime: timestamp('check_out_time'),
+  purpose: text('purpose'),
+  idProof: varchar('id_proof', { length: 100 }),
+  idNumber: varchar('id_number', { length: 100 }),
   createdAt: timestamp('created_at').defaultNow(),
 });
 

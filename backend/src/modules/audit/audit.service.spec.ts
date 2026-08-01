@@ -60,10 +60,22 @@ describe('AuditService', () => {
     it('should return paginated audit logs', async () => {
       mockDb.setDrizzleResults(
         [{ count: 10 }],
-        [{ id: 'log-1', action: 'user.login', module: 'auth', userName: 'Admin User', createdAt: new Date() }],
+        [
+          {
+            id: 'log-1',
+            action: 'user.login',
+            module: 'auth',
+            userName: 'Admin User',
+            createdAt: new Date(),
+          },
+        ],
       );
 
-      const result = await service.find({ tenantId: 'tenant-1', page: 1, limit: 20 });
+      const result = await service.find({
+        tenantId: 'tenant-1',
+        page: 1,
+        limit: 20,
+      });
       expect(result.data).toBeDefined();
       expect(result.pagination.total).toBe(10);
     });
@@ -71,7 +83,14 @@ describe('AuditService', () => {
     it('should filter by action and module', async () => {
       mockDb.setDrizzleResults(
         [{ count: 5 }],
-        [{ id: 'log-2', action: 'student.create', module: 'admissions', userName: null }],
+        [
+          {
+            id: 'log-2',
+            action: 'student.create',
+            module: 'admissions',
+            userName: null,
+          },
+        ],
       );
 
       const result = await service.find({

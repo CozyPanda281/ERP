@@ -1,4 +1,10 @@
-import { IsString, IsNumber, IsOptional, IsBoolean, Min } from 'class-validator';
+import {
+  IsString,
+  IsNumber,
+  IsOptional,
+  IsBoolean,
+  Min,
+} from 'class-validator';
 import { ApiPropertyOptional } from '@nestjs/swagger';
 
 export class UpdateLeaveTypeDto {

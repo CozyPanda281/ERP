@@ -3,42 +3,52 @@ import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 export class CreateBranchDto {
   @ApiProperty({ example: 'Main Campus' })
-  @IsString() @IsNotEmpty()
+  @IsString()
+  @IsNotEmpty()
   name: string;
 
   @ApiProperty({ example: 'MAIN' })
-  @IsString() @IsNotEmpty()
+  @IsString()
+  @IsNotEmpty()
   code: string;
 
   @ApiPropertyOptional()
-  @IsOptional() @IsString()
+  @IsOptional()
+  @IsString()
   email?: string;
 
   @ApiPropertyOptional()
-  @IsOptional() @IsString()
+  @IsOptional()
+  @IsString()
   phone?: string;
 
   @ApiPropertyOptional()
-  @IsOptional() @IsString()
+  @IsOptional()
+  @IsString()
   address?: string;
 
   @ApiPropertyOptional()
-  @IsOptional() @IsString()
+  @IsOptional()
+  @IsString()
   city?: string;
 
   @ApiPropertyOptional()
-  @IsOptional() @IsString()
+  @IsOptional()
+  @IsString()
   state?: string;
 
   @ApiPropertyOptional()
-  @IsOptional() @IsString()
+  @IsOptional()
+  @IsString()
   pincode?: string;
 
   @ApiPropertyOptional()
-  @IsOptional() @IsUUID()
+  @IsOptional()
+  @IsUUID()
   principalId?: string;
 
   @ApiPropertyOptional()
-  @IsOptional() @IsString()
+  @IsOptional()
+  @IsString()
   establishedDate?: string;
 }

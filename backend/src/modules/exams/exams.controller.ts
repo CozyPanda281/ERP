@@ -1,4 +1,13 @@
-import { Controller, Get, Post, Put, Delete, Param, Body, Query } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Put,
+  Delete,
+  Param,
+  Body,
+  Query,
+} from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { ExamsService } from './exams.service';
 import { Roles } from '../../common/decorators/roles.decorator';
@@ -24,7 +33,11 @@ export class ExamsController {
   @Roles(ROLES.PRINCIPAL, ROLES.ORGANIZATION_OWNER)
   @ApiOperation({ summary: 'Create exam' })
   async createExam(@CurrentUser() user: any, @Body() dto: CreateExamDto) {
-    const data = await this.examsService.createExam({ ...dto, tenantId: user.tenantId, branchId: user.branchId });
+    const data = await this.examsService.createExam({
+      ...dto,
+      tenantId: user.tenantId,
+      branchId: user.branchId,
+    });
     return { success: true, data };
   }
 
@@ -32,7 +45,10 @@ export class ExamsController {
   @Roles(ROLES.PRINCIPAL, ROLES.TEACHER)
   @ApiOperation({ summary: 'List exams' })
   async findExams(@CurrentUser() user: any, @Query() query: ExamQueryDto) {
-    const data = await this.examsService.findExamsByBranch(user.branchId, query);
+    const data = await this.examsService.findExamsByBranch(
+      user.branchId,
+      query,
+    );
     return { success: true, ...data };
   }
 
@@ -65,7 +81,10 @@ export class ExamsController {
   @Post('exams/:examId/schedules')
   @Roles(ROLES.PRINCIPAL)
   @ApiOperation({ summary: 'Create exam schedule' })
-  async createSchedule(@Param('examId') examId: string, @Body() dto: CreateScheduleDto) {
+  async createSchedule(
+    @Param('examId') examId: string,
+    @Body() dto: CreateScheduleDto,
+  ) {
     const data = await this.examsService.createSchedule(examId, dto);
     return { success: true, data };
   }
@@ -81,7 +100,10 @@ export class ExamsController {
   @Put('exam-schedules/:id')
   @Roles(ROLES.PRINCIPAL)
   @ApiOperation({ summary: 'Update exam schedule' })
-  async updateSchedule(@Param('id') id: string, @Body() dto: UpdateScheduleDto) {
+  async updateSchedule(
+    @Param('id') id: string,
+    @Body() dto: UpdateScheduleDto,
+  ) {
     const data = await this.examsService.updateSchedule(id, dto);
     return { success: true, data };
   }
@@ -101,8 +123,11 @@ export class ExamsController {
   @ApiOperation({ summary: 'Bulk enter marks for a schedule' })
   async bulkEnterMarks(@CurrentUser() user: any, @Body() dto: BulkMarksDto) {
     const data = await this.examsService.bulkEnterMarks({
-      tenantId: user.tenantId, branchId: user.branchId, enteredBy: user.id,
-      examScheduleId: dto.examScheduleId, marks: dto.marks,
+      tenantId: user.tenantId,
+      branchId: user.branchId,
+      enteredBy: user.id,
+      examScheduleId: dto.examScheduleId,
+      marks: dto.marks,
     });
     return { success: true, data };
   }
@@ -110,7 +135,10 @@ export class ExamsController {
   @Get('exam-marks/schedule/:scheduleId')
   @Roles(ROLES.TEACHER, ROLES.PRINCIPAL)
   @ApiOperation({ summary: 'Get marks for a schedule' })
-  async findMarksBySchedule(@Param('scheduleId') scheduleId: string, @Query() query: MarksQueryDto) {
+  async findMarksBySchedule(
+    @Param('scheduleId') scheduleId: string,
+    @Query() query: MarksQueryDto,
+  ) {
     const data = await this.examsService.findMarksBySchedule(scheduleId, query);
     return { success: true, ...data };
   }
@@ -118,15 +146,27 @@ export class ExamsController {
   @Get('exam-marks/student/:studentId')
   @Roles(ROLES.TEACHER, ROLES.PRINCIPAL, ROLES.STUDENT)
   @ApiOperation({ summary: 'Get marks for a student' })
-  async findMarksByStudent(@Param('studentId') studentId: string, @CurrentUser() user: any, @Query() query: MarksQueryDto) {
-    const data = await this.examsService.findMarksByStudent(studentId, user.branchId, query);
+  async findMarksByStudent(
+    @Param('studentId') studentId: string,
+    @CurrentUser() user: any,
+    @Query() query: MarksQueryDto,
+  ) {
+    const data = await this.examsService.findMarksByStudent(
+      studentId,
+      user.branchId,
+      query,
+    );
     return { success: true, ...data };
   }
 
   @Put('exam-marks/:id')
   @Roles(ROLES.TEACHER, ROLES.PRINCIPAL)
   @ApiOperation({ summary: 'Update a mark entry' })
-  async updateMark(@Param('id') id: string, @CurrentUser() user: any, @Body() body: UpdateMarkDto) {
+  async updateMark(
+    @Param('id') id: string,
+    @CurrentUser() user: any,
+    @Body() body: UpdateMarkDto,
+  ) {
     const data = await this.examsService.updateMark(id, user.branchId, body);
     return { success: true, data };
   }
@@ -151,8 +191,13 @@ export class ExamsController {
 
   @Get('exams/:examId/results/:studentId')
   @Roles(ROLES.PRINCIPAL, ROLES.TEACHER, ROLES.STUDENT)
-  @ApiOperation({ summary: 'Get student result for exam with subject breakdown' })
-  async findResultByStudent(@Param('examId') examId: string, @Param('studentId') studentId: string) {
+  @ApiOperation({
+    summary: 'Get student result for exam with subject breakdown',
+  })
+  async findResultByStudent(
+    @Param('examId') examId: string,
+    @Param('studentId') studentId: string,
+  ) {
     const data = await this.examsService.findResultByStudent(studentId, examId);
     return { success: true, data };
   }
@@ -160,15 +205,26 @@ export class ExamsController {
   @Get('student-results/:studentId')
   @Roles(ROLES.PRINCIPAL, ROLES.TEACHER, ROLES.STUDENT)
   @ApiOperation({ summary: 'Get all results for a student across exams' })
-  async findResultsByStudent(@Param('studentId') studentId: string, @CurrentUser() user: any, @Query() query: ExamQueryDto) {
-    const data = await this.examsService.findResultsByStudent(studentId, user.branchId, query);
+  async findResultsByStudent(
+    @Param('studentId') studentId: string,
+    @CurrentUser() user: any,
+    @Query() query: ExamQueryDto,
+  ) {
+    const data = await this.examsService.findResultsByStudent(
+      studentId,
+      user.branchId,
+      query,
+    );
     return { success: true, ...data };
   }
 
   @Get('exams/:examId/subject-marks/:studentId')
   @Roles(ROLES.PRINCIPAL, ROLES.TEACHER, ROLES.STUDENT)
   @ApiOperation({ summary: 'Get subject-wise marks for a student in an exam' })
-  async getSubjectMarks(@Param('examId') examId: string, @Param('studentId') studentId: string) {
+  async getSubjectMarks(
+    @Param('examId') examId: string,
+    @Param('studentId') studentId: string,
+  ) {
     const data = await this.examsService.getSubjectMarks(examId, studentId);
     return { success: true, data };
   }

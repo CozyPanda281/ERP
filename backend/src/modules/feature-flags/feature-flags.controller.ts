@@ -1,12 +1,4 @@
-import {
-  Controller,
-  Get,
-  Post,
-  Put,
-  Param,
-  Body,
-  Query,
-} from '@nestjs/common';
+import { Controller, Get, Post, Put, Param, Body, Query } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { FeatureFlagsService } from './feature-flags.service';
 import { Roles } from '../../common/decorators/roles.decorator';
@@ -18,17 +10,14 @@ import { UpdatePlanFeatureDto } from './dto/update-plan-feature.dto';
 @ApiBearerAuth()
 @Controller('feature-flags')
 export class FeatureFlagsController {
-  constructor(
-    private readonly featureFlagsService: FeatureFlagsService,
-  ) {}
+  constructor(private readonly featureFlagsService: FeatureFlagsService) {}
 
   @Get('tenant/:tenantId')
   @Roles(ROLES.SUPER_ADMIN)
   @ApiOperation({ summary: 'Get all enabled features for a tenant' })
   async getTenantFeatures(@Param('tenantId') tenantId: string) {
-    const features = await this.featureFlagsService.getEnabledFeatures(
-      tenantId,
-    );
+    const features =
+      await this.featureFlagsService.getEnabledFeatures(tenantId);
     return { success: true, data: features };
   }
 

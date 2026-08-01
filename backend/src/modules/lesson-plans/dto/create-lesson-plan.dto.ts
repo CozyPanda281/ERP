@@ -11,6 +11,10 @@ export class CreateLessonPlanDto {
   @ApiPropertyOptional() @IsOptional() @IsString() content?: string;
   @ApiPropertyOptional() @IsOptional() @IsString() teachingMethod?: string;
   @ApiPropertyOptional() @IsOptional() @IsString() resources?: string;
-  @ApiPropertyOptional() @IsOptional() @IsInt() @Min(1) durationMinutes?: number;
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  durationMinutes?: number;
   @ApiPropertyOptional() @IsOptional() @IsString() date?: string;
 }

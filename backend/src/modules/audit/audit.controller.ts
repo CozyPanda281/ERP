@@ -1,9 +1,4 @@
-import {
-  Controller,
-  Get,
-  Param,
-  Query,
-} from '@nestjs/common';
+import { Controller, Get, Param, Query } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { AuditService } from './audit.service';
 import { Roles } from '../../common/decorators/roles.decorator';
@@ -75,7 +70,12 @@ export class AuditController {
     @Query('page') page: number = 1,
     @Query('limit') limit: number = 20,
   ) {
-    return this.auditService.findByResource(resourceType, resourceId, page, limit);
+    return this.auditService.findByResource(
+      resourceType,
+      resourceId,
+      page,
+      limit,
+    );
   }
 
   @Get('stats/modules')

@@ -64,7 +64,11 @@ describe('SystemConfigService', () => {
         [{ configKey: 'test_key', configValue: { enabled: true } }],
       );
 
-      const result = await service.set('test_key', { enabled: true }, 'Test config');
+      const result = await service.set(
+        'test_key',
+        { enabled: true },
+        'Test config',
+      );
       expect(result!.configKey).toBe('test_key');
     });
 
@@ -82,9 +86,7 @@ describe('SystemConfigService', () => {
 
   describe('delete', () => {
     it('should delete existing config', async () => {
-      mockDb.setDrizzleResults([
-        { id: 'deleted' },
-      ]);
+      mockDb.setDrizzleResults([{ id: 'deleted' }]);
 
       await expect(service.delete('test_key')).resolves.not.toThrow();
     });
@@ -92,7 +94,9 @@ describe('SystemConfigService', () => {
     it('should throw on nonexistent config', async () => {
       mockDb.setDrizzleResults([]);
 
-      await expect(service.delete('nonexistent')).rejects.toThrow(NotFoundException);
+      await expect(service.delete('nonexistent')).rejects.toThrow(
+        NotFoundException,
+      );
     });
   });
 });

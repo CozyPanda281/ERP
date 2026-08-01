@@ -1,5 +1,13 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsString, IsNotEmpty, IsOptional, IsInt, Min, IsBoolean, IsArray } from 'class-validator';
+import {
+  IsString,
+  IsNotEmpty,
+  IsOptional,
+  IsInt,
+  Min,
+  IsBoolean,
+  IsArray,
+} from 'class-validator';
 
 export class CreateHomeworkDto {
   @ApiProperty() @IsString() @IsNotEmpty() classId: string;

@@ -1,4 +1,13 @@
-import { Controller, Get, Post, Put, Delete, Param, Body, Query } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Put,
+  Delete,
+  Param,
+  Body,
+  Query,
+} from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { LessonPlansService } from './lesson-plans.service';
 import { Roles } from '../../common/decorators/roles.decorator';
@@ -18,7 +27,11 @@ export class LessonPlansController {
   @Roles(ROLES.SUPER_ADMIN, ROLES.PRINCIPAL, ROLES.ORGANIZATION_OWNER)
   @ApiOperation({ summary: 'Create lesson plan' })
   async create(@Body() body: CreateLessonPlanDto, @CurrentUser() user: any) {
-    const data = await this.service.create({ ...body, tenantId: user.tenantId, branchId: user.branchId });
+    const data = await this.service.create({
+      ...body,
+      tenantId: user.tenantId,
+      branchId: user.branchId,
+    });
     return { success: true, data };
   }
 

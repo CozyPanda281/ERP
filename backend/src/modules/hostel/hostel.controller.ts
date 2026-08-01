@@ -1,4 +1,13 @@
-import { Controller, Get, Post, Put, Delete, Param, Body, Query } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Put,
+  Delete,
+  Param,
+  Body,
+  Query,
+} from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { HostelService } from './hostel.service';
 import { Roles } from '../../common/decorators/roles.decorator';
@@ -21,7 +30,11 @@ export class HostelController {
   @Roles(ROLES.SUPER_ADMIN, ROLES.PRINCIPAL, ROLES.ORGANIZATION_OWNER)
   @ApiOperation({ summary: 'Create a hostel' })
   async createHostel(@Body() body: CreateHostelDto, @CurrentUser() user: any) {
-    const data = await this.service.createHostel({ ...body, tenantId: user.tenantId, branchId: user.branchId });
+    const data = await this.service.createHostel({
+      ...body,
+      tenantId: user.tenantId,
+      branchId: user.branchId,
+    });
     return { success: true, data };
   }
 
@@ -59,7 +72,10 @@ export class HostelController {
   @Post(':hostelId/rooms')
   @Roles(ROLES.SUPER_ADMIN, ROLES.PRINCIPAL, ROLES.ORGANIZATION_OWNER)
   @ApiOperation({ summary: 'Create a room' })
-  async createRoom(@Param('hostelId') hostelId: string, @Body() body: CreateRoomDto) {
+  async createRoom(
+    @Param('hostelId') hostelId: string,
+    @Body() body: CreateRoomDto,
+  ) {
     const data = await this.service.createRoom({ ...body, hostelId });
     return { success: true, data };
   }
@@ -67,7 +83,10 @@ export class HostelController {
   @Get(':hostelId/rooms')
   @Roles(ROLES.SUPER_ADMIN, ROLES.PRINCIPAL, ROLES.ORGANIZATION_OWNER)
   @ApiOperation({ summary: 'List rooms by hostel' })
-  async getRooms(@Param('hostelId') hostelId: string, @Query() query: HostelQueryDto) {
+  async getRooms(
+    @Param('hostelId') hostelId: string,
+    @Query() query: HostelQueryDto,
+  ) {
     const data = await this.service.findRoomsByHostel(hostelId, query);
     return { success: true, ...data };
   }
@@ -99,15 +118,25 @@ export class HostelController {
   @Roles(ROLES.SUPER_ADMIN, ROLES.PRINCIPAL, ROLES.ORGANIZATION_OWNER)
   @ApiOperation({ summary: 'Allocate bed to student' })
   async allocateBed(@Body() body: AllocateBedDto, @CurrentUser() user: any) {
-    const data = await this.service.allocateBed({ ...body, tenantId: user.tenantId, branchId: user.branchId });
+    const data = await this.service.allocateBed({
+      ...body,
+      tenantId: user.tenantId,
+      branchId: user.branchId,
+    });
     return { success: true, data };
   }
 
   @Get('allocations')
   @Roles(ROLES.SUPER_ADMIN, ROLES.PRINCIPAL, ROLES.ORGANIZATION_OWNER)
   @ApiOperation({ summary: 'List allocations' })
-  async getAllocations(@CurrentUser() user: any, @Query() query: HostelQueryDto) {
-    const data = await this.service.findAllocationsByBranch(user.branchId, query);
+  async getAllocations(
+    @CurrentUser() user: any,
+    @Query() query: HostelQueryDto,
+  ) {
+    const data = await this.service.findAllocationsByBranch(
+      user.branchId,
+      query,
+    );
     return { success: true, ...data };
   }
 

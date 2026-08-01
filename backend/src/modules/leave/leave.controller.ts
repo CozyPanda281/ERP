@@ -17,8 +17,14 @@ export class LeaveController {
   @Post('types')
   @Roles(ROLES.SUPER_ADMIN, ROLES.PRINCIPAL, ROLES.ORGANIZATION_OWNER)
   @ApiOperation({ summary: 'Create leave type' })
-  async createLeaveType(@Body() body: CreateLeaveTypeDto, @CurrentUser() user: any) {
-    const data = await this.service.createLeaveType({ ...body, tenantId: user.tenantId });
+  async createLeaveType(
+    @Body() body: CreateLeaveTypeDto,
+    @CurrentUser() user: any,
+  ) {
+    const data = await this.service.createLeaveType({
+      ...body,
+      tenantId: user.tenantId,
+    });
     return { success: true, data };
   }
 
@@ -34,7 +40,11 @@ export class LeaveController {
   @Roles(ROLES.SUPER_ADMIN, ROLES.PRINCIPAL, ROLES.ORGANIZATION_OWNER)
   @ApiOperation({ summary: 'Request leave' })
   async requestLeave(@Body() body: RequestLeaveDto, @CurrentUser() user: any) {
-    const data = await this.service.requestLeave({ ...body, tenantId: user.tenantId, branchId: user.branchId });
+    const data = await this.service.requestLeave({
+      ...body,
+      tenantId: user.tenantId,
+      branchId: user.branchId,
+    });
     return { success: true, data };
   }
 
@@ -65,7 +75,11 @@ export class LeaveController {
   @Put('requests/:id/reject')
   @Roles(ROLES.SUPER_ADMIN, ROLES.PRINCIPAL, ROLES.ORGANIZATION_OWNER)
   @ApiOperation({ summary: 'Reject leave request' })
-  async rejectRequest(@Param('id') id: string, @Body('reason') reason: string, @CurrentUser() user: any) {
+  async rejectRequest(
+    @Param('id') id: string,
+    @Body('reason') reason: string,
+    @CurrentUser() user: any,
+  ) {
     const data = await this.service.rejectRequest(id, user.id, reason);
     return { success: true, data };
   }

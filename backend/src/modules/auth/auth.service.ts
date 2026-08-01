@@ -8,7 +8,7 @@ import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
 import { v4 as uuidv4 } from 'uuid';
 import { DatabaseProvider } from '../../database/database.provider';
-import { eq, and, isNull, or, desc, sql, inArray } from 'drizzle-orm';
+import { eq, and, isNull, or, sql, inArray } from 'drizzle-orm';
 import * as schema from '../../database/schema';
 
 @Injectable()
@@ -18,6 +18,33 @@ export class AuthService {
     private readonly jwtService: JwtService,
     private readonly configService: ConfigService,
   ) {}
+
+  private expiresInToSeconds(value: string | undefined): number {
+    const match = (value || '15m').match(/^(\d+)([smhd])$/);
+    if (!match) return 900;
+    const n = parseInt(match[1], 10);
+    switch (match[2]) {
+      case 's':
+        return n;
+      case 'm':
+        return n * 60;
+      case 'h':
+        return n * 3600;
+      case 'd':
+        return n * 86400;
+      default:
+        return n;
+    }
+  }
+
+  private async getUserBranchId(userId: string): Promise<string | null> {
+    const [userRole] = await this.db.db
+      .select({ branchId: schema.userRoles.branchId })
+      .from(schema.userRoles)
+      .where(eq(schema.userRoles.userId, userId))
+      .limit(1);
+    return userRole?.branchId || null;
+  }
 
   async validateUser(email: string, password: string, tenantId?: string) {
     const conditions = [
@@ -31,7 +58,8 @@ export class AuthService {
       conditions.push(eq(schema.users.isSuperadmin, true));
     }
 
-    const [user] = await this.db.db.select()
+    const [user] = await this.db.db
+      .select()
       .from(schema.users)
       .where(and(...conditions))
       .limit(1);
@@ -40,25 +68,58 @@ export class AuthService {
       throw new UnauthorizedException('Invalid credentials');
     }
 
+    if (user.lockedUntil && new Date(user.lockedUntil) > new Date()) {
+      throw new UnauthorizedException('Account is locked. Try again later.');
+    }
+
     if (!user.isActive || user.status !== 'active') {
       throw new UnauthorizedException('Account is inactive');
     }
 
     const isPasswordValid = await bcrypt.compare(password, user.passwordHash);
     if (!isPasswordValid) {
+      await this.registerFailedAttempt(user.id);
       throw new UnauthorizedException('Invalid credentials');
     }
 
+    await this.db.db
+      .update(schema.users)
+      .set({ loginAttempts: 0, lockedUntil: null })
+      .where(eq(schema.users.id, user.id));
+
     return user;
+  }
+
+  private async registerFailedAttempt(userId: string) {
+    const [user] = await this.db.db
+      .select({
+        loginAttempts: schema.users.loginAttempts,
+        lockedUntil: schema.users.lockedUntil,
+      })
+      .from(schema.users)
+      .where(eq(schema.users.id, userId))
+      .limit(1);
+    if (!user) return;
+
+    const attempts = (user.loginAttempts || 0) + 1;
+    const update: any = { loginAttempts: attempts };
+    if (
+      attempts >= 5 &&
+      (!user.lockedUntil || new Date(user.lockedUntil) <= new Date())
+    ) {
+      update.lockedUntil = new Date(Date.now() + 15 * 60 * 1000);
+    }
+    await this.db.db
+      .update(schema.users)
+      .set(update)
+      .where(eq(schema.users.id, userId));
   }
 
   async login(user: any) {
     const sessionId = uuidv4();
     const roles = await this.getUserRoles(user.id, user.tenantId);
-    const permissions = await this.getUserPermissions(
-      user.id,
-      user.tenantId,
-    );
+    const permissions = await this.getUserPermissions(user.id, user.tenantId);
+    const branchId = await this.getUserBranchId(user.id);
 
     const payload = {
       sub: user.id,
@@ -67,8 +128,16 @@ export class AuthService {
       isSuperAdmin: user.isSuperadmin,
       roles,
       permissions: permissions.map((p: any) => p.slug),
+      branchId,
       sessionId,
     };
+
+    const accessExpires = this.expiresInToSeconds(
+      this.configService.get('jwt.expiresIn'),
+    );
+    const refreshExpires = this.expiresInToSeconds(
+      this.configService.get('jwt.refreshExpiresIn'),
+    );
 
     const [accessToken, refreshToken] = await Promise.all([
       this.jwtService.signAsync(payload, {
@@ -93,12 +162,13 @@ export class AuthService {
       accessToken,
       refreshToken,
       isActive: true,
-      expiresAt: sql`NOW() + INTERVAL '15 minutes'`,
-      refreshExpiresAt: sql`NOW() + INTERVAL '7 days'`,
+      expiresAt: new Date(Date.now() + accessExpires * 1000),
+      refreshExpiresAt: new Date(Date.now() + refreshExpires * 1000),
     });
 
     // Update last login
-    await this.db.db.update(schema.users)
+    await this.db.db
+      .update(schema.users)
       .set({ lastLoginAt: new Date() })
       .where(eq(schema.users.id, user.id));
 
@@ -113,6 +183,7 @@ export class AuthService {
         isSuperAdmin: user.isSuperadmin,
         roles,
         permissions: permissions.map((p: any) => p.slug),
+        branchId,
       },
     };
   }
@@ -128,16 +199,19 @@ export class AuthService {
       }
 
       // Verify session exists
-      const [session] = await this.db.db.select({
-        id: schema.userSessions.id,
-        isActive: schema.userSessions.isActive,
-      })
+      const [session] = await this.db.db
+        .select({
+          id: schema.userSessions.id,
+          isActive: schema.userSessions.isActive,
+        })
         .from(schema.userSessions)
-        .where(and(
-          eq(schema.userSessions.refreshToken, refreshToken),
-          eq(schema.userSessions.isActive, true),
-          sql`${schema.userSessions.refreshExpiresAt} > NOW()`,
-        ))
+        .where(
+          and(
+            eq(schema.userSessions.refreshToken, refreshToken),
+            eq(schema.userSessions.isActive, true),
+            sql`${schema.userSessions.refreshExpiresAt} > NOW()`,
+          ),
+        )
         .limit(1);
 
       if (!session) {
@@ -145,25 +219,37 @@ export class AuthService {
       }
 
       // Get user
-      const [user] = await this.db.db.select({
-        id: schema.users.id,
-        email: schema.users.email,
-        tenantId: schema.users.tenantId,
-        isSuperadmin: schema.users.isSuperadmin,
-      })
+      const [user] = await this.db.db
+        .select({
+          id: schema.users.id,
+          email: schema.users.email,
+          tenantId: schema.users.tenantId,
+          isSuperadmin: schema.users.isSuperadmin,
+          isActive: schema.users.isActive,
+          status: schema.users.status,
+          lockedUntil: schema.users.lockedUntil,
+        })
         .from(schema.users)
-        .where(and(eq(schema.users.id, payload.sub), isNull(schema.users.deletedAt)))
+        .where(
+          and(eq(schema.users.id, payload.sub), isNull(schema.users.deletedAt)),
+        )
         .limit(1);
 
       if (!user) {
         throw new UnauthorizedException('User not found');
       }
 
+      if (
+        !user.isActive ||
+        user.status !== 'active' ||
+        (user.lockedUntil && new Date(user.lockedUntil) > new Date())
+      ) {
+        throw new UnauthorizedException('User account is inactive');
+      }
+
       const roles = await this.getUserRoles(user.id, user.tenantId);
-      const permissions = await this.getUserPermissions(
-        user.id,
-        user.tenantId,
-      );
+      const permissions = await this.getUserPermissions(user.id, user.tenantId);
+      const branchId = await this.getUserBranchId(user.id);
 
       const newPayload = {
         sub: user.id,
@@ -172,6 +258,7 @@ export class AuthService {
         isSuperAdmin: user.isSuperadmin,
         roles,
         permissions: permissions.map((p: any) => p.slug),
+        branchId,
         sessionId: payload.sessionId,
       };
 
@@ -187,9 +274,15 @@ export class AuthService {
   }
 
   async logout(sessionId: string, userId: string) {
-    await this.db.db.update(schema.userSessions)
+    await this.db.db
+      .update(schema.userSessions)
       .set({ isActive: false })
-      .where(and(eq(schema.userSessions.id, sessionId), eq(schema.userSessions.userId, userId)));
+      .where(
+        and(
+          eq(schema.userSessions.id, sessionId),
+          eq(schema.userSessions.userId, userId),
+        ),
+      );
   }
 
   private async getUserRoles(userId: string, tenantId: string | null) {
@@ -197,7 +290,8 @@ export class AuthService {
       ? eq(schema.roles.tenantId, tenantId)
       : isNull(schema.roles.tenantId);
 
-    const result = await this.db.db.select({ slug: schema.roles.slug })
+    const result = await this.db.db
+      .select({ slug: schema.roles.slug })
       .from(schema.roles)
       .innerJoin(schema.userRoles, eq(schema.userRoles.roleId, schema.roles.id))
       .where(and(eq(schema.userRoles.userId, userId), roleCondition));
@@ -205,27 +299,40 @@ export class AuthService {
     return result.map((r: any) => r.slug);
   }
 
-  private async getUserPermissions(
-    userId: string,
-    tenantId: string | null,
-  ) {
+  private async getUserPermissions(userId: string, tenantId: string | null) {
     const roleSubquery = tenantId
-      ? this.db.db.select({ id: schema.roles.id }).from(schema.roles)
+      ? this.db.db
+          .select({ id: schema.roles.id })
+          .from(schema.roles)
           .where(eq(schema.roles.tenantId, tenantId))
-      : this.db.db.select({ id: schema.roles.id }).from(schema.roles)
+      : this.db.db
+          .select({ id: schema.roles.id })
+          .from(schema.roles)
           .where(isNull(schema.roles.tenantId));
 
-    const result = await this.db.db.select({ slug: schema.permissions.slug })
+    const result = await this.db.db
+      .select({ slug: schema.permissions.slug })
       .from(schema.permissions)
-      .innerJoin(schema.rolePermissions, eq(schema.rolePermissions.permissionId, schema.permissions.id))
-      .innerJoin(schema.userRoles, eq(schema.userRoles.roleId, schema.rolePermissions.roleId))
-      .where(and(
-        eq(schema.userRoles.userId, userId),
-        or(eq(schema.permissions.isSystem, true), inArray(schema.rolePermissions.roleId, roleSubquery))
-      ));
+      .innerJoin(
+        schema.rolePermissions,
+        eq(schema.rolePermissions.permissionId, schema.permissions.id),
+      )
+      .innerJoin(
+        schema.userRoles,
+        eq(schema.userRoles.roleId, schema.rolePermissions.roleId),
+      )
+      .where(
+        and(
+          eq(schema.userRoles.userId, userId),
+          or(
+            eq(schema.permissions.isSystem, true),
+            inArray(schema.rolePermissions.roleId, roleSubquery),
+          ),
+        ),
+      );
 
     const seen = new Set<string>();
-    return result.filter(r => {
+    return result.filter((r) => {
       if (seen.has(r.slug)) return false;
       seen.add(r.slug);
       return true;

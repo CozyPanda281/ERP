@@ -1,4 +1,13 @@
-import { Controller, Get, Post, Put, Delete, Param, Body, Query } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Put,
+  Delete,
+  Param,
+  Body,
+  Query,
+} from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { TransportService } from './transport.service';
 import { Roles } from '../../common/decorators/roles.decorator';
@@ -20,15 +29,25 @@ export class TransportController {
   @Post('vehicles')
   @Roles(ROLES.SUPER_ADMIN, ROLES.PRINCIPAL, ROLES.ORGANIZATION_OWNER)
   @ApiOperation({ summary: 'Create a vehicle' })
-  async createVehicle(@Body() body: CreateVehicleDto, @CurrentUser() user: any) {
-    const data = await this.service.createVehicle({ ...body, tenantId: user.tenantId, branchId: user.branchId });
+  async createVehicle(
+    @Body() body: CreateVehicleDto,
+    @CurrentUser() user: any,
+  ) {
+    const data = await this.service.createVehicle({
+      ...body,
+      tenantId: user.tenantId,
+      branchId: user.branchId,
+    });
     return { success: true, data };
   }
 
   @Get('vehicles')
   @Roles(ROLES.SUPER_ADMIN, ROLES.PRINCIPAL, ROLES.ORGANIZATION_OWNER)
   @ApiOperation({ summary: 'List vehicles' })
-  async getVehicles(@CurrentUser() user: any, @Query() query: TransportQueryDto) {
+  async getVehicles(
+    @CurrentUser() user: any,
+    @Query() query: TransportQueryDto,
+  ) {
     const data = await this.service.findVehiclesByBranch(user.branchId, query);
     return { success: true, ...data };
   }
@@ -60,7 +79,11 @@ export class TransportController {
   @Roles(ROLES.SUPER_ADMIN, ROLES.PRINCIPAL, ROLES.ORGANIZATION_OWNER)
   @ApiOperation({ summary: 'Create a route' })
   async createRoute(@Body() body: CreateRouteDto, @CurrentUser() user: any) {
-    const data = await this.service.createRoute({ ...body, tenantId: user.tenantId, branchId: user.branchId });
+    const data = await this.service.createRoute({
+      ...body,
+      tenantId: user.tenantId,
+      branchId: user.branchId,
+    });
     return { success: true, data };
   }
 
@@ -98,16 +121,29 @@ export class TransportController {
   @Post('assignments')
   @Roles(ROLES.SUPER_ADMIN, ROLES.PRINCIPAL, ROLES.ORGANIZATION_OWNER)
   @ApiOperation({ summary: 'Assign student to route' })
-  async assignStudent(@Body() body: AssignStudentDto, @CurrentUser() user: any) {
-    const data = await this.service.assignStudent({ ...body, tenantId: user.tenantId, branchId: user.branchId });
+  async assignStudent(
+    @Body() body: AssignStudentDto,
+    @CurrentUser() user: any,
+  ) {
+    const data = await this.service.assignStudent({
+      ...body,
+      tenantId: user.tenantId,
+      branchId: user.branchId,
+    });
     return { success: true, data };
   }
 
   @Get('assignments')
   @Roles(ROLES.SUPER_ADMIN, ROLES.PRINCIPAL, ROLES.ORGANIZATION_OWNER)
   @ApiOperation({ summary: 'List assignments' })
-  async getAssignments(@CurrentUser() user: any, @Query() query: TransportQueryDto) {
-    const data = await this.service.findAssignmentsByBranch(user.branchId, query);
+  async getAssignments(
+    @CurrentUser() user: any,
+    @Query() query: TransportQueryDto,
+  ) {
+    const data = await this.service.findAssignmentsByBranch(
+      user.branchId,
+      query,
+    );
     return { success: true, ...data };
   }
 

@@ -56,8 +56,7 @@ export class FeatureFlagsService implements OnModuleInit {
     const result = await this.db.db
       .select({
         code: schema.featureFlags.code,
-        isEnabled:
-          sql<boolean>`COALESCE(${schema.tenantFeatures.isEnabled}, ${schema.planFeatures.isEnabled}, ${schema.featureFlags.defaultValue})`,
+        isEnabled: sql<boolean>`COALESCE(${schema.tenantFeatures.isEnabled}, ${schema.planFeatures.isEnabled}, ${schema.featureFlags.defaultValue})`,
       })
       .from(schema.featureFlags)
       .leftJoin(
@@ -82,9 +81,7 @@ export class FeatureFlagsService implements OnModuleInit {
       )
       .orderBy(schema.featureFlags.module, schema.featureFlags.code);
 
-    return result
-      .filter((r) => r.isEnabled)
-      .map((r) => r.code);
+    return result.filter((r) => r.isEnabled).map((r) => r.code);
   }
 
   async setTenantOverride(
@@ -132,8 +129,7 @@ export class FeatureFlagsService implements OnModuleInit {
     const result = await this.db.db
       .select({
         code: schema.featureFlags.code,
-        isEnabled:
-          sql<boolean>`COALESCE(${schema.planFeatures.isEnabled}, ${schema.featureFlags.defaultValue})`,
+        isEnabled: sql<boolean>`COALESCE(${schema.planFeatures.isEnabled}, ${schema.featureFlags.defaultValue})`,
       })
       .from(schema.featureFlags)
       .leftJoin(
@@ -145,13 +141,10 @@ export class FeatureFlagsService implements OnModuleInit {
       )
       .orderBy(schema.featureFlags.module, schema.featureFlags.code);
 
-    return result.reduce(
-      (acc: Record<string, boolean>, r) => {
-        acc[r.code] = r.isEnabled;
-        return acc;
-      },
-      {},
-    );
+    return result.reduce((acc: Record<string, boolean>, r) => {
+      acc[r.code] = r.isEnabled;
+      return acc;
+    }, {});
   }
 
   async updatePlanFeature(
@@ -179,10 +172,7 @@ export class FeatureFlagsService implements OnModuleInit {
         isEnabled: enabled,
       })
       .onConflictDoUpdate({
-        target: [
-          schema.planFeatures.planId,
-          schema.planFeatures.featureFlagId,
-        ],
+        target: [schema.planFeatures.planId, schema.planFeatures.featureFlagId],
         set: { isEnabled: enabled },
       });
   }
@@ -209,8 +199,7 @@ export class FeatureFlagsService implements OnModuleInit {
 
     const result = await this.db.db
       .select({
-        isEnabled:
-          sql<boolean>`COALESCE(${schema.tenantFeatures.isEnabled}, ${schema.planFeatures.isEnabled}, ${schema.featureFlags.defaultValue})`,
+        isEnabled: sql<boolean>`COALESCE(${schema.tenantFeatures.isEnabled}, ${schema.planFeatures.isEnabled}, ${schema.featureFlags.defaultValue})`,
         overridePlan: schema.tenantFeatures.overridePlan,
       })
       .from(schema.featureFlags)

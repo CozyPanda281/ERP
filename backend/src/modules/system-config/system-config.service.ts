@@ -1,4 +1,9 @@
-import { Injectable, NotFoundException, ConflictException, Logger } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  ConflictException,
+  Logger,
+} from '@nestjs/common';
 import { DatabaseProvider } from '../../database/database.provider';
 import * as schema from '../../database/schema';
 import { eq } from 'drizzle-orm';

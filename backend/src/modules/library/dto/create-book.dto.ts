@@ -10,7 +10,11 @@ export class CreateBookDto {
   @ApiPropertyOptional() @IsOptional() @IsString() category?: string;
   @ApiPropertyOptional() @IsOptional() @IsString() language?: string;
   @ApiPropertyOptional() @IsOptional() @IsInt() @Min(1) totalCopies?: number;
-  @ApiPropertyOptional() @IsOptional() @IsInt() @Min(0) availableCopies?: number;
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  availableCopies?: number;
   @ApiPropertyOptional() @IsOptional() @IsString() shelfLocation?: string;
   @ApiPropertyOptional() @IsOptional() @IsString() description?: string;
 }

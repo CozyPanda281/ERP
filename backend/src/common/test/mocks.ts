@@ -1,9 +1,31 @@
 type MockQueryResult = { rows: unknown[]; rowCount?: number };
 
 const CHAIN_METHODS = [
-  'select', 'insert', 'update', 'delete', 'from', 'where', 'leftJoin', 'innerJoin',
-  'rightJoin', 'fullJoin', 'crossJoin', 'orderBy', 'limit', 'offset', 'groupBy', 'having', 'values',
-  'set', 'returning', 'onConflictDoNothing', 'onConflictDoUpdate', 'for', 'of', 'with', 'as',
+  'select',
+  'insert',
+  'update',
+  'delete',
+  'from',
+  'where',
+  'leftJoin',
+  'innerJoin',
+  'rightJoin',
+  'fullJoin',
+  'crossJoin',
+  'orderBy',
+  'limit',
+  'offset',
+  'groupBy',
+  'having',
+  'values',
+  'set',
+  'returning',
+  'onConflictDoNothing',
+  'onConflictDoUpdate',
+  'for',
+  'of',
+  'with',
+  'as',
   'transaction',
 ];
 
@@ -25,6 +47,12 @@ function createDrizzleMock(results: unknown[][]) {
       }
       if (prop === 'catch' || prop === 'finally') {
         return target[prop as keyof typeof target];
+      }
+      if (prop === 'transaction') {
+        return (callback: (tx: any) => Promise<any>) => {
+          const tx = createDrizzleMock(results);
+          return callback(tx);
+        };
       }
       if (isChainMethod(prop)) {
         return (..._args: unknown[]) => createDrizzleMock(results);
@@ -95,7 +123,11 @@ export class MockDatabaseProvider {
 
 export const mockJwtService = {
   signAsync: jest.fn().mockResolvedValue('mock-access-token'),
-  verifyAsync: jest.fn().mockResolvedValue({ sub: 'user-1', sessionId: 'session-1', type: 'refresh' }),
+  verifyAsync: jest.fn().mockResolvedValue({
+    sub: 'user-1',
+    sessionId: 'session-1',
+    type: 'refresh',
+  }),
 };
 
 export const mockConfigService = {

@@ -1,4 +1,13 @@
-import { Controller, Get, Post, Put, Delete, Param, Body, Query } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Put,
+  Delete,
+  Param,
+  Body,
+  Query,
+} from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { AccountingService } from './accounting.service';
 import { Roles } from '../../common/decorators/roles.decorator';
@@ -21,23 +30,39 @@ export class AccountingController {
   @Roles(ROLES.ORGANIZATION_OWNER, ROLES.ACCOUNTANT)
   @ApiOperation({ summary: 'Create an account' })
   async createAccount(@CurrentUser() user: any, @Body() dto: CreateAccountDto) {
-    const data = await this.accountingService.createAccount({ ...dto, tenantId: user.tenantId, branchId: user.branchId });
+    const data = await this.accountingService.createAccount({
+      ...dto,
+      tenantId: user.tenantId,
+      branchId: user.branchId,
+    });
     return { success: true, data };
   }
 
   @Get('accounts')
   @Roles(ROLES.ORGANIZATION_OWNER, ROLES.ACCOUNTANT, ROLES.PRINCIPAL)
   @ApiOperation({ summary: 'List accounts' })
-  async findAllAccounts(@CurrentUser() user: any, @Query() query: AccountingQueryDto) {
-    const data = await this.accountingService.findAccountsByBranch(user.branchId, query);
+  async findAllAccounts(
+    @CurrentUser() user: any,
+    @Query() query: AccountingQueryDto,
+  ) {
+    const data = await this.accountingService.findAccountsByBranch(
+      user.branchId,
+      query,
+    );
     return { success: true, ...data };
   }
 
   @Get('accounts/type/:accountType')
   @Roles(ROLES.ORGANIZATION_OWNER, ROLES.ACCOUNTANT)
   @ApiOperation({ summary: 'Find accounts by type' })
-  async findAccountsByType(@CurrentUser() user: any, @Param('accountType') accountType: string) {
-    const data = await this.accountingService.findAccountsByType(user.branchId, accountType);
+  async findAccountsByType(
+    @CurrentUser() user: any,
+    @Param('accountType') accountType: string,
+  ) {
+    const data = await this.accountingService.findAccountsByType(
+      user.branchId,
+      accountType,
+    );
     return { success: true, data };
   }
 
@@ -70,9 +95,15 @@ export class AccountingController {
   @Post('journal-entries')
   @Roles(ROLES.ACCOUNTANT, ROLES.ORGANIZATION_OWNER)
   @ApiOperation({ summary: 'Create a journal entry' })
-  async createJournalEntry(@CurrentUser() user: any, @Body() dto: CreateJournalEntryDto) {
+  async createJournalEntry(
+    @CurrentUser() user: any,
+    @Body() dto: CreateJournalEntryDto,
+  ) {
     const data = await this.accountingService.createJournalEntry({
-      ...dto, tenantId: user.tenantId, branchId: user.branchId, createdBy: user.id,
+      ...dto,
+      tenantId: user.tenantId,
+      branchId: user.branchId,
+      createdBy: user.id,
     });
     return { success: true, data };
   }
@@ -80,8 +111,14 @@ export class AccountingController {
   @Get('journal-entries')
   @Roles(ROLES.ACCOUNTANT, ROLES.ORGANIZATION_OWNER, ROLES.PRINCIPAL)
   @ApiOperation({ summary: 'List journal entries' })
-  async findAllJournalEntries(@CurrentUser() user: any, @Query() query: AccountingQueryDto) {
-    const data = await this.accountingService.findJournalEntriesByBranch(user.branchId, query);
+  async findAllJournalEntries(
+    @CurrentUser() user: any,
+    @Query() query: AccountingQueryDto,
+  ) {
+    const data = await this.accountingService.findJournalEntriesByBranch(
+      user.branchId,
+      query,
+    );
     return { success: true, ...data };
   }
 
@@ -103,7 +140,11 @@ export class AccountingController {
     @Query('fromDate') fromDate?: string,
     @Query('toDate') toDate?: string,
   ) {
-    const data = await this.accountingService.getTrialBalance(user.branchId, fromDate, toDate);
+    const data = await this.accountingService.getTrialBalance(
+      user.branchId,
+      fromDate,
+      toDate,
+    );
     return { success: true, data };
   }
 
@@ -115,7 +156,11 @@ export class AccountingController {
     @Query('fromDate') fromDate: string,
     @Query('toDate') toDate: string,
   ) {
-    const data = await this.accountingService.getIncomeStatement(user.branchId, fromDate, toDate);
+    const data = await this.accountingService.getIncomeStatement(
+      user.branchId,
+      fromDate,
+      toDate,
+    );
     return { success: true, data };
   }
 
@@ -126,7 +171,10 @@ export class AccountingController {
     @CurrentUser() user: any,
     @Query('asOfDate') asOfDate: string,
   ) {
-    const data = await this.accountingService.getBalanceSheet(user.branchId, asOfDate);
+    const data = await this.accountingService.getBalanceSheet(
+      user.branchId,
+      asOfDate,
+    );
     return { success: true, data };
   }
 }

@@ -26,7 +26,9 @@ export class ImportEngine {
       case 'xls':
         return this.parseExcel(buffer);
       default:
-        throw new Error(`Unsupported file type: .${ext}. Supported: csv, xlsx, xls, txt`);
+        throw new Error(
+          `Unsupported file type: .${ext}. Supported: csv, xlsx, xls, txt`,
+        );
     }
   }
 
@@ -54,14 +56,19 @@ export class ImportEngine {
     if (!sheetName) throw new Error('Excel file has no sheets');
 
     const sheet = workbook.Sheets[sheetName];
-    const json = XLSX.utils.sheet_to_json<Record<string, string>>(sheet, { defval: '' });
+    const json = XLSX.utils.sheet_to_json<Record<string, string>>(sheet, {
+      defval: '',
+    });
 
     const headers = Object.keys(json[0] || {});
     const rows: ParsedRow[] = json.map((row: any, i: number) => ({
       rowNumber: i + 2,
       data: Object.fromEntries(
-        Object.entries(row).map(([k, v]) => [k, v === null || v === undefined ? '' : String(v)]),
-      ) as Record<string, string>,
+        Object.entries(row).map(([k, v]) => [
+          k,
+          v === null || v === undefined ? '' : String(v),
+        ]),
+      ),
       errors: [],
     }));
 

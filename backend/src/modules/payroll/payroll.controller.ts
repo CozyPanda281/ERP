@@ -17,8 +17,15 @@ export class PayrollController {
   @Post('salary-components')
   @Roles(ROLES.SUPER_ADMIN, ROLES.ORGANIZATION_OWNER, ROLES.ACCOUNTANT)
   @ApiOperation({ summary: 'Create salary component' })
-  async createSalaryComponent(@Body() body: CreateSalaryComponentDto, @CurrentUser() user: any) {
-    const data = await this.service.createSalaryComponent({ ...body, tenantId: user.tenantId, branchId: user.branchId });
+  async createSalaryComponent(
+    @Body() body: CreateSalaryComponentDto,
+    @CurrentUser() user: any,
+  ) {
+    const data = await this.service.createSalaryComponent({
+      ...body,
+      tenantId: user.tenantId,
+      branchId: user.branchId,
+    });
     return { success: true, data };
   }
 
@@ -33,13 +40,26 @@ export class PayrollController {
   @Post('process')
   @Roles(ROLES.SUPER_ADMIN, ROLES.ORGANIZATION_OWNER, ROLES.ACCOUNTANT)
   @ApiOperation({ summary: 'Process payroll' })
-  async processPayroll(@Body() body: ProcessPayrollDto, @CurrentUser() user: any) {
-    const data = await this.service.processPayroll({ ...body, tenantId: user.tenantId, branchId: user.branchId, processedBy: user.id });
+  async processPayroll(
+    @Body() body: ProcessPayrollDto,
+    @CurrentUser() user: any,
+  ) {
+    const data = await this.service.processPayroll({
+      ...body,
+      tenantId: user.tenantId,
+      branchId: user.branchId,
+      processedBy: user.id,
+    });
     return { success: true, data };
   }
 
   @Get()
-  @Roles(ROLES.SUPER_ADMIN, ROLES.ORGANIZATION_OWNER, ROLES.ACCOUNTANT, ROLES.PRINCIPAL)
+  @Roles(
+    ROLES.SUPER_ADMIN,
+    ROLES.ORGANIZATION_OWNER,
+    ROLES.ACCOUNTANT,
+    ROLES.PRINCIPAL,
+  )
   @ApiOperation({ summary: 'List payroll records' })
   async getPayroll(@CurrentUser() user: any, @Query() query: PayrollQueryDto) {
     const data = await this.service.findPayrollByBranch(user.branchId, query);

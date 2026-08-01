@@ -8,10 +8,12 @@ import {
   Param,
   Body,
   Query,
+  ForbiddenException,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { TenantsService } from './tenants.service';
 import { Roles } from '../../common/decorators/roles.decorator';
+import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { Public } from '../../common/decorators/public.decorator';
 import { ROLES } from '../../common/constants';
 import { CreateTenantDto } from './dto/create-tenant.dto';
@@ -52,7 +54,10 @@ export class TenantsController {
   @Get(':id')
   @Roles(ROLES.SUPER_ADMIN, ROLES.ORGANIZATION_OWNER)
   @ApiOperation({ summary: 'Get tenant by ID' })
-  async findById(@Param('id') id: string) {
+  async findById(@Param('id') id: string, @CurrentUser() user: any) {
+    if (!user.isSuperAdmin && user.tenantId !== id) {
+      throw new ForbiddenException('You can only view your own tenant');
+    }
     const data = await this.tenantsService.findById(id);
     return { success: true, data };
   }
@@ -60,7 +65,14 @@ export class TenantsController {
   @Put(':id')
   @Roles(ROLES.SUPER_ADMIN, ROLES.ORGANIZATION_OWNER)
   @ApiOperation({ summary: 'Update tenant details' })
-  async update(@Param('id') id: string, @Body() dto: UpdateTenantDto) {
+  async update(
+    @Param('id') id: string,
+    @Body() dto: UpdateTenantDto,
+    @CurrentUser() user: any,
+  ) {
+    if (!user.isSuperAdmin && user.tenantId !== id) {
+      throw new ForbiddenException('You can only update your own tenant');
+    }
     const data = await this.tenantsService.update(id, dto);
     return { success: true, data };
   }
@@ -79,7 +91,14 @@ export class TenantsController {
   @Post(':id/setup')
   @Roles(ROLES.ORGANIZATION_OWNER, ROLES.SUPER_ADMIN)
   @ApiOperation({ summary: 'First-run setup for a new tenant' })
-  async firstRunSetup(@Param('id') id: string, @Body() dto: SetupTenantDto) {
+  async firstRunSetup(
+    @Param('id') id: string,
+    @Body() dto: SetupTenantDto,
+    @CurrentUser() user: any,
+  ) {
+    if (!user.isSuperAdmin && user.tenantId !== id) {
+      throw new ForbiddenException('You can only set up your own tenant');
+    }
     const data = await this.tenantsService.firstRunSetup(id, dto);
     return { success: true, data };
   }

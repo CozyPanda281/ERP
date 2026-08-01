@@ -4,7 +4,8 @@ import {
   ExecutionContext,
   CallHandler,
 } from '@nestjs/common';
-import { Observable, tap } from 'rxjs';
+import { Observable } from 'rxjs';
+import { finalize, switchMap, from } from 'rxjs';
 import { Request } from 'express';
 import { DatabaseProvider } from '../../database/database.provider';
 import { TENANT_CONTEXT_KEY } from '../constants';
@@ -25,48 +26,81 @@ export class TenantContextInterceptor implements NestInterceptor {
     const ipAddress = request.ip || request.socket?.remoteAddress;
     const userAgent = request.headers['user-agent'] || '';
 
-    // Set PostgreSQL session variables for RLS policies
+    // Set PostgreSQL session variables for RLS policies (session-level so they
+    // persist for the request's queries; reset in finalize to prevent leakage
+    // across requests on pooled connections).
+    const setConfigs: Promise<unknown>[] = [];
+
     if (tenantId) {
-      this.db.query(`SELECT set_config('app.current_tenant_id', $1, TRUE)`, [
+      setConfigs.push(
+        this.db.query(`SELECT set_config('app.current_tenant_id', $1, FALSE)`, [
           tenantId,
-        ]);
-    }
-
-    if (userId) {
-      this.db.query(`SELECT set_config('app.current_user_id', $1, TRUE)`, [
-        userId,
-      ]);
-    }
-
-    if (branchId) {
-      this.db.query(`SELECT set_config('app.current_branch_id', $1, TRUE)`, [
-        branchId,
-      ]);
-    }
-
-    if (sessionId) {
-      this.db.query(
-        `SELECT set_config('app.current_session_id', $1, TRUE)`,
-        [sessionId],
+        ]),
       );
     }
-
-    if (user?.isSuperAdmin) {
-      this.db.query(`SELECT set_config('app.is_superadmin', 'true', TRUE)`);
+    if (userId) {
+      setConfigs.push(
+        this.db.query(`SELECT set_config('app.current_user_id', $1, FALSE)`, [
+          userId,
+        ]),
+      );
     }
+    if (branchId) {
+      setConfigs.push(
+        this.db.query(`SELECT set_config('app.current_branch_id', $1, FALSE)`, [
+          branchId,
+        ]),
+      );
+    }
+    if (sessionId) {
+      setConfigs.push(
+        this.db.query(
+          `SELECT set_config('app.current_session_id', $1, FALSE)`,
+          [sessionId],
+        ),
+      );
+    }
+    if (user?.isSuperAdmin) {
+      setConfigs.push(
+        this.db.query(`SELECT set_config('app.is_superadmin', 'true', FALSE)`),
+      );
+    }
+    setConfigs.push(
+      this.db.query(`SELECT set_config('app.client_ip', $1, FALSE)`, [
+        ipAddress,
+      ]),
+    );
+    setConfigs.push(
+      this.db.query(`SELECT set_config('app.user_agent', $1, FALSE)`, [
+        userAgent,
+      ]),
+    );
 
-    this.db.query(`SELECT set_config('app.client_ip', $1, TRUE)`, [ipAddress]);
+    const resetConfigs = () => {
+      const resetConfigs = [
+        'current_tenant_id',
+        'current_user_id',
+        'current_branch_id',
+        'current_session_id',
+        'is_superadmin',
+        'client_ip',
+        'user_agent',
+      ];
+      return Promise.all(
+        resetConfigs.map((key) =>
+          this.db
+            .query(`SELECT set_config('app.${key}', '', FALSE)`)
+            .catch(() => undefined),
+        ),
+      );
+    };
 
-    this.db.query(`SELECT set_config('app.user_agent', $1, TRUE)`, [
-      userAgent,
-    ]);
-
-    return next.handle().pipe(
-      tap({
-        error: () => {
-          // Reset on error to prevent context leakage
-          this.db.query(`SELECT set_config('app.current_tenant_id', '', TRUE)`);
-        },
+    return from(
+      Promise.all(setConfigs.map((p) => p.catch(() => undefined))),
+    ).pipe(
+      switchMap(() => next.handle()),
+      finalize(() => {
+        resetConfigs();
       }),
     );
   }

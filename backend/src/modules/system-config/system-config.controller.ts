@@ -1,11 +1,4 @@
-import {
-  Controller,
-  Get,
-  Put,
-  Delete,
-  Param,
-  Body,
-} from '@nestjs/common';
+import { Controller, Get, Put, Delete, Param, Body } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { SystemConfigService } from './system-config.service';
 import { Roles } from '../../common/decorators/roles.decorator';
@@ -35,11 +28,12 @@ export class SystemConfigController {
 
   @Put(':key')
   @ApiOperation({ summary: 'Set a config value' })
-  async set(
-    @Param('key') key: string,
-    @Body() dto: UpdateSystemConfigDto,
-  ) {
-    const data = await this.systemConfigService.set(key, dto.value, dto.description);
+  async set(@Param('key') key: string, @Body() dto: UpdateSystemConfigDto) {
+    const data = await this.systemConfigService.set(
+      key,
+      dto.value,
+      dto.description,
+    );
     return { success: true, data };
   }
 

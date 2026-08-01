@@ -30,8 +30,8 @@ describe('ImportService', () => {
     it('should return registered entity types', () => {
       const types = service.getSupportedEntityTypes();
       expect(types.length).toBeGreaterThan(0);
-      expect(types.find(t => t.entityType === 'students')).toBeDefined();
-      expect(types.find(t => t.entityType === 'users')).toBeDefined();
+      expect(types.find((t) => t.entityType === 'students')).toBeDefined();
+      expect(types.find((t) => t.entityType === 'users')).toBeDefined();
     });
   });
 
@@ -47,9 +47,18 @@ describe('ImportService', () => {
       const csv = 'first_name,last_name,email\nJohn,Doe,john@test.com';
       const buffer = Buffer.from(csv);
 
-      mockDb.setDrizzleResults([{ id: 'batch-1' }], [{ id: 'batch-1', status: 'pending_review', entityType: 'students' }]);
+      mockDb.setDrizzleResults(
+        [{ id: 'batch-1' }],
+        [{ id: 'batch-1', status: 'pending_review', entityType: 'students' }],
+      );
 
-      const result = await service.upload('t-1', 'u-1', 'students', buffer, 'test.csv');
+      const result = await service.upload(
+        't-1',
+        'u-1',
+        'students',
+        buffer,
+        'test.csv',
+      );
       expect(result).toBeDefined();
     });
   });
@@ -57,7 +66,9 @@ describe('ImportService', () => {
   describe('batch lifecycle', () => {
     it('should throw on nonexistent batch', async () => {
       mockDb.setDrizzleResults([]);
-      await expect(service.getBatch('nonexistent')).rejects.toThrow(NotFoundException);
+      await expect(service.getBatch('nonexistent')).rejects.toThrow(
+        NotFoundException,
+      );
     });
 
     it('should approve a batch', async () => {
@@ -84,12 +95,16 @@ describe('ImportService', () => {
 
     it('should not approve already approved batch', async () => {
       mockDb.setDrizzleResults([{ id: 'b-1', status: 'approved' }]);
-      await expect(service.approve('b-1', 'u-1')).rejects.toThrow(BadRequestException);
+      await expect(service.approve('b-1', 'u-1')).rejects.toThrow(
+        BadRequestException,
+      );
     });
 
     it('should not deploy unapproved batch', async () => {
       mockDb.setDrizzleResults([{ id: 'b-1', status: 'pending_review' }]);
-      await expect(service.deploy('b-1', 'u-1')).rejects.toThrow(BadRequestException);
+      await expect(service.deploy('b-1', 'u-1')).rejects.toThrow(
+        BadRequestException,
+      );
     });
   });
 });

@@ -19,32 +19,42 @@ export class HomeworkController {
   @Post()
   @Roles(ROLES.SUPER_ADMIN, ROLES.PRINCIPAL, ROLES.ORGANIZATION_OWNER)
   @ApiOperation({ summary: 'Create homework' })
-  async createHomework(@Body() body: CreateHomeworkDto, @CurrentUser() user: any) {
-    const data = await this.service.createHomework({ ...body, tenantId: user.tenantId, branchId: user.branchId });
+  async createHomework(
+    @Body() body: CreateHomeworkDto,
+    @CurrentUser() user: any,
+  ) {
+    const data = await this.service.createHomework({
+      ...body,
+      tenantId: user.tenantId,
+      branchId: user.branchId,
+    });
     return { success: true, data };
   }
 
   @Get()
   @Roles(ROLES.SUPER_ADMIN, ROLES.PRINCIPAL, ROLES.ORGANIZATION_OWNER)
   @ApiOperation({ summary: 'List homework' })
-  async getHomework(@CurrentUser() user: any, @Query() query: HomeworkQueryDto) {
+  async getHomework(
+    @CurrentUser() user: any,
+    @Query() query: HomeworkQueryDto,
+  ) {
     const data = await this.service.findHomeworkByBranch(user.branchId, query);
     return { success: true, ...data };
-  }
-
-  @Get(':id')
-  @Roles(ROLES.SUPER_ADMIN, ROLES.PRINCIPAL, ROLES.ORGANIZATION_OWNER)
-  @ApiOperation({ summary: 'Get homework by ID' })
-  async getHomeworkById(@Param('id') id: string) {
-    const data = await this.service.findHomeworkById(id);
-    return { success: true, data };
   }
 
   @Post(':homeworkId/submissions')
   @Roles(ROLES.SUPER_ADMIN, ROLES.PRINCIPAL, ROLES.ORGANIZATION_OWNER)
   @ApiOperation({ summary: 'Submit homework' })
-  async submitHomework(@Param('homeworkId') homeworkId: string, @Body() body: SubmitHomeworkDto, @CurrentUser() user: any) {
-    const data = await this.service.submitHomework({ ...body, homeworkId, tenantId: user.tenantId });
+  async submitHomework(
+    @Param('homeworkId') homeworkId: string,
+    @Body() body: SubmitHomeworkDto,
+    @CurrentUser() user: any,
+  ) {
+    const data = await this.service.submitHomework({
+      ...body,
+      homeworkId,
+      tenantId: user.tenantId,
+    });
     return { success: true, data };
   }
 
@@ -59,32 +69,62 @@ export class HomeworkController {
   @Put('submissions/:id/grade')
   @Roles(ROLES.SUPER_ADMIN, ROLES.PRINCIPAL, ROLES.ORGANIZATION_OWNER)
   @ApiOperation({ summary: 'Grade submission' })
-  async gradeSubmission(@Param('id') id: string, @Body() body: GradeSubmissionDto, @CurrentUser() user: any) {
-    const data = await this.service.gradeSubmission(id, body.marksObtained, body.feedback, user.id);
+  async gradeSubmission(
+    @Param('id') id: string,
+    @Body() body: GradeSubmissionDto,
+    @CurrentUser() user: any,
+  ) {
+    const data = await this.service.gradeSubmission(
+      id,
+      body.marksObtained,
+      body.feedback,
+      user.id,
+    );
     return { success: true, data };
   }
 
   @Post('assignments')
   @Roles(ROLES.SUPER_ADMIN, ROLES.PRINCIPAL, ROLES.ORGANIZATION_OWNER)
   @ApiOperation({ summary: 'Create assignment' })
-  async createAssignment(@Body() body: CreateAssignmentDto, @CurrentUser() user: any) {
-    const data = await this.service.createAssignment({ ...body, tenantId: user.tenantId, branchId: user.branchId });
+  async createAssignment(
+    @Body() body: CreateAssignmentDto,
+    @CurrentUser() user: any,
+  ) {
+    const data = await this.service.createAssignment({
+      ...body,
+      tenantId: user.tenantId,
+      branchId: user.branchId,
+    });
     return { success: true, data };
   }
 
   @Get('assignments')
   @Roles(ROLES.SUPER_ADMIN, ROLES.PRINCIPAL, ROLES.ORGANIZATION_OWNER)
   @ApiOperation({ summary: 'List assignments' })
-  async getAssignments(@CurrentUser() user: any, @Query() query: HomeworkQueryDto) {
-    const data = await this.service.findAssignmentsByBranch(user.branchId, query);
+  async getAssignments(
+    @CurrentUser() user: any,
+    @Query() query: HomeworkQueryDto,
+  ) {
+    const data = await this.service.findAssignmentsByBranch(
+      user.branchId,
+      query,
+    );
     return { success: true, ...data };
   }
 
   @Post('assignments/:assignmentId/submissions')
   @Roles(ROLES.SUPER_ADMIN, ROLES.PRINCIPAL, ROLES.ORGANIZATION_OWNER)
   @ApiOperation({ summary: 'Submit assignment' })
-  async submitAssignment(@Param('assignmentId') assignmentId: string, @Body() body: SubmitHomeworkDto, @CurrentUser() user: any) {
-    const data = await this.service.submitAssignment({ ...body, assignmentId, tenantId: user.tenantId });
+  async submitAssignment(
+    @Param('assignmentId') assignmentId: string,
+    @Body() body: SubmitHomeworkDto,
+    @CurrentUser() user: any,
+  ) {
+    const data = await this.service.submitAssignment({
+      ...body,
+      assignmentId,
+      tenantId: user.tenantId,
+    });
     return { success: true, data };
   }
 
@@ -99,8 +139,25 @@ export class HomeworkController {
   @Put('assignments/submissions/:id/grade')
   @Roles(ROLES.SUPER_ADMIN, ROLES.PRINCIPAL, ROLES.ORGANIZATION_OWNER)
   @ApiOperation({ summary: 'Grade assignment submission' })
-  async gradeAssignmentSubmission(@Param('id') id: string, @Body() body: GradeSubmissionDto, @CurrentUser() user: any) {
-    const data = await this.service.gradeAssignmentSubmission(id, body.marksObtained, body.feedback, user.id);
+  async gradeAssignmentSubmission(
+    @Param('id') id: string,
+    @Body() body: GradeSubmissionDto,
+    @CurrentUser() user: any,
+  ) {
+    const data = await this.service.gradeAssignmentSubmission(
+      id,
+      body.marksObtained,
+      body.feedback,
+      user.id,
+    );
+    return { success: true, data };
+  }
+
+  @Get(':id')
+  @Roles(ROLES.SUPER_ADMIN, ROLES.PRINCIPAL, ROLES.ORGANIZATION_OWNER)
+  @ApiOperation({ summary: 'Get homework by ID' })
+  async getHomeworkById(@Param('id') id: string) {
+    const data = await this.service.findHomeworkById(id);
     return { success: true, data };
   }
 }

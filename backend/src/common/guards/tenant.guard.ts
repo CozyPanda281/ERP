@@ -18,10 +18,10 @@ export class TenantGuard implements CanActivate {
   ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
-    const isPublic = this.reflector.getAllAndOverride<boolean>(
-      'isPublic',
-      [context.getHandler(), context.getClass()],
-    );
+    const isPublic = this.reflector.getAllAndOverride<boolean>('isPublic', [
+      context.getHandler(),
+      context.getClass(),
+    ]);
 
     if (isPublic) return true;
 
@@ -34,12 +34,18 @@ export class TenantGuard implements CanActivate {
       return true;
     }
 
-    // Tenant must be resolved either from header or JWT
-    const tenantId = tenantContext?.tenantId || user?.tenantId;
-
-    if (!tenantId) {
-      throw new UnauthorizedException('Tenant context required');
+    if (!user?.tenantId) {
+      throw new UnauthorizedException('User has no tenant context');
     }
+
+    // Prevent tenant escalation: the X-Tenant-Id header must match the user's tenant
+    if (tenantContext?.tenantId && tenantContext.tenantId !== user.tenantId) {
+      throw new ForbiddenException(
+        'Tenant mismatch: header does not match your tenant',
+      );
+    }
+
+    const tenantId = user.tenantId;
 
     // Verify subscription is active
     const subResult = await this.db.query(

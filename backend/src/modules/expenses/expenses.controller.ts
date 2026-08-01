@@ -19,8 +19,14 @@ export class ExpensesController {
   @Post('expense-categories')
   @Roles(ROLES.SUPER_ADMIN, ROLES.ORGANIZATION_OWNER, ROLES.ACCOUNTANT)
   @ApiOperation({ summary: 'Create expense category' })
-  async createExpenseCategory(@Body() body: CreateExpenseCategoryDto, @CurrentUser() user: any) {
-    const data = await this.service.createExpenseCategory({ ...body, tenantId: user.tenantId });
+  async createExpenseCategory(
+    @Body() body: CreateExpenseCategoryDto,
+    @CurrentUser() user: any,
+  ) {
+    const data = await this.service.createExpenseCategory({
+      ...body,
+      tenantId: user.tenantId,
+    });
     return { success: true, data };
   }
 
@@ -28,15 +34,23 @@ export class ExpensesController {
   @Roles(ROLES.SUPER_ADMIN, ROLES.ORGANIZATION_OWNER, ROLES.ACCOUNTANT)
   @ApiOperation({ summary: 'List expense categories' })
   async getExpenseCategories(@CurrentUser() user: any) {
-    const data = await this.service.findExpenseCategoriesByTenant(user.tenantId);
+    const data = await this.service.findExpenseCategoriesByTenant(
+      user.tenantId,
+    );
     return { success: true, data };
   }
 
   @Post('income-categories')
   @Roles(ROLES.SUPER_ADMIN, ROLES.ORGANIZATION_OWNER, ROLES.ACCOUNTANT)
   @ApiOperation({ summary: 'Create income category' })
-  async createIncomeCategory(@Body() body: CreateIncomeCategoryDto, @CurrentUser() user: any) {
-    const data = await this.service.createIncomeCategory({ ...body, tenantId: user.tenantId });
+  async createIncomeCategory(
+    @Body() body: CreateIncomeCategoryDto,
+    @CurrentUser() user: any,
+  ) {
+    const data = await this.service.createIncomeCategory({
+      ...body,
+      tenantId: user.tenantId,
+    });
     return { success: true, data };
   }
 
@@ -51,37 +65,52 @@ export class ExpensesController {
   @Post()
   @Roles(ROLES.SUPER_ADMIN, ROLES.ORGANIZATION_OWNER, ROLES.ACCOUNTANT)
   @ApiOperation({ summary: 'Record expense' })
-  async createExpense(@Body() body: CreateExpenseDto, @CurrentUser() user: any) {
-    const data = await this.service.createExpense({ ...body, tenantId: user.tenantId, branchId: user.branchId, createdBy: user.id });
+  async createExpense(
+    @Body() body: CreateExpenseDto,
+    @CurrentUser() user: any,
+  ) {
+    const data = await this.service.createExpense({
+      ...body,
+      tenantId: user.tenantId,
+      branchId: user.branchId,
+      createdBy: user.id,
+    });
     return { success: true, data };
   }
 
   @Get()
-  @Roles(ROLES.SUPER_ADMIN, ROLES.ORGANIZATION_OWNER, ROLES.ACCOUNTANT, ROLES.PRINCIPAL)
+  @Roles(
+    ROLES.SUPER_ADMIN,
+    ROLES.ORGANIZATION_OWNER,
+    ROLES.ACCOUNTANT,
+    ROLES.PRINCIPAL,
+  )
   @ApiOperation({ summary: 'List expenses' })
   async getExpenses(@CurrentUser() user: any, @Query() query: ExpenseQueryDto) {
     const data = await this.service.findExpensesByBranch(user.branchId, query);
     return { success: true, ...data };
   }
 
-  @Get(':id')
-  @Roles(ROLES.SUPER_ADMIN, ROLES.ORGANIZATION_OWNER, ROLES.ACCOUNTANT)
-  @ApiOperation({ summary: 'Get expense by ID' })
-  async getExpenseById(@Param('id') id: string) {
-    const data = await this.service.findExpenseById(id);
-    return { success: true, data };
-  }
-
   @Post('income')
   @Roles(ROLES.SUPER_ADMIN, ROLES.ORGANIZATION_OWNER, ROLES.ACCOUNTANT)
   @ApiOperation({ summary: 'Record income' })
   async createIncome(@Body() body: CreateIncomeDto, @CurrentUser() user: any) {
-    const data = await this.service.createIncome({ ...body, tenantId: user.tenantId, branchId: user.branchId, createdBy: user.id });
+    const data = await this.service.createIncome({
+      ...body,
+      tenantId: user.tenantId,
+      branchId: user.branchId,
+      createdBy: user.id,
+    });
     return { success: true, data };
   }
 
   @Get('income')
-  @Roles(ROLES.SUPER_ADMIN, ROLES.ORGANIZATION_OWNER, ROLES.ACCOUNTANT, ROLES.PRINCIPAL)
+  @Roles(
+    ROLES.SUPER_ADMIN,
+    ROLES.ORGANIZATION_OWNER,
+    ROLES.ACCOUNTANT,
+    ROLES.PRINCIPAL,
+  )
   @ApiOperation({ summary: 'List income records' })
   async getIncome(@CurrentUser() user: any, @Query() query: ExpenseQueryDto) {
     const data = await this.service.findIncomeByBranch(user.branchId, query);
@@ -93,6 +122,14 @@ export class ExpensesController {
   @ApiOperation({ summary: 'Get income by ID' })
   async getIncomeById(@Param('id') id: string) {
     const data = await this.service.findIncomeById(id);
+    return { success: true, data };
+  }
+
+  @Get(':id')
+  @Roles(ROLES.SUPER_ADMIN, ROLES.ORGANIZATION_OWNER, ROLES.ACCOUNTANT)
+  @ApiOperation({ summary: 'Get expense by ID' })
+  async getExpenseById(@Param('id') id: string) {
+    const data = await this.service.findExpenseById(id);
     return { success: true, data };
   }
 }

@@ -1,4 +1,8 @@
-import { Injectable, NotFoundException, ConflictException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  ConflictException,
+} from '@nestjs/common';
 import { DatabaseProvider } from '../../database/database.provider';
 import { v4 as uuidv4 } from 'uuid';
 import * as schema from '../../database/schema';
@@ -24,7 +28,13 @@ export class BranchesService {
     const existing = await this.db.db
       .select({ id: schema.branches.id })
       .from(schema.branches)
-      .where(and(eq(schema.branches.tenantId, params.tenantId), eq(schema.branches.code, params.code), isNull(schema.branches.deletedAt)))
+      .where(
+        and(
+          eq(schema.branches.tenantId, params.tenantId),
+          eq(schema.branches.code, params.code),
+          isNull(schema.branches.deletedAt),
+        ),
+      )
       .limit(1);
     if (existing.length) {
       throw new ConflictException('Branch code already exists for this tenant');
@@ -49,7 +59,10 @@ export class BranchesService {
   }
 
   async findById(id: string, tenantId?: string) {
-    const conditions: any[] = [eq(schema.branches.id, id), isNull(schema.branches.deletedAt)];
+    const conditions: any[] = [
+      eq(schema.branches.id, id),
+      isNull(schema.branches.deletedAt),
+    ];
     if (tenantId) conditions.push(eq(schema.branches.tenantId, tenantId));
 
     const result = await this.db.db
@@ -66,24 +79,48 @@ export class BranchesService {
     const data = await this.db.db
       .select()
       .from(schema.branches)
-      .where(and(eq(schema.branches.tenantId, tenantId), isNull(schema.branches.deletedAt)))
+      .where(
+        and(
+          eq(schema.branches.tenantId, tenantId),
+          isNull(schema.branches.deletedAt),
+        ),
+      )
       .orderBy(schema.branches.name)
       .limit(limit)
       .offset(offset);
     const countResult = await this.db.db
       .select({ count: count() })
       .from(schema.branches)
-      .where(and(eq(schema.branches.tenantId, tenantId), isNull(schema.branches.deletedAt)));
-    return { data, pagination: { page, limit, total: Number(countResult[0].count) } };
+      .where(
+        and(
+          eq(schema.branches.tenantId, tenantId),
+          isNull(schema.branches.deletedAt),
+        ),
+      );
+    return {
+      data,
+      pagination: { page, limit, total: Number(countResult[0].count) },
+    };
   }
 
-  async update(id: string, params: Partial<{ name: string; email: string; phone: string; address: string; city: string; state: string; pincode: string; principalId: string }>) {
+  async update(
+    id: string,
+    params: Partial<{
+      name: string;
+      email: string;
+      phone: string;
+      address: string;
+      city: string;
+      state: string;
+      pincode: string;
+      principalId: string;
+    }>,
+  ) {
     await this.findById(id);
     const values: any = {};
     for (const [key, value] of Object.entries(params)) {
       if (value !== undefined) {
-        const col = key.replace(/[A-Z]/g, (c) => `_${c.toLowerCase()}`);
-        (values as any)[col] = value;
+        values[key] = value;
       }
     }
     if (Object.keys(values).length === 0) return this.findById(id);

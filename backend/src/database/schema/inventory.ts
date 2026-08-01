@@ -1,4 +1,14 @@
-import { pgTable, uuid, varchar, text, integer, decimal, date, timestamp, boolean } from 'drizzle-orm/pg-core';
+import {
+  pgTable,
+  uuid,
+  varchar,
+  text,
+  integer,
+  decimal,
+  date,
+  timestamp,
+  boolean,
+} from 'drizzle-orm/pg-core';
 
 export const inventoryCategories = pgTable('inventory_categories', {
   id: uuid('id').primaryKey().defaultRandom(),
@@ -68,15 +78,18 @@ export const inventoryPurchaseOrders = pgTable('inventory_purchase_orders', {
   deletedAt: timestamp('deleted_at'),
 });
 
-export const inventoryPurchaseOrderItems = pgTable('inventory_purchase_order_items', {
-  id: uuid('id').primaryKey().defaultRandom(),
-  poId: uuid('po_id').notNull(),
-  itemId: uuid('item_id').notNull(),
-  quantity: integer('quantity').notNull(),
-  unitPrice: decimal('unit_price', { precision: 10, scale: 2 }).notNull(),
-  totalPrice: decimal('total_price', { precision: 12, scale: 2 }),
-  createdAt: timestamp('created_at').defaultNow(),
-});
+export const inventoryPurchaseOrderItems = pgTable(
+  'inventory_purchase_order_items',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    poId: uuid('po_id').notNull(),
+    itemId: uuid('item_id').notNull(),
+    quantity: integer('quantity').notNull(),
+    unitPrice: decimal('unit_price', { precision: 10, scale: 2 }).notNull(),
+    totalPrice: decimal('total_price', { precision: 12, scale: 2 }),
+    createdAt: timestamp('created_at').defaultNow(),
+  },
+);
 
 export const inventoryGoodsReceipts = pgTable('inventory_goods_receipts', {
   id: uuid('id').primaryKey().defaultRandom(),
@@ -92,25 +105,31 @@ export const inventoryGoodsReceipts = pgTable('inventory_goods_receipts', {
   updatedAt: timestamp('updated_at').defaultNow(),
 });
 
-export const inventoryGoodsReceiptItems = pgTable('inventory_goods_receipt_items', {
-  id: uuid('id').primaryKey().defaultRandom(),
-  grnId: uuid('grn_id').notNull(),
-  itemId: uuid('item_id').notNull(),
-  quantity: integer('quantity').notNull(),
-  unitPrice: decimal('unit_price', { precision: 10, scale: 2 }),
-  createdAt: timestamp('created_at').defaultNow(),
-});
+export const inventoryGoodsReceiptItems = pgTable(
+  'inventory_goods_receipt_items',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    grnId: uuid('grn_id').notNull(),
+    itemId: uuid('item_id').notNull(),
+    quantity: integer('quantity').notNull(),
+    unitPrice: decimal('unit_price', { precision: 10, scale: 2 }),
+    createdAt: timestamp('created_at').defaultNow(),
+  },
+);
 
-export const inventoryStockAdjustments = pgTable('inventory_stock_adjustments', {
-  id: uuid('id').primaryKey().defaultRandom(),
-  tenantId: uuid('tenant_id').notNull(),
-  branchId: uuid('branch_id').notNull(),
-  itemId: uuid('item_id').notNull(),
-  adjustmentType: varchar('adjustment_type', { length: 20 }).notNull(),
-  quantity: integer('quantity').notNull(),
-  reason: varchar('reason', { length: 200 }),
-  referenceNumber: varchar('reference_number', { length: 50 }),
-  adjustedBy: uuid('adjusted_by'),
-  notes: text('notes'),
-  createdAt: timestamp('created_at').defaultNow(),
-});
+export const inventoryStockAdjustments = pgTable(
+  'inventory_stock_adjustments',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    tenantId: uuid('tenant_id').notNull(),
+    branchId: uuid('branch_id').notNull(),
+    itemId: uuid('item_id').notNull(),
+    adjustmentType: varchar('adjustment_type', { length: 20 }).notNull(),
+    quantity: integer('quantity').notNull(),
+    reason: varchar('reason', { length: 200 }),
+    referenceNumber: varchar('reference_number', { length: 50 }),
+    adjustedBy: uuid('adjusted_by'),
+    notes: text('notes'),
+    createdAt: timestamp('created_at').defaultNow(),
+  },
+);

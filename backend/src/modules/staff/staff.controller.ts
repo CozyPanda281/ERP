@@ -1,4 +1,13 @@
-import { Controller, Get, Post, Put, Delete, Param, Body, Query } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Put,
+  Delete,
+  Param,
+  Body,
+  Query,
+} from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { StaffService } from './staff.service';
 import { Roles } from '../../common/decorators/roles.decorator';
@@ -19,7 +28,11 @@ export class StaffController {
   @Roles(ROLES.SUPER_ADMIN, ROLES.PRINCIPAL, ROLES.ORGANIZATION_OWNER)
   @ApiOperation({ summary: 'Create staff member' })
   async create(@Body() body: CreateStaffDto, @CurrentUser() user: any) {
-    const data = await this.service.create({ ...body, tenantId: user.tenantId, branchId: user.branchId });
+    const data = await this.service.create({
+      ...body,
+      tenantId: user.tenantId,
+      branchId: user.branchId,
+    });
     return { success: true, data };
   }
 
@@ -57,8 +70,16 @@ export class StaffController {
   @Post(':staffId/documents')
   @Roles(ROLES.SUPER_ADMIN, ROLES.PRINCIPAL, ROLES.ORGANIZATION_OWNER)
   @ApiOperation({ summary: 'Add document' })
-  async addDocument(@Param('staffId') staffId: string, @Body() body: AddDocumentDto, @CurrentUser() user: any) {
-    const data = await this.service.addDocument({ ...body, staffId, tenantId: user.tenantId });
+  async addDocument(
+    @Param('staffId') staffId: string,
+    @Body() body: AddDocumentDto,
+    @CurrentUser() user: any,
+  ) {
+    const data = await this.service.addDocument({
+      ...body,
+      staffId,
+      tenantId: user.tenantId,
+    });
     return { success: true, data };
   }
 

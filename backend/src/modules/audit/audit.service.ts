@@ -45,7 +45,10 @@ export class AuditService implements OnModuleInit {
   constructor(private readonly db: DatabaseProvider) {}
 
   async onModuleInit() {
-    this.flushInterval = setInterval(() => this.flush(), this.FLUSH_INTERVAL_MS);
+    this.flushInterval = setInterval(
+      () => this.flush(),
+      this.FLUSH_INTERVAL_MS,
+    );
 
     // Flush on exit
     process.on('SIGTERM', () => this.flush());
@@ -140,11 +143,15 @@ export class AuditService implements OnModuleInit {
     }
 
     if (params.startDate) {
-      conditions.push(gte(schema.auditLogs.createdAt, new Date(params.startDate)));
+      conditions.push(
+        gte(schema.auditLogs.createdAt, new Date(params.startDate)),
+      );
     }
 
     if (params.endDate) {
-      conditions.push(lte(schema.auditLogs.createdAt, new Date(params.endDate)));
+      conditions.push(
+        lte(schema.auditLogs.createdAt, new Date(params.endDate)),
+      );
     }
 
     const whereClause = conditions.length ? and(...conditions) : undefined;
@@ -162,8 +169,7 @@ export class AuditService implements OnModuleInit {
     const result = await this.db.db
       .select({
         ...getTableColumns(schema.auditLogs),
-        userName:
-          sql`${schema.users.firstName} || ' ' || ${schema.users.lastName}`,
+        userName: sql`${schema.users.firstName} || ' ' || ${schema.users.lastName}`,
       })
       .from(schema.auditLogs)
       .leftJoin(schema.users, eq(schema.users.id, schema.auditLogs.userId))
@@ -183,20 +189,11 @@ export class AuditService implements OnModuleInit {
     };
   }
 
-  async findByTenant(
-    tenantId: string,
-    page = 1,
-    limit = 20,
-  ) {
+  async findByTenant(tenantId: string, page = 1, limit = 20) {
     return this.find({ tenantId, page, limit });
   }
 
-  async findByUser(
-    userId: string,
-    tenantId?: string,
-    page = 1,
-    limit = 20,
-  ) {
+  async findByUser(userId: string, tenantId?: string, page = 1, limit = 20) {
     return this.find({ userId, tenantId, page, limit });
   }
 
@@ -230,15 +227,9 @@ export class AuditService implements OnModuleInit {
     return result;
   }
 
-  async getDailyStats(
-    days = 30,
-    tenantId?: string,
-  ) {
+  async getDailyStats(days = 30, tenantId?: string) {
     const conditions: any[] = [
-      gte(
-        schema.auditLogs.createdAt,
-        sql`NOW() - ${`${days} days`}::INTERVAL`,
-      ),
+      gte(schema.auditLogs.createdAt, sql`NOW() - ${`${days} days`}::INTERVAL`),
     ];
 
     if (tenantId) {
@@ -249,8 +240,7 @@ export class AuditService implements OnModuleInit {
       .select({
         date: sql`DATE(${schema.auditLogs.createdAt})`,
         count: count(),
-        failures:
-          sql`COUNT(*) FILTER (WHERE ${schema.auditLogs.outcome} = 'failure')`,
+        failures: sql`COUNT(*) FILTER (WHERE ${schema.auditLogs.outcome} = 'failure')`,
       })
       .from(schema.auditLogs)
       .where(and(...conditions))

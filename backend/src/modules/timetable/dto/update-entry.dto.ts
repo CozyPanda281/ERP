@@ -1,9 +1,21 @@
-import { IsString, IsOptional, IsNumber, IsBoolean, Min, Max, IsUUID } from 'class-validator';
+import {
+  IsString,
+  IsOptional,
+  IsNumber,
+  IsBoolean,
+  Min,
+  Max,
+  IsUUID,
+} from 'class-validator';
 import { ApiPropertyOptional } from '@nestjs/swagger';
 
 export class UpdateEntryDto {
   @ApiPropertyOptional({ minimum: 0, maximum: 6 })
-  @IsOptional() @IsNumber() @Min(0) @Max(6) dayOfWeek?: number;
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  @Max(6)
+  dayOfWeek?: number;
   @ApiPropertyOptional() @IsOptional() @IsUUID() subjectId?: string;
   @ApiPropertyOptional() @IsOptional() @IsUUID() teacherId?: string;
   @ApiPropertyOptional() @IsOptional() @IsString() startTime?: string;

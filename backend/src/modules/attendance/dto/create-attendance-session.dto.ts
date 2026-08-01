@@ -1,12 +1,30 @@
-import { IsString, IsNotEmpty, IsOptional, IsUUID, IsDateString, IsArray, ValidateNested, IsIn, MinLength, MaxLength } from 'class-validator';
+import {
+  IsString,
+  IsNotEmpty,
+  IsOptional,
+  IsUUID,
+  IsDateString,
+  IsArray,
+  ValidateNested,
+  IsIn,
+  MinLength,
+  MaxLength,
+} from 'class-validator';
 import { Type } from 'class-transformer';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 export class StudentAttendanceDto {
   @ApiProperty() @IsUUID() @IsNotEmpty() studentId: string;
   @ApiProperty({ enum: ['present', 'absent', 'late', 'excused'] })
-  @IsString() @IsNotEmpty() @IsIn(['present', 'absent', 'late', 'excused']) status: string;
-  @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(500) remarks?: string;
+  @IsString()
+  @IsNotEmpty()
+  @IsIn(['present', 'absent', 'late', 'excused'])
+  status: string;
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  @MaxLength(500)
+  remarks?: string;
 }
 
 export class CreateAttendanceSessionDto {
@@ -14,6 +32,8 @@ export class CreateAttendanceSessionDto {
   @ApiProperty() @IsDateString() @IsNotEmpty() date: string;
 
   @ApiProperty({ type: [StudentAttendanceDto] })
-  @IsArray() @ValidateNested({ each: true }) @Type(() => StudentAttendanceDto)
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => StudentAttendanceDto)
   records: StudentAttendanceDto[];
 }

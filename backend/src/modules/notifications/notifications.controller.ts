@@ -19,8 +19,14 @@ export class NotificationsController {
   @Post('templates')
   @Roles(ROLES.SUPER_ADMIN, ROLES.ORGANIZATION_OWNER)
   @ApiOperation({ summary: 'Create notification template' })
-  async createTemplate(@Body() body: CreateTemplateDto, @CurrentUser() user: any) {
-    const data = await this.service.createTemplate({ ...body, tenantId: user.tenantId });
+  async createTemplate(
+    @Body() body: CreateTemplateDto,
+    @CurrentUser() user: any,
+  ) {
+    const data = await this.service.createTemplate({
+      ...body,
+      tenantId: user.tenantId,
+    });
     return { success: true, data };
   }
 
@@ -35,47 +41,85 @@ export class NotificationsController {
   @Post('send')
   @Roles(ROLES.SUPER_ADMIN, ROLES.ORGANIZATION_OWNER)
   @ApiOperation({ summary: 'Send notification' })
-  async sendNotification(@Body() body: SendNotificationDto, @CurrentUser() user: any) {
-    const data = await this.service.sendNotification({ ...body, tenantId: user.tenantId, senderId: user.id });
+  async sendNotification(
+    @Body() body: SendNotificationDto,
+    @CurrentUser() user: any,
+  ) {
+    const data = await this.service.sendNotification({
+      ...body,
+      tenantId: user.tenantId,
+      senderId: user.id,
+    });
     return { success: true, data };
   }
 
   @Get()
   @Roles(ROLES.SUPER_ADMIN, ROLES.ORGANIZATION_OWNER, ROLES.PRINCIPAL)
   @ApiOperation({ summary: 'List notifications' })
-  async getNotifications(@CurrentUser() user: any, @Query() query: NotificationQueryDto) {
-    const data = await this.service.findNotificationsByTenant(user.tenantId, query);
+  async getNotifications(
+    @CurrentUser() user: any,
+    @Query() query: NotificationQueryDto,
+  ) {
+    const data = await this.service.findNotificationsByTenant(
+      user.tenantId,
+      query,
+    );
     return { success: true, ...data };
   }
 
   @Post('announcements')
   @Roles(ROLES.SUPER_ADMIN, ROLES.PRINCIPAL, ROLES.ORGANIZATION_OWNER)
   @ApiOperation({ summary: 'Create announcement' })
-  async createAnnouncement(@Body() body: CreateAnnouncementDto, @CurrentUser() user: any) {
-    const data = await this.service.createAnnouncement({ ...body, tenantId: user.tenantId, branchId: user.branchId, createdBy: user.id });
+  async createAnnouncement(
+    @Body() body: CreateAnnouncementDto,
+    @CurrentUser() user: any,
+  ) {
+    const data = await this.service.createAnnouncement({
+      ...body,
+      tenantId: user.tenantId,
+      branchId: user.branchId,
+      createdBy: user.id,
+    });
     return { success: true, data };
   }
 
   @Get('announcements')
   @Roles(ROLES.SUPER_ADMIN, ROLES.PRINCIPAL, ROLES.ORGANIZATION_OWNER)
   @ApiOperation({ summary: 'List announcements' })
-  async getAnnouncements(@CurrentUser() user: any, @Query() query: NotificationQueryDto) {
-    const data = await this.service.findAnnouncementsByBranch(user.branchId, query);
+  async getAnnouncements(
+    @CurrentUser() user: any,
+    @Query() query: NotificationQueryDto,
+  ) {
+    const data = await this.service.findAnnouncementsByBranch(
+      user.branchId,
+      query,
+    );
     return { success: true, ...data };
   }
 
   @Post('circulars')
   @Roles(ROLES.SUPER_ADMIN, ROLES.PRINCIPAL, ROLES.ORGANIZATION_OWNER)
   @ApiOperation({ summary: 'Create circular' })
-  async createCircular(@Body() body: CreateCircularDto, @CurrentUser() user: any) {
-    const data = await this.service.createCircular({ ...body, tenantId: user.tenantId, branchId: user.branchId, createdBy: user.id });
+  async createCircular(
+    @Body() body: CreateCircularDto,
+    @CurrentUser() user: any,
+  ) {
+    const data = await this.service.createCircular({
+      ...body,
+      tenantId: user.tenantId,
+      branchId: user.branchId,
+      createdBy: user.id,
+    });
     return { success: true, data };
   }
 
   @Get('circulars')
   @Roles(ROLES.SUPER_ADMIN, ROLES.PRINCIPAL, ROLES.ORGANIZATION_OWNER)
   @ApiOperation({ summary: 'List circulars' })
-  async getCirculars(@CurrentUser() user: any, @Query() query: NotificationQueryDto) {
+  async getCirculars(
+    @CurrentUser() user: any,
+    @Query() query: NotificationQueryDto,
+  ) {
     const data = await this.service.findCircularsByBranch(user.branchId, query);
     return { success: true, ...data };
   }

@@ -8,7 +8,11 @@ export interface ValidationResult {
 
 export interface EntityValidator {
   entityType: string;
-  validate(row: ParsedRow, tenantId: string, branchId?: string): Promise<ValidationResult>;
+  validate(
+    row: ParsedRow,
+    tenantId: string,
+    branchId?: string,
+  ): Promise<ValidationResult>;
   requiredFields(): string[];
   autoMapHeaders(headers: string[]): Record<string, string>;
 }
@@ -24,12 +28,16 @@ export function registerValidator(v: EntityValidator) {
 
 export function getValidator(entityType: string): EntityValidator {
   const v = validators.get(entityType);
-  if (!v) throw new Error(`No validator registered for entity type: ${entityType}`);
+  if (!v)
+    throw new Error(`No validator registered for entity type: ${entityType}`);
   return v;
 }
 
-export function listEntityTypes(): { entityType: string; requiredFields: string[] }[] {
-  return Array.from(validators.values()).map(v => ({
+export function listEntityTypes(): {
+  entityType: string;
+  requiredFields: string[];
+}[] {
+  return Array.from(validators.values()).map((v) => ({
     entityType: v.entityType,
     requiredFields: v.requiredFields(),
   }));

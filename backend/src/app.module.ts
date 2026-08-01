@@ -35,6 +35,7 @@ import { LessonPlansModule } from './modules/lesson-plans/lesson-plans.module';
 import { NotificationsModule } from './modules/notifications/notifications.module';
 import { IdCardsModule } from './modules/id-cards/id-cards.module';
 import { VisitorsModule } from './modules/visitors/visitors.module';
+import { UploadsModule } from './modules/uploads/uploads.module';
 import { SharedModule } from './shared/shared.module';
 import { TenantMiddleware } from './common/middleware/tenant.middleware';
 import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
@@ -54,7 +55,13 @@ import encryptionConfig from './config/encryption.config';
   imports: [
     ConfigModule.forRoot({
       isGlobal: true,
-      load: [appConfig, databaseConfig, jwtConfig, redisConfig, encryptionConfig],
+      load: [
+        appConfig,
+        databaseConfig,
+        jwtConfig,
+        redisConfig,
+        encryptionConfig,
+      ],
     }),
     ThrottlerModule.forRoot([{ ttl: 60000, limit: 100 }]),
     DatabaseModule,
@@ -90,6 +97,7 @@ import encryptionConfig from './config/encryption.config';
     NotificationsModule,
     IdCardsModule,
     VisitorsModule,
+    UploadsModule,
     SharedModule,
   ],
   providers: [

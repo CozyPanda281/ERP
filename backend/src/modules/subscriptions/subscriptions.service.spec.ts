@@ -1,5 +1,9 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { ConflictException, NotFoundException, BadRequestException } from '@nestjs/common';
+import {
+  ConflictException,
+  NotFoundException,
+  BadRequestException,
+} from '@nestjs/common';
 import { SubscriptionsService } from './subscriptions.service';
 import { DatabaseProvider } from '../../database/database.provider';
 import { MockDatabaseProvider } from '../../common/test/mocks';
@@ -52,9 +56,7 @@ describe('SubscriptionsService', () => {
     });
 
     it('should throw on duplicate plan code', async () => {
-      mockDb.setDrizzleResults(
-        [{ id: 'existing-plan' }],
-      );
+      mockDb.setDrizzleResults([{ id: 'existing-plan' }]);
 
       await expect(
         service.createPlan({
@@ -76,7 +78,15 @@ describe('SubscriptionsService', () => {
   describe('plan limits', () => {
     it('should return true when under branch limit', async () => {
       mockDb.setDrizzleResults(
-        [{ maxBranches: 5, maxUsers: 100, maxStudents: 1000, maxStaff: 50, storageLimitMb: 1024 }],
+        [
+          {
+            maxBranches: 5,
+            maxUsers: 100,
+            maxStudents: 1000,
+            maxStaff: 50,
+            storageLimitMb: 1024,
+          },
+        ],
         [{ count: 3 }],
       );
 
@@ -86,7 +96,15 @@ describe('SubscriptionsService', () => {
 
     it('should return false when at branch limit', async () => {
       mockDb.setDrizzleResults(
-        [{ maxBranches: 3, maxUsers: 100, maxStudents: 1000, maxStaff: 50, storageLimitMb: 1024 }],
+        [
+          {
+            maxBranches: 3,
+            maxUsers: 100,
+            maxStudents: 1000,
+            maxStaff: 50,
+            storageLimitMb: 1024,
+          },
+        ],
         [{ count: 3 }],
       );
 
@@ -95,9 +113,7 @@ describe('SubscriptionsService', () => {
     });
 
     it('should return false when no subscription found', async () => {
-      mockDb.setDrizzleResults(
-        [],
-      );
+      mockDb.setDrizzleResults([]);
 
       const result = await service.canCreateBranch('tenant-nonexistent');
       expect(result).toBe(false);
@@ -107,10 +123,36 @@ describe('SubscriptionsService', () => {
   describe('subscription lifecycle', () => {
     it('should assign subscription with trial', async () => {
       mockDb.setDrizzleResults(
-        [{ id: 'plan-1', name: 'Pro', code: 'pro', maxBranches: 1, maxUsers: 100, maxStudents: 1000, maxStaff: 50, storageLimitMb: 1024 }],
+        [
+          {
+            id: 'plan-1',
+            name: 'Pro',
+            code: 'pro',
+            maxBranches: 1,
+            maxUsers: 100,
+            maxStudents: 1000,
+            maxStaff: 50,
+            storageLimitMb: 1024,
+          },
+        ],
         [],
         [],
-        [{ id: 'sub-1', planId: 'plan-1', status: 'trial', billingCycle: 'monthly', planName: 'Pro', planCode: 'pro', maxBranches: 1, maxUsers: 100, maxStudents: 1000, maxStaff: 50, storageLimitMb: 1024, planFeatures: {} }],
+        [
+          {
+            id: 'sub-1',
+            planId: 'plan-1',
+            status: 'trial',
+            billingCycle: 'monthly',
+            planName: 'Pro',
+            planCode: 'pro',
+            maxBranches: 1,
+            maxUsers: 100,
+            maxStudents: 1000,
+            maxStaff: 50,
+            storageLimitMb: 1024,
+            planFeatures: {},
+          },
+        ],
       );
 
       const result = await service.assignSubscription({
@@ -123,18 +165,14 @@ describe('SubscriptionsService', () => {
     });
 
     it('should cancel subscription', async () => {
-      mockDb.setDrizzleResults(
-        [],
-      );
+      mockDb.setDrizzleResults([]);
 
       const result = await service.cancelSubscription('tenant-1');
       expect(result.message).toContain('cancelled');
     });
 
     it('should throw when changing to nonexistent plan', async () => {
-      mockDb.setDrizzleResults(
-        [],
-      );
+      mockDb.setDrizzleResults([]);
 
       await expect(
         service.changePlan('tenant-1', 'nonexistent-plan'),

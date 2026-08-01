@@ -1,5 +1,20 @@
-import { Controller, Get, Post, Put, Param, Body, Query, UseInterceptors, UploadedFile } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiBearerAuth, ApiConsumes } from '@nestjs/swagger';
+import {
+  Controller,
+  Get,
+  Post,
+  Put,
+  Param,
+  Body,
+  Query,
+  UseInterceptors,
+  UploadedFile,
+} from '@nestjs/common';
+import {
+  ApiTags,
+  ApiOperation,
+  ApiBearerAuth,
+  ApiConsumes,
+} from '@nestjs/swagger';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { ImportService } from './import.service';
 import { Roles } from '../../common/decorators/roles.decorator';
@@ -20,7 +35,10 @@ export class ImportController {
   @Roles(ROLES.PRINCIPAL, ROLES.ORGANIZATION_OWNER, ROLES.HR)
   @ApiOperation({ summary: 'List supported entity types for import' })
   getEntityTypes() {
-    return { success: true, data: this.importService.getSupportedEntityTypes() };
+    return {
+      success: true,
+      data: this.importService.getSupportedEntityTypes(),
+    };
   }
 
   @Post('upload')
@@ -36,7 +54,12 @@ export class ImportController {
   ) {
     if (!file) throw new Error('File is required');
     const data = await this.importService.upload(
-      user.tenantId, user.id, entityType, file.buffer, file.originalname, branchId,
+      user.tenantId,
+      user.id,
+      entityType,
+      file.buffer,
+      file.originalname,
+      branchId,
     );
     return { success: true, data };
   }
@@ -44,8 +67,17 @@ export class ImportController {
   @Get('batches')
   @Roles(ROLES.PRINCIPAL, ROLES.ORGANIZATION_OWNER, ROLES.HR)
   @ApiOperation({ summary: 'List import batches' })
-  async listBatches(@CurrentUser() user: any, @Query() query: ListBatchesQueryDto) {
-    return this.importService.listBatches(user.tenantId, query.entityType, query.status, query.page, query.limit);
+  async listBatches(
+    @CurrentUser() user: any,
+    @Query() query: ListBatchesQueryDto,
+  ) {
+    return this.importService.listBatches(
+      user.tenantId,
+      query.entityType,
+      query.status,
+      query.page,
+      query.limit,
+    );
   }
 
   @Get('batches/:id')
@@ -67,7 +99,11 @@ export class ImportController {
   @Post('batches/:id/approve')
   @Roles(ROLES.PRINCIPAL, ROLES.ORGANIZATION_OWNER)
   @ApiOperation({ summary: 'Approve import batch for deployment' })
-  async approve(@CurrentUser() user: any, @Param('id') id: string, @Body() dto: ApproveBatchDto) {
+  async approve(
+    @CurrentUser() user: any,
+    @Param('id') id: string,
+    @Body() dto: ApproveBatchDto,
+  ) {
     const data = await this.importService.approve(id, user.id, dto.notes);
     return { success: true, data };
   }
@@ -75,7 +111,11 @@ export class ImportController {
   @Post('batches/:id/reject')
   @Roles(ROLES.PRINCIPAL, ROLES.ORGANIZATION_OWNER)
   @ApiOperation({ summary: 'Reject import batch' })
-  async reject(@CurrentUser() user: any, @Param('id') id: string, @Body() dto: RejectBatchDto) {
+  async reject(
+    @CurrentUser() user: any,
+    @Param('id') id: string,
+    @Body() dto: RejectBatchDto,
+  ) {
     const data = await this.importService.reject(id, user.id, dto.reason);
     return { success: true, data };
   }

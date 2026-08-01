@@ -1,4 +1,13 @@
-import { Controller, Get, Post, Put, Delete, Param, Body, Query } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Put,
+  Delete,
+  Param,
+  Body,
+  Query,
+} from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { FeeService } from './fee.service';
 import { Roles } from '../../common/decorators/roles.decorator';
@@ -26,8 +35,15 @@ export class FeeController {
   @Post('fee-structures')
   @Roles(ROLES.PRINCIPAL, ROLES.ORGANIZATION_OWNER, ROLES.ACCOUNTANT)
   @ApiOperation({ summary: 'Create fee structure with items' })
-  async createStructure(@CurrentUser() user: any, @Body() dto: CreateFeeStructureDto) {
-    const data = await this.feeService.createStructure({ ...dto, tenantId: user.tenantId, branchId: user.branchId });
+  async createStructure(
+    @CurrentUser() user: any,
+    @Body() dto: CreateFeeStructureDto,
+  ) {
+    const data = await this.feeService.createStructure({
+      ...dto,
+      tenantId: user.tenantId,
+      branchId: user.branchId,
+    });
     return { success: true, data };
   }
 
@@ -35,7 +51,10 @@ export class FeeController {
   @Roles(ROLES.PRINCIPAL, ROLES.ACCOUNTANT)
   @ApiOperation({ summary: 'List fee structures' })
   async findStructures(@CurrentUser() user: any, @Query() query: FeeQueryDto) {
-    const data = await this.feeService.findStructuresByBranch(user.branchId, query);
+    const data = await this.feeService.findStructuresByBranch(
+      user.branchId,
+      query,
+    );
     return { success: true, ...data };
   }
 
@@ -50,7 +69,10 @@ export class FeeController {
   @Put('fee-structures/:id')
   @Roles(ROLES.PRINCIPAL, ROLES.ORGANIZATION_OWNER, ROLES.ACCOUNTANT)
   @ApiOperation({ summary: 'Update fee structure' })
-  async updateStructure(@Param('id') id: string, @Body() dto: UpdateFeeStructureDto) {
+  async updateStructure(
+    @Param('id') id: string,
+    @Body() dto: UpdateFeeStructureDto,
+  ) {
     const data = await this.feeService.updateStructure(id, dto);
     return { success: true, data };
   }
@@ -68,7 +90,10 @@ export class FeeController {
   @Post('fee-structures/:structureId/items')
   @Roles(ROLES.PRINCIPAL, ROLES.ACCOUNTANT)
   @ApiOperation({ summary: 'Add item to fee structure' })
-  async addItem(@Param('structureId') structureId: string, @Body() dto: AddFeeItemDto) {
+  async addItem(
+    @Param('structureId') structureId: string,
+    @Body() dto: AddFeeItemDto,
+  ) {
     const data = await this.feeService.addItem(structureId, dto);
     return { success: true, data };
   }
@@ -94,8 +119,15 @@ export class FeeController {
   @Post('fee-discounts')
   @Roles(ROLES.PRINCIPAL, ROLES.ACCOUNTANT)
   @ApiOperation({ summary: 'Create discount' })
-  async createDiscount(@CurrentUser() user: any, @Body() dto: CreateDiscountDto) {
-    const data = await this.feeService.createDiscount({ ...dto, tenantId: user.tenantId, branchId: user.branchId });
+  async createDiscount(
+    @CurrentUser() user: any,
+    @Body() dto: CreateDiscountDto,
+  ) {
+    const data = await this.feeService.createDiscount({
+      ...dto,
+      tenantId: user.tenantId,
+      branchId: user.branchId,
+    });
     return { success: true, data };
   }
 
@@ -110,7 +142,11 @@ export class FeeController {
   @Put('fee-discounts/:id')
   @Roles(ROLES.PRINCIPAL, ROLES.ACCOUNTANT)
   @ApiOperation({ summary: 'Update discount' })
-  async updateDiscount(@Param('id') id: string, @CurrentUser() user: any, @Body() dto: UpdateDiscountDto) {
+  async updateDiscount(
+    @Param('id') id: string,
+    @CurrentUser() user: any,
+    @Body() dto: UpdateDiscountDto,
+  ) {
     const data = await this.feeService.updateDiscount(id, user.branchId, dto);
     return { success: true, data };
   }
@@ -128,10 +164,15 @@ export class FeeController {
   @Post('fee-accounts/assign')
   @Roles(ROLES.PRINCIPAL, ROLES.ACCOUNTANT)
   @ApiOperation({ summary: 'Assign fee structure to students' })
-  async assignFeeStructure(@CurrentUser() user: any, @Body() dto: AssignFeeStructureDto) {
+  async assignFeeStructure(
+    @CurrentUser() user: any,
+    @Body() dto: AssignFeeStructureDto,
+  ) {
     const data = await this.feeService.assignFeeStructure({
-      tenantId: user.tenantId, branchId: user.branchId,
-      feeStructureId: dto.feeStructureId, academicYearId: dto.academicYearId,
+      tenantId: user.tenantId,
+      branchId: user.branchId,
+      feeStructureId: dto.feeStructureId,
+      academicYearId: dto.academicYearId,
       studentIds: dto.studentIds,
     });
     return { success: true, data };
@@ -141,15 +182,24 @@ export class FeeController {
   @Roles(ROLES.PRINCIPAL, ROLES.ACCOUNTANT)
   @ApiOperation({ summary: 'List fee accounts' })
   async findAccounts(@CurrentUser() user: any, @Query() query: FeeQueryDto) {
-    const data = await this.feeService.findAccountsByBranch(user.branchId, query);
+    const data = await this.feeService.findAccountsByBranch(
+      user.branchId,
+      query,
+    );
     return { success: true, ...data };
   }
 
   @Get('fee-accounts/student/:studentId')
   @Roles(ROLES.PRINCIPAL, ROLES.ACCOUNTANT, ROLES.STUDENT)
   @ApiOperation({ summary: 'Get fee account for a student' })
-  async findAccountByStudent(@Param('studentId') studentId: string, @CurrentUser() user: any) {
-    const data = await this.feeService.findAccountByStudent(studentId, user.branchId);
+  async findAccountByStudent(
+    @Param('studentId') studentId: string,
+    @CurrentUser() user: any,
+  ) {
+    const data = await this.feeService.findAccountByStudent(
+      studentId,
+      user.branchId,
+    );
     return { success: true, data };
   }
 
@@ -158,8 +208,15 @@ export class FeeController {
   @Post('fee-invoices/generate')
   @Roles(ROLES.PRINCIPAL, ROLES.ACCOUNTANT)
   @ApiOperation({ summary: 'Generate invoice for a student' })
-  async generateInvoice(@CurrentUser() user: any, @Body() dto: GenerateInvoiceDto) {
-    const data = await this.feeService.generateInvoice({ ...dto, tenantId: user.tenantId, branchId: user.branchId });
+  async generateInvoice(
+    @CurrentUser() user: any,
+    @Body() dto: GenerateInvoiceDto,
+  ) {
+    const data = await this.feeService.generateInvoice({
+      ...dto,
+      tenantId: user.tenantId,
+      branchId: user.branchId,
+    });
     return { success: true, data };
   }
 
@@ -167,15 +224,26 @@ export class FeeController {
   @Roles(ROLES.PRINCIPAL, ROLES.ACCOUNTANT)
   @ApiOperation({ summary: 'List invoices' })
   async findInvoices(@CurrentUser() user: any, @Query() query: FeeQueryDto) {
-    const data = await this.feeService.findInvoicesByBranch(user.branchId, query);
+    const data = await this.feeService.findInvoicesByBranch(
+      user.branchId,
+      query,
+    );
     return { success: true, ...data };
   }
 
   @Get('fee-invoices/student/:studentId')
   @Roles(ROLES.PRINCIPAL, ROLES.ACCOUNTANT, ROLES.STUDENT)
   @ApiOperation({ summary: 'Get invoices for a student' })
-  async findInvoicesByStudent(@Param('studentId') studentId: string, @CurrentUser() user: any, @Query() query: FeeQueryDto) {
-    const data = await this.feeService.findInvoicesByStudent(studentId, user.branchId, query);
+  async findInvoicesByStudent(
+    @Param('studentId') studentId: string,
+    @CurrentUser() user: any,
+    @Query() query: FeeQueryDto,
+  ) {
+    const data = await this.feeService.findInvoicesByStudent(
+      studentId,
+      user.branchId,
+      query,
+    );
     return { success: true, ...data };
   }
 
@@ -193,23 +261,42 @@ export class FeeController {
   @Roles(ROLES.PRINCIPAL, ROLES.ACCOUNTANT)
   @ApiOperation({ summary: 'Record a payment' })
   async recordPayment(@CurrentUser() user: any, @Body() dto: RecordPaymentDto) {
-    const data = await this.feeService.recordPayment({ ...dto, tenantId: user.tenantId, branchId: user.branchId, createdBy: user.id });
+    const data = await this.feeService.recordPayment({
+      ...dto,
+      tenantId: user.tenantId,
+      branchId: user.branchId,
+      createdBy: user.id,
+    });
     return { success: true, data };
   }
 
   @Get('fee-payments')
   @Roles(ROLES.PRINCIPAL, ROLES.ACCOUNTANT)
   @ApiOperation({ summary: 'List payments' })
-  async findPayments(@CurrentUser() user: any, @Query() query: PaymentQueryDto) {
-    const data = await this.feeService.findPaymentsByBranch(user.branchId, query);
+  async findPayments(
+    @CurrentUser() user: any,
+    @Query() query: PaymentQueryDto,
+  ) {
+    const data = await this.feeService.findPaymentsByBranch(
+      user.branchId,
+      query,
+    );
     return { success: true, ...data };
   }
 
   @Get('fee-payments/student/:studentId')
   @Roles(ROLES.PRINCIPAL, ROLES.ACCOUNTANT, ROLES.STUDENT)
   @ApiOperation({ summary: 'Get payments for a student' })
-  async findPaymentsByStudent(@Param('studentId') studentId: string, @CurrentUser() user: any, @Query() query: PaymentQueryDto) {
-    const data = await this.feeService.findPaymentsByStudent(studentId, user.branchId, query);
+  async findPaymentsByStudent(
+    @Param('studentId') studentId: string,
+    @CurrentUser() user: any,
+    @Query() query: PaymentQueryDto,
+  ) {
+    const data = await this.feeService.findPaymentsByStudent(
+      studentId,
+      user.branchId,
+      query,
+    );
     return { success: true, ...data };
   }
 
@@ -226,8 +313,14 @@ export class FeeController {
   @Get('fee-reports/collection')
   @Roles(ROLES.PRINCIPAL, ROLES.ACCOUNTANT)
   @ApiOperation({ summary: 'Get fee collection report' })
-  async getCollectionReport(@CurrentUser() user: any, @Query() query: FeeQueryDto) {
-    const data = await this.feeService.getCollectionReport(user.branchId, query);
+  async getCollectionReport(
+    @CurrentUser() user: any,
+    @Query() query: FeeQueryDto,
+  ) {
+    const data = await this.feeService.getCollectionReport(
+      user.branchId,
+      query,
+    );
     return { success: true, data };
   }
 }

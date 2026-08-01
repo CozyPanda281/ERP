@@ -47,9 +47,7 @@ describe('FeatureFlagsService', () => {
     });
 
     it('should return false when no result found', async () => {
-      mockDb.setDrizzleResults(
-        [],
-      );
+      mockDb.setDrizzleResults([]);
 
       const result = await service.isFeatureEnabled('tenant-1', 'nonexistent');
       expect(result).toBe(false);
@@ -90,10 +88,7 @@ describe('FeatureFlagsService', () => {
 
   describe('setTenantOverride', () => {
     it('should update tenant feature override', async () => {
-      mockDb.setDrizzleResults(
-        [{ id: 'flag-1' }],
-        [],
-      );
+      mockDb.setDrizzleResults([{ id: 'flag-1' }], []);
 
       await expect(
         service.setTenantOverride('tenant-1', 'hostel', true, true),
@@ -101,9 +96,7 @@ describe('FeatureFlagsService', () => {
     });
 
     it('should throw for unknown feature code', async () => {
-      mockDb.setDrizzleResults(
-        [],
-      );
+      mockDb.setDrizzleResults([]);
 
       await expect(
         service.setTenantOverride('tenant-1', 'unknown_feature', true),

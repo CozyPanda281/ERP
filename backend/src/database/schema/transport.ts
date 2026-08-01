@@ -1,4 +1,14 @@
-import { pgTable, uuid, varchar, text, integer, decimal, date, timestamp, boolean } from 'drizzle-orm/pg-core';
+import {
+  pgTable,
+  uuid,
+  varchar,
+  text,
+  integer,
+  decimal,
+  date,
+  timestamp,
+  boolean,
+} from 'drizzle-orm/pg-core';
 
 export const transportVehicles = pgTable('transport_vehicles', {
   id: uuid('id').primaryKey().defaultRandom(),
@@ -44,6 +54,46 @@ export const transportRouteStops = pgTable('transport_route_stops', {
   stopOrder: integer('stop_order').notNull(),
   pickupTime: varchar('pickup_time', { length: 10 }),
   dropTime: varchar('drop_time', { length: 10 }),
+  createdAt: timestamp('created_at').defaultNow(),
+  updatedAt: timestamp('updated_at').defaultNow(),
+});
+
+export const transportFuelLogs = pgTable('transport_fuel_logs', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  tenantId: uuid('tenant_id').notNull(),
+  branchId: uuid('branch_id').notNull(),
+  vehicleId: uuid('vehicle_id').notNull(),
+  fuelDate: date('fuel_date').notNull(),
+  fuelType: varchar('fuel_type', { length: 50 }),
+  quantityLiters: decimal('quantity_liters', {
+    precision: 8,
+    scale: 2,
+  }).notNull(),
+  costPerLiter: decimal('cost_per_liter', { precision: 8, scale: 2 }),
+  totalCost: decimal('total_cost', { precision: 10, scale: 2 }),
+  odometerReading: integer('odometer_reading'),
+  vendorName: varchar('vendor_name', { length: 255 }),
+  billNumber: varchar('bill_number', { length: 100 }),
+  billUrl: text('bill_url'),
+  remarks: text('remarks'),
+  createdAt: timestamp('created_at').defaultNow(),
+});
+
+export const transportMaintenance = pgTable('transport_maintenance', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  tenantId: uuid('tenant_id').notNull(),
+  branchId: uuid('branch_id').notNull(),
+  vehicleId: uuid('vehicle_id').notNull(),
+  maintenanceType: varchar('maintenance_type', { length: 100 }).notNull(),
+  description: text('description'),
+  serviceDate: date('service_date').notNull(),
+  cost: decimal('cost', { precision: 10, scale: 2 }),
+  serviceCenter: varchar('service_center', { length: 255 }),
+  billNumber: varchar('bill_number', { length: 100 }),
+  billUrl: text('bill_url'),
+  nextServiceDate: date('next_service_date'),
+  odometerReading: integer('odometer_reading'),
+  remarks: text('remarks'),
   createdAt: timestamp('created_at').defaultNow(),
   updatedAt: timestamp('updated_at').defaultNow(),
 });

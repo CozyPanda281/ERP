@@ -1,5 +1,12 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsString, IsNotEmpty, IsInt, Min, IsOptional, IsArray } from 'class-validator';
+import {
+  IsString,
+  IsNotEmpty,
+  IsInt,
+  Min,
+  IsOptional,
+  IsArray,
+} from 'class-validator';
 
 export class ProcessPayrollDto {
   @ApiProperty() @IsString() @IsNotEmpty() staffId: string;

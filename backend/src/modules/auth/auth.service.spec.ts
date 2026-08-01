@@ -4,7 +4,11 @@ import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import { AuthService } from './auth.service';
 import { DatabaseProvider } from '../../database/database.provider';
-import { MockDatabaseProvider, mockJwtService, mockConfigService } from '../../common/test/mocks';
+import {
+  MockDatabaseProvider,
+  mockJwtService,
+  mockConfigService,
+} from '../../common/test/mocks';
 
 describe('AuthService', () => {
   let service: AuthService;
@@ -35,19 +39,25 @@ describe('AuthService', () => {
       const bcrypt = require('bcrypt');
       const hash = await bcrypt.hash('password123', 4);
 
-      mockDb.setDrizzleResults([{
-        id: 'user-1',
-        email: 'admin@school.com',
-        passwordHash: hash,
-        firstName: 'Admin',
-        lastName: 'User',
-        isSuperadmin: false,
-        isActive: true,
-        status: 'active',
-        tenantId: 'tenant-1',
-      }]);
+      mockDb.setDrizzleResults([
+        {
+          id: 'user-1',
+          email: 'admin@school.com',
+          passwordHash: hash,
+          firstName: 'Admin',
+          lastName: 'User',
+          isSuperadmin: false,
+          isActive: true,
+          status: 'active',
+          tenantId: 'tenant-1',
+        },
+      ]);
 
-      const user = await service.validateUser('admin@school.com', 'password123', 'tenant-1');
+      const user = await service.validateUser(
+        'admin@school.com',
+        'password123',
+        'tenant-1',
+      );
       expect(user).toBeDefined();
       expect(user.email).toBe('admin@school.com');
     });
@@ -56,13 +66,15 @@ describe('AuthService', () => {
       const bcrypt = require('bcrypt');
       const hash = await bcrypt.hash('correct-password', 4);
 
-      mockDb.setDrizzleResults([{
-        id: 'user-1',
-        email: 'admin@school.com',
-        passwordHash: hash,
-        isActive: true,
-        status: 'active',
-      }]);
+      mockDb.setDrizzleResults([
+        {
+          id: 'user-1',
+          email: 'admin@school.com',
+          passwordHash: hash,
+          isActive: true,
+          status: 'active',
+        },
+      ]);
 
       await expect(
         service.validateUser('admin@school.com', 'wrong-password', 'tenant-1'),
@@ -70,13 +82,15 @@ describe('AuthService', () => {
     });
 
     it('should throw on inactive user', async () => {
-      mockDb.setDrizzleResults([{
-        id: 'user-1',
-        email: 'admin@school.com',
-        passwordHash: 'hash',
-        isActive: false,
-        status: 'inactive',
-      }]);
+      mockDb.setDrizzleResults([
+        {
+          id: 'user-1',
+          email: 'admin@school.com',
+          passwordHash: 'hash',
+          isActive: false,
+          status: 'inactive',
+        },
+      ]);
 
       await expect(
         service.validateUser('admin@school.com', 'password', 'tenant-1'),
@@ -121,8 +135,18 @@ describe('AuthService', () => {
     it('should return a new access token', async () => {
       mockDb.setDrizzleResults(
         [{ id: 'session-1', isActive: true }],
-        [{ id: 'user-1', email: 'admin@school.com', tenantId: 'tenant-1', isSuperadmin: false }],
+        [
+          {
+            id: 'user-1',
+            email: 'admin@school.com',
+            tenantId: 'tenant-1',
+            isSuperadmin: false,
+            isActive: true,
+            status: 'active',
+          },
+        ],
         [{ slug: 'principal' }],
+        [],
         [],
       );
 
@@ -133,9 +157,9 @@ describe('AuthService', () => {
     it('should throw on invalid refresh token', async () => {
       mockJwtService.verifyAsync.mockRejectedValueOnce(new Error('invalid'));
 
-      await expect(
-        service.refreshAccessToken('invalid-token'),
-      ).rejects.toThrow(UnauthorizedException);
+      await expect(service.refreshAccessToken('invalid-token')).rejects.toThrow(
+        UnauthorizedException,
+      );
     });
   });
 
@@ -143,7 +167,9 @@ describe('AuthService', () => {
     it('should invalidate session', async () => {
       mockDb.setDrizzleResults([[]]);
 
-      await expect(service.logout('session-1', 'user-1')).resolves.not.toThrow();
+      await expect(
+        service.logout('session-1', 'user-1'),
+      ).resolves.not.toThrow();
     });
   });
 });
