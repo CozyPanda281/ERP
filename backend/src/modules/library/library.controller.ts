@@ -65,7 +65,7 @@ export class LibraryController {
   @Roles(ROLES.SUPER_ADMIN, ROLES.PRINCIPAL, ROLES.ORGANIZATION_OWNER)
   @ApiOperation({ summary: 'Delete book' })
   async deleteBook(@Param('id') id: string) {
-    return this.service.deleteBook(id);
+    return { success: true, data: await this.service.deleteBook(id) };
   }
 
   @Post('members')
@@ -104,7 +104,7 @@ export class LibraryController {
   @Roles(ROLES.SUPER_ADMIN, ROLES.PRINCIPAL, ROLES.ORGANIZATION_OWNER)
   @ApiOperation({ summary: 'Return a book' })
   async returnBook(@Param('id') id: string) {
-    return this.service.returnBook(id);
+    return { success: true, data: await this.service.returnBook(id) };
   }
 
   @Get('issues')

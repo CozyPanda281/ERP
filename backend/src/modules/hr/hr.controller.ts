@@ -42,25 +42,25 @@ export class HrController {
   @Roles(ROLES.SUPER_ADMIN, ROLES.PRINCIPAL, ROLES.ORGANIZATION_OWNER)
   @ApiOperation({ summary: 'Create staff member' })
   async createStaff(@Body() body: CreateStaffDto, @CurrentUser() user: any) {
-    return this.service.createStaff({
+    return { success: true, data: await this.service.createStaff({
       ...body,
       tenantId: user.tenantId,
       branchId: user.branchId,
-    });
+    }) };
   }
 
   @Get('staff')
   @Roles(ROLES.SUPER_ADMIN, ROLES.PRINCIPAL, ROLES.ORGANIZATION_OWNER)
   @ApiOperation({ summary: 'List staff by branch' })
   async getStaff(@CurrentUser() user: any, @Query() query: StaffQueryDto) {
-    return this.service.findStaffByBranch(user.branchId, query);
+    return { success: true, data: await this.service.findStaffByBranch(user.branchId, query) };
   }
 
   @Get('staff/:id')
   @Roles(ROLES.SUPER_ADMIN, ROLES.PRINCIPAL, ROLES.TEACHER)
   @ApiOperation({ summary: 'Get staff by ID' })
   async getStaffById(@Param('id') id: string, @CurrentUser() user: any) {
-    return this.service.findStaffById(id, user.branchId);
+    return { success: true, data: await this.service.findStaffById(id, user.branchId) };
   }
 
   @Put('staff/:id')
@@ -71,14 +71,14 @@ export class HrController {
     @Body() body: UpdateStaffDto,
     @CurrentUser() user: any,
   ) {
-    return this.service.updateStaff(id, user.branchId, body);
+    return { success: true, data: await this.service.updateStaff(id, user.branchId, body) };
   }
 
   @Delete('staff/:id')
   @Roles(ROLES.SUPER_ADMIN, ROLES.PRINCIPAL, ROLES.ORGANIZATION_OWNER)
   @ApiOperation({ summary: 'Soft delete staff member' })
   async deleteStaff(@Param('id') id: string, @CurrentUser() user: any) {
-    return this.service.deleteStaff(id, user.branchId);
+    return { success: true, data: await this.service.deleteStaff(id, user.branchId) };
   }
 
   @Post('staff/:staffId/documents')
@@ -89,7 +89,7 @@ export class HrController {
     @Body() body: CreateStaffDocumentDto,
     @CurrentUser() user: any,
   ) {
-    return this.service.addStaffDocument(staffId, user.branchId, body);
+    return { success: true, data: await this.service.addStaffDocument(staffId, user.branchId, body) };
   }
 
   @Get('staff/:staffId/documents')
@@ -99,7 +99,7 @@ export class HrController {
     @Param('staffId') staffId: string,
     @CurrentUser() user: any,
   ) {
-    return this.service.findStaffDocuments(staffId, user.branchId);
+    return { success: true, data: await this.service.findStaffDocuments(staffId, user.branchId) };
   }
 
   @Delete('staff/:staffId/documents/:id')
@@ -110,7 +110,7 @@ export class HrController {
     @Param('id') id: string,
     @CurrentUser() user: any,
   ) {
-    return this.service.deleteStaffDocument(id, staffId, user.branchId);
+    return { success: true, data: await this.service.deleteStaffDocument(id, staffId, user.branchId) };
   }
 
   @Post('leave-types')
@@ -120,14 +120,14 @@ export class HrController {
     @Body() body: CreateLeaveTypeDto,
     @CurrentUser() user: any,
   ) {
-    return this.service.createLeaveType({ ...body, tenantId: user.tenantId });
+    return { success: true, data: await this.service.createLeaveType({ ...body, tenantId: user.tenantId }) };
   }
 
   @Get('leave-types')
   @Roles(ROLES.SUPER_ADMIN, ROLES.PRINCIPAL)
   @ApiOperation({ summary: 'List leave types' })
   async getLeaveTypes(@CurrentUser() user: any) {
-    return this.service.findLeaveTypesByTenant(user.tenantId);
+    return { success: true, data: await this.service.findLeaveTypesByTenant(user.tenantId) };
   }
 
   @Put('leave-types/:id')
@@ -138,26 +138,26 @@ export class HrController {
     @Body() body: UpdateLeaveTypeDto,
     @CurrentUser() user: any,
   ) {
-    return this.service.updateLeaveType(id, user.tenantId, body);
+    return { success: true, data: await this.service.updateLeaveType(id, user.tenantId, body) };
   }
 
   @Post('leave/apply')
   @Roles(ROLES.SUPER_ADMIN, ROLES.PRINCIPAL, ROLES.TEACHER)
   @ApiOperation({ summary: 'Apply for leave' })
   async applyLeave(@Body() body: ApplyLeaveDto, @CurrentUser() user: any) {
-    return this.service.applyLeave({
+    return { success: true, data: await this.service.applyLeave({
       ...body,
       tenantId: user.tenantId,
       branchId: user.branchId,
       staffId: user.staffId || user.id,
-    });
+    }) };
   }
 
   @Get('leave/mine')
   @Roles(ROLES.SUPER_ADMIN, ROLES.PRINCIPAL, ROLES.TEACHER)
   @ApiOperation({ summary: 'My leave requests' })
   async getMyLeaves(@CurrentUser() user: any, @Query() query: LeaveQueryDto) {
-    return this.service.findMyLeaves(user.staffId || user.id, query);
+    return { success: true, data: await this.service.findMyLeaves(user.staffId || user.id, query) };
   }
 
   @Get('leave')
@@ -167,7 +167,7 @@ export class HrController {
     @CurrentUser() user: any,
     @Query() query: LeaveQueryDto,
   ) {
-    return this.service.findLeaveRequestsByBranch(user.branchId, query);
+    return { success: true, data: await this.service.findLeaveRequestsByBranch(user.branchId, query) };
   }
 
   @Put('leave/:id/review')
@@ -178,13 +178,13 @@ export class HrController {
     @Body() body: ReviewLeaveDto,
     @CurrentUser() user: any,
   ) {
-    return this.service.reviewLeave(
+    return { success: true, data: await this.service.reviewLeave(
       id,
       user.branchId,
       body.action,
       user.id,
       body.rejectReason,
-    );
+    ) };
   }
 
   @Post('salary-components')
@@ -194,18 +194,18 @@ export class HrController {
     @Body() body: CreateSalaryComponentDto,
     @CurrentUser() user: any,
   ) {
-    return this.service.createSalaryComponent({
+    return { success: true, data: await this.service.createSalaryComponent({
       ...body,
       tenantId: user.tenantId,
       branchId: user.branchId,
-    });
+    }) };
   }
 
   @Get('salary-components')
   @Roles(ROLES.SUPER_ADMIN, ROLES.PRINCIPAL)
   @ApiOperation({ summary: 'List salary components' })
   async getSalaryComponents(@CurrentUser() user: any) {
-    return this.service.findSalaryComponents(user.branchId);
+    return { success: true, data: await this.service.findSalaryComponents(user.branchId) };
   }
 
   @Put('salary-components/:id')
@@ -216,7 +216,7 @@ export class HrController {
     @Body() body: UpdateSalaryComponentDto,
     @CurrentUser() user: any,
   ) {
-    return this.service.updateSalaryComponent(id, user.branchId, body);
+    return { success: true, data: await this.service.updateSalaryComponent(id, user.branchId, body) };
   }
 
   @Post('payroll/process')
@@ -226,19 +226,19 @@ export class HrController {
     @Body() body: ProcessPayrollDto,
     @CurrentUser() user: any,
   ) {
-    return this.service.processPayroll({
+    return { success: true, data: await this.service.processPayroll({
       ...body,
       tenantId: user.tenantId,
       branchId: user.branchId,
       processedBy: user.id,
-    });
+    }) };
   }
 
   @Get('payroll')
   @Roles(ROLES.SUPER_ADMIN, ROLES.PRINCIPAL, ROLES.ORGANIZATION_OWNER)
   @ApiOperation({ summary: 'List payroll records' })
   async getPayrolls(@CurrentUser() user: any, @Query() query: PayrollQueryDto) {
-    return this.service.findPayrollsByBranch(user.branchId, query);
+    return { success: true, data: await this.service.findPayrollsByBranch(user.branchId, query) };
   }
 
   @Get('payroll/staff/:staffId')
@@ -248,6 +248,6 @@ export class HrController {
     @Param('staffId') staffId: string,
     @CurrentUser() user: any,
   ) {
-    return this.service.findPayrollsByStaff(staffId, user.branchId);
+    return { success: true, data: await this.service.findPayrollsByStaff(staffId, user.branchId) };
   }
 }

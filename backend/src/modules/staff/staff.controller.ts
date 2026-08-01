@@ -64,7 +64,7 @@ export class StaffController {
   @Roles(ROLES.SUPER_ADMIN, ROLES.PRINCIPAL, ROLES.ORGANIZATION_OWNER)
   @ApiOperation({ summary: 'Delete staff' })
   async delete(@Param('id') id: string) {
-    return this.service.delete(id);
+    return { success: true, data: await this.service.delete(id) };
   }
 
   @Post(':staffId/documents')

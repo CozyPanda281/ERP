@@ -66,7 +66,7 @@ export class HostelController {
   @Roles(ROLES.SUPER_ADMIN, ROLES.PRINCIPAL, ROLES.ORGANIZATION_OWNER)
   @ApiOperation({ summary: 'Delete hostel' })
   async deleteHostel(@Param('id') id: string) {
-    return this.service.deleteHostel(id);
+    return { success: true, data: await this.service.deleteHostel(id) };
   }
 
   @Post(':hostelId/rooms')
@@ -111,7 +111,7 @@ export class HostelController {
   @Roles(ROLES.SUPER_ADMIN, ROLES.PRINCIPAL, ROLES.ORGANIZATION_OWNER)
   @ApiOperation({ summary: 'Delete room' })
   async deleteRoom(@Param('id') id: string) {
-    return this.service.deleteRoom(id);
+    return { success: true, data: await this.service.deleteRoom(id) };
   }
 
   @Post('allocations')
@@ -144,6 +144,6 @@ export class HostelController {
   @Roles(ROLES.SUPER_ADMIN, ROLES.PRINCIPAL, ROLES.ORGANIZATION_OWNER)
   @ApiOperation({ summary: 'Vacate bed' })
   async vacateBed(@Param('id') id: string) {
-    return this.service.vacateBed(id);
+    return { success: true, data: await this.service.vacateBed(id) };
   }
 }

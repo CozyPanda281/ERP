@@ -63,6 +63,6 @@ export class LessonPlansController {
   @Roles(ROLES.SUPER_ADMIN, ROLES.PRINCIPAL, ROLES.ORGANIZATION_OWNER)
   @ApiOperation({ summary: 'Delete lesson plan' })
   async delete(@Param('id') id: string) {
-    return this.service.delete(id);
+    return { success: true, data: await this.service.delete(id) };
   }
 }

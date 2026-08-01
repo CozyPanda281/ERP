@@ -38,14 +38,14 @@ export class CommunicationController {
     @Body() body: CreateTemplateDto,
     @CurrentUser() user: any,
   ) {
-    return this.service.createTemplate({ ...body, tenantId: user.tenantId });
+    return { success: true, data: await this.service.createTemplate({ ...body, tenantId: user.tenantId }) };
   }
 
   @Get('templates')
   @Roles(ROLES.SUPER_ADMIN, ROLES.PRINCIPAL, ROLES.ORGANIZATION_OWNER)
   @ApiOperation({ summary: 'List notification templates' })
   async findTemplates(@CurrentUser() user: any) {
-    return this.service.findTemplatesByTenant(user.tenantId);
+    return { success: true, data: await this.service.findTemplatesByTenant(user.tenantId) };
   }
 
   @Put('templates/:id')
@@ -56,14 +56,14 @@ export class CommunicationController {
     @Body() body: UpdateTemplateDto,
     @CurrentUser() user: any,
   ) {
-    return this.service.updateTemplate(id, user.tenantId, body);
+    return { success: true, data: await this.service.updateTemplate(id, user.tenantId, body) };
   }
 
   @Delete('templates/:id')
   @Roles(ROLES.SUPER_ADMIN, ROLES.PRINCIPAL, ROLES.ORGANIZATION_OWNER)
   @ApiOperation({ summary: 'Delete notification template' })
   async deleteTemplate(@Param('id') id: string, @CurrentUser() user: any) {
-    return this.service.deleteTemplate(id, user.tenantId);
+    return { success: true, data: await this.service.deleteTemplate(id, user.tenantId) };
   }
 
   @Post('notifications')
@@ -73,12 +73,12 @@ export class CommunicationController {
     @Body() body: CreateNotificationDto,
     @CurrentUser() user: any,
   ) {
-    return this.service.createNotification({
+    return { success: true, data: await this.service.createNotification({
       ...body,
       tenantId: user.tenantId,
       branchId: user.branchId,
       senderId: user.id,
-    });
+    }) };
   }
 
   @Get('notifications/mine')
@@ -94,7 +94,7 @@ export class CommunicationController {
     @CurrentUser() user: any,
     @Query() query: NotificationQueryDto,
   ) {
-    return this.service.findMyNotifications(user.id, user.branchId, query);
+    return { success: true, data: await this.service.findMyNotifications(user.id, user.branchId, query) };
   }
 
   @Put('notifications/:id/read')
@@ -107,7 +107,7 @@ export class CommunicationController {
   )
   @ApiOperation({ summary: 'Mark notification as read' })
   async markAsRead(@Param('id') id: string, @CurrentUser() user: any) {
-    return this.service.markAsRead(id, user.id);
+    return { success: true, data: await this.service.markAsRead(id, user.id) };
   }
 
   @Put('notifications/read-all')
@@ -120,7 +120,7 @@ export class CommunicationController {
   )
   @ApiOperation({ summary: 'Mark all notifications as read' })
   async markAllAsRead(@CurrentUser() user: any) {
-    return this.service.markAllAsRead(user.id, user.branchId);
+    return { success: true, data: await this.service.markAllAsRead(user.id, user.branchId) };
   }
 
   @Post('announcements')
@@ -130,12 +130,12 @@ export class CommunicationController {
     @Body() body: CreateAnnouncementDto,
     @CurrentUser() user: any,
   ) {
-    return this.service.createAnnouncement({
+    return { success: true, data: await this.service.createAnnouncement({
       ...body,
       tenantId: user.tenantId,
       branchId: user.branchId,
       createdBy: user.id,
-    });
+    }) };
   }
 
   @Get('announcements')
@@ -151,7 +151,7 @@ export class CommunicationController {
     @CurrentUser() user: any,
     @Query() query: AnnouncementQueryDto,
   ) {
-    return this.service.findAnnouncementsByBranch(user.branchId, query);
+    return { success: true, data: await this.service.findAnnouncementsByBranch(user.branchId, query) };
   }
 
   @Put('announcements/:id')
@@ -162,13 +162,13 @@ export class CommunicationController {
     @Body() body: UpdateAnnouncementDto,
     @CurrentUser() user: any,
   ) {
-    return this.service.updateAnnouncement(id, user.branchId, body);
+    return { success: true, data: await this.service.updateAnnouncement(id, user.branchId, body) };
   }
 
   @Delete('announcements/:id')
   @Roles(ROLES.SUPER_ADMIN, ROLES.PRINCIPAL, ROLES.ORGANIZATION_OWNER)
   @ApiOperation({ summary: 'Delete announcement' })
   async deleteAnnouncement(@Param('id') id: string, @CurrentUser() user: any) {
-    return this.service.deleteAnnouncement(id, user.branchId);
+    return { success: true, data: await this.service.deleteAnnouncement(id, user.branchId) };
   }
 }

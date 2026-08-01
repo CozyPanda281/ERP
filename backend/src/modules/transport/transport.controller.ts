@@ -72,7 +72,7 @@ export class TransportController {
   @Roles(ROLES.SUPER_ADMIN, ROLES.PRINCIPAL, ROLES.ORGANIZATION_OWNER)
   @ApiOperation({ summary: 'Delete vehicle' })
   async deleteVehicle(@Param('id') id: string) {
-    return this.service.deleteVehicle(id);
+    return { success: true, data: await this.service.deleteVehicle(id) };
   }
 
   @Post('routes')
@@ -115,7 +115,7 @@ export class TransportController {
   @Roles(ROLES.SUPER_ADMIN, ROLES.PRINCIPAL, ROLES.ORGANIZATION_OWNER)
   @ApiOperation({ summary: 'Delete route' })
   async deleteRoute(@Param('id') id: string) {
-    return this.service.deleteRoute(id);
+    return { success: true, data: await this.service.deleteRoute(id) };
   }
 
   @Post('assignments')
@@ -151,6 +151,6 @@ export class TransportController {
   @Roles(ROLES.SUPER_ADMIN, ROLES.PRINCIPAL, ROLES.ORGANIZATION_OWNER)
   @ApiOperation({ summary: 'Unassign student' })
   async unassignStudent(@Param('id') id: string) {
-    return this.service.unassignStudent(id);
+    return { success: true, data: await this.service.unassignStudent(id) };
   }
 }

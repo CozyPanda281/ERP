@@ -39,11 +39,11 @@ export class InventoryController {
     @Body() body: CreateCategoryDto,
     @CurrentUser() user: any,
   ) {
-    return this.service.createCategory({
+    return { success: true, data: await this.service.createCategory({
       ...body,
       tenantId: user.tenantId,
       branchId: user.branchId,
-    });
+    }) };
   }
 
   @Get('categories')
@@ -55,7 +55,7 @@ export class InventoryController {
   )
   @ApiOperation({ summary: 'List categories by branch' })
   async getCategories(@CurrentUser() user: any) {
-    return this.service.findCategoriesByBranch(user.branchId);
+    return { success: true, data: await this.service.findCategoriesByBranch(user.branchId) };
   }
 
   @Get('categories/:id')
@@ -67,7 +67,7 @@ export class InventoryController {
   )
   @ApiOperation({ summary: 'Get category by ID' })
   async getCategoryById(@Param('id') id: string, @CurrentUser() user: any) {
-    return this.service.findCategoryById(id, user.branchId);
+    return { success: true, data: await this.service.findCategoryById(id, user.branchId) };
   }
 
   @Put('categories/:id')
@@ -78,14 +78,14 @@ export class InventoryController {
     @Body() body: UpdateCategoryDto,
     @CurrentUser() user: any,
   ) {
-    return this.service.updateCategory(id, user.branchId, body);
+    return { success: true, data: await this.service.updateCategory(id, user.branchId, body) };
   }
 
   @Delete('categories/:id')
   @Roles(ROLES.SUPER_ADMIN, ROLES.PRINCIPAL, ROLES.ORGANIZATION_OWNER)
   @ApiOperation({ summary: 'Delete category' })
   async deleteCategory(@Param('id') id: string, @CurrentUser() user: any) {
-    return this.service.deleteCategory(id, user.branchId);
+    return { success: true, data: await this.service.deleteCategory(id, user.branchId) };
   }
 
   // ─── Items ───────────────────────────────────────────────────────────────
@@ -94,11 +94,11 @@ export class InventoryController {
   @Roles(ROLES.SUPER_ADMIN, ROLES.PRINCIPAL, ROLES.ORGANIZATION_OWNER)
   @ApiOperation({ summary: 'Create inventory item' })
   async createItem(@Body() body: CreateItemDto, @CurrentUser() user: any) {
-    return this.service.createItem({
+    return { success: true, data: await this.service.createItem({
       ...body,
       tenantId: user.tenantId,
       branchId: user.branchId,
-    });
+    }) };
   }
 
   @Get('items')
@@ -110,7 +110,7 @@ export class InventoryController {
   )
   @ApiOperation({ summary: 'List items by branch' })
   async getItems(@CurrentUser() user: any, @Query() query: InventoryQueryDto) {
-    return this.service.findItemsByBranch(user.branchId, query);
+    return { success: true, data: await this.service.findItemsByBranch(user.branchId, query) };
   }
 
   @Get('items/low-stock')
@@ -120,7 +120,7 @@ export class InventoryController {
     @CurrentUser() user: any,
     @Query() query: InventoryQueryDto,
   ) {
-    return this.service.findLowStockItems(user.branchId, query);
+    return { success: true, data: await this.service.findLowStockItems(user.branchId, query) };
   }
 
   @Get('items/:id')
@@ -132,7 +132,7 @@ export class InventoryController {
   )
   @ApiOperation({ summary: 'Get item by ID' })
   async getItemById(@Param('id') id: string, @CurrentUser() user: any) {
-    return this.service.findItemById(id, user.branchId);
+    return { success: true, data: await this.service.findItemById(id, user.branchId) };
   }
 
   @Put('items/:id')
@@ -143,14 +143,14 @@ export class InventoryController {
     @Body() body: UpdateItemDto,
     @CurrentUser() user: any,
   ) {
-    return this.service.updateItem(id, user.branchId, body);
+    return { success: true, data: await this.service.updateItem(id, user.branchId, body) };
   }
 
   @Delete('items/:id')
   @Roles(ROLES.SUPER_ADMIN, ROLES.PRINCIPAL, ROLES.ORGANIZATION_OWNER)
   @ApiOperation({ summary: 'Delete item' })
   async deleteItem(@Param('id') id: string, @CurrentUser() user: any) {
-    return this.service.deleteItem(id, user.branchId);
+    return { success: true, data: await this.service.deleteItem(id, user.branchId) };
   }
 
   // ─── Suppliers ───────────────────────────────────────────────────────────
@@ -162,11 +162,11 @@ export class InventoryController {
     @Body() body: CreateSupplierDto,
     @CurrentUser() user: any,
   ) {
-    return this.service.createSupplier({
+    return { success: true, data: await this.service.createSupplier({
       ...body,
       tenantId: user.tenantId,
       branchId: user.branchId,
-    });
+    }) };
   }
 
   @Get('suppliers')
@@ -178,7 +178,7 @@ export class InventoryController {
   )
   @ApiOperation({ summary: 'List suppliers' })
   async getSuppliers(@CurrentUser() user: any) {
-    return this.service.findSuppliersByBranch(user.branchId);
+    return { success: true, data: await this.service.findSuppliersByBranch(user.branchId) };
   }
 
   @Get('suppliers/:id')
@@ -190,7 +190,7 @@ export class InventoryController {
   )
   @ApiOperation({ summary: 'Get supplier by ID' })
   async getSupplierById(@Param('id') id: string, @CurrentUser() user: any) {
-    return this.service.findSupplierById(id, user.branchId);
+    return { success: true, data: await this.service.findSupplierById(id, user.branchId) };
   }
 
   @Put('suppliers/:id')
@@ -201,14 +201,14 @@ export class InventoryController {
     @Body() body: CreateSupplierDto,
     @CurrentUser() user: any,
   ) {
-    return this.service.updateSupplier(id, user.branchId, body);
+    return { success: true, data: await this.service.updateSupplier(id, user.branchId, body) };
   }
 
   @Delete('suppliers/:id')
   @Roles(ROLES.SUPER_ADMIN, ROLES.PRINCIPAL, ROLES.ORGANIZATION_OWNER)
   @ApiOperation({ summary: 'Delete supplier' })
   async deleteSupplier(@Param('id') id: string, @CurrentUser() user: any) {
-    return this.service.deleteSupplier(id, user.branchId);
+    return { success: true, data: await this.service.deleteSupplier(id, user.branchId) };
   }
 
   // ─── Purchase Orders ─────────────────────────────────────────────────────
@@ -220,12 +220,12 @@ export class InventoryController {
     @Body() body: CreatePurchaseOrderDto,
     @CurrentUser() user: any,
   ) {
-    return this.service.createPurchaseOrder({
+    return { success: true, data: await this.service.createPurchaseOrder({
       ...body,
       tenantId: user.tenantId,
       branchId: user.branchId,
       createdBy: user.id,
-    });
+    }) };
   }
 
   @Get('purchase-orders')
@@ -240,7 +240,7 @@ export class InventoryController {
     @CurrentUser() user: any,
     @Query() query: InventoryQueryDto,
   ) {
-    return this.service.findPurchaseOrdersByBranch(user.branchId, query);
+    return { success: true, data: await this.service.findPurchaseOrdersByBranch(user.branchId, query) };
   }
 
   @Get('purchase-orders/:id')
@@ -255,7 +255,7 @@ export class InventoryController {
     @Param('id') id: string,
     @CurrentUser() user: any,
   ) {
-    return this.service.findPurchaseOrderById(id, user.branchId);
+    return { success: true, data: await this.service.findPurchaseOrderById(id, user.branchId) };
   }
 
   @Put('purchase-orders/:id/status')
@@ -266,7 +266,7 @@ export class InventoryController {
     @Body('status') status: string,
     @CurrentUser() user: any,
   ) {
-    return this.service.updatePurchaseOrderStatus(id, user.branchId, status);
+    return { success: true, data: await this.service.updatePurchaseOrderStatus(id, user.branchId, status) };
   }
 
   @Post('purchase-orders/:id/items')
@@ -277,7 +277,7 @@ export class InventoryController {
     @Body() body: AddPoItemDto,
     @CurrentUser() user: any,
   ) {
-    return this.service.addPoItem(id, user.branchId, body);
+    return { success: true, data: await this.service.addPoItem(id, user.branchId, body) };
   }
 
   // ─── Goods Receipts ──────────────────────────────────────────────────────
@@ -292,12 +292,12 @@ export class InventoryController {
     },
     @CurrentUser() user: any,
   ) {
-    return this.service.createGoodsReceipt({
+    return { success: true, data: await this.service.createGoodsReceipt({
       ...body,
       tenantId: user.tenantId,
       branchId: user.branchId,
       createdBy: user.id,
-    });
+    }) };
   }
 
   @Get('goods-receipts')
@@ -312,7 +312,7 @@ export class InventoryController {
     @CurrentUser() user: any,
     @Query() query: InventoryQueryDto,
   ) {
-    return this.service.findGoodsReceiptsByBranch(user.branchId, query);
+    return { success: true, data: await this.service.findGoodsReceiptsByBranch(user.branchId, query) };
   }
 
   @Get('goods-receipts/:id')
@@ -324,7 +324,7 @@ export class InventoryController {
   )
   @ApiOperation({ summary: 'Get goods receipt by ID' })
   async getGoodsReceiptById(@Param('id') id: string, @CurrentUser() user: any) {
-    return this.service.findGoodsReceiptById(id, user.branchId);
+    return { success: true, data: await this.service.findGoodsReceiptById(id, user.branchId) };
   }
 
   // ─── Stock Adjustments ───────────────────────────────────────────────────
@@ -336,12 +336,12 @@ export class InventoryController {
     @Body() body: StockAdjustmentDto,
     @CurrentUser() user: any,
   ) {
-    return this.service.createStockAdjustment({
+    return { success: true, data: await this.service.createStockAdjustment({
       ...body,
       tenantId: user.tenantId,
       branchId: user.branchId,
       adjustedBy: user.id,
-    });
+    }) };
   }
 
   @Get('stock-adjustments')
@@ -356,6 +356,6 @@ export class InventoryController {
     @CurrentUser() user: any,
     @Query() query: InventoryQueryDto,
   ) {
-    return this.service.findStockAdjustmentsByBranch(user.branchId, query);
+    return { success: true, data: await this.service.findStockAdjustmentsByBranch(user.branchId, query) };
   }
 }
