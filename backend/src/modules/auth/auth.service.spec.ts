@@ -4,6 +4,7 @@ import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import { AuthService } from './auth.service';
 import { DatabaseProvider } from '../../database/database.provider';
+import { EmailService } from '../../shared/email/email.service';
 import {
   MockDatabaseProvider,
   mockJwtService,
@@ -14,6 +15,10 @@ describe('AuthService', () => {
   let service: AuthService;
   let mockDb: MockDatabaseProvider;
 
+  const mockEmailService = {
+    send: jest.fn().mockResolvedValue(true),
+  };
+
   beforeEach(async () => {
     mockDb = new MockDatabaseProvider();
 
@@ -23,6 +28,7 @@ describe('AuthService', () => {
         { provide: DatabaseProvider, useValue: mockDb },
         { provide: JwtService, useValue: mockJwtService },
         { provide: ConfigService, useValue: mockConfigService },
+        { provide: EmailService, useValue: mockEmailService },
       ],
     }).compile();
 

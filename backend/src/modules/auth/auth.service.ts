@@ -2,6 +2,7 @@ import {
   Injectable,
   UnauthorizedException,
   ConflictException,
+  BadRequestException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
@@ -10,6 +11,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { DatabaseProvider } from '../../database/database.provider';
 import { eq, and, isNull, or, sql, inArray } from 'drizzle-orm';
 import * as schema from '../../database/schema';
+import { EmailService } from '../../shared/email/email.service';
 
 @Injectable()
 export class AuthService {
@@ -17,6 +19,7 @@ export class AuthService {
     private readonly db: DatabaseProvider,
     private readonly jwtService: JwtService,
     private readonly configService: ConfigService,
+    private readonly emailService: EmailService,
   ) {}
 
   private expiresInToSeconds(value: string | undefined): number {
@@ -283,6 +286,117 @@ export class AuthService {
           eq(schema.userSessions.userId, userId),
         ),
       );
+  }
+
+  // ─── Password Reset ────────────────────────────────────────────────────
+
+  async requestPasswordReset(email: string, tenantId?: string) {
+    const conditions = [
+      eq(schema.users.email, email.trim().toLowerCase()),
+      isNull(schema.users.deletedAt),
+    ];
+
+    if (tenantId) {
+      conditions.push(eq(schema.users.tenantId, tenantId));
+    } else {
+      conditions.push(eq(schema.users.isSuperadmin, true));
+    }
+
+    const [user] = await this.db.db
+      .select({ id: schema.users.id, email: schema.users.email })
+      .from(schema.users)
+      .where(and(...conditions))
+      .limit(1);
+
+    const genericMessage =
+      'If an account exists for that email, a password reset link has been sent.';
+
+    if (!user) {
+      return { message: genericMessage };
+    }
+
+    const token = await this.jwtService.signAsync(
+      { sub: user.id, type: 'password-reset' },
+      {
+        secret: this.configService.get('jwt.refreshSecret'),
+        expiresIn: '15m',
+        issuer: this.configService.get('jwt.issuer'),
+      },
+    );
+
+    const frontendUrl = this.configService.get<string>(
+      'FRONTEND_URL',
+      'http://localhost:5173',
+    );
+    const resetLink = `${frontendUrl}/reset-password?token=${encodeURIComponent(token)}`;
+
+    const smtpConfigured = !!this.configService.get<string>('SMTP_HOST');
+    if (smtpConfigured) {
+      await this.emailService.send({
+        to: user.email ?? email,
+        subject: 'Reset your School ERP password',
+        html: `
+          <p>Hello,</p>
+          <p>We received a request to reset your School ERP password.</p>
+          <p>
+            <a href="${resetLink}">Reset my password</a>
+          </p>
+          <p>This link expires in 15 minutes. If you did not request it, you can safely ignore this email.</p>
+        `,
+      });
+      return { message: genericMessage };
+    }
+
+    // No SMTP configured (dev/demo): surface the link so flows can still be
+    // exercised. Never done in production where SMTP_HOST is set.
+    return {
+      message: genericMessage,
+      devResetLink: resetLink,
+    };
+  }
+
+  async resetPassword(token: string, newPassword: string) {
+    let payload: any;
+    try {
+      payload = await this.jwtService.verifyAsync(token, {
+        secret: this.configService.get('jwt.refreshSecret'),
+      });
+    } catch {
+      throw new BadRequestException('Reset link is invalid or has expired');
+    }
+
+    if (payload.type !== 'password-reset' || !payload.sub) {
+      throw new BadRequestException('Reset link is invalid or has expired');
+    }
+
+    const [user] = await this.db.db
+      .select({ id: schema.users.id })
+      .from(schema.users)
+      .where(
+        and(eq(schema.users.id, payload.sub), isNull(schema.users.deletedAt)),
+      )
+      .limit(1);
+
+    if (!user) {
+      throw new BadRequestException('Reset link is invalid or has expired');
+    }
+
+    const passwordHash = await bcrypt.hash(newPassword, 12);
+
+    await this.db.db
+      .update(schema.users)
+      .set({ passwordHash, loginAttempts: 0, lockedUntil: null })
+      .where(eq(schema.users.id, user.id));
+
+    // Invalidate all active sessions for the user
+    await this.db.db
+      .update(schema.userSessions)
+      .set({ isActive: false })
+      .where(eq(schema.userSessions.userId, user.id));
+
+    return {
+      message: 'Password reset successfully. You can now sign in.',
+    };
   }
 
   private async getUserRoles(userId: string, tenantId: string | null) {
