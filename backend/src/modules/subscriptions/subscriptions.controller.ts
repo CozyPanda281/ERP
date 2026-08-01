@@ -20,6 +20,7 @@ import { UpdatePlanDto } from './dto/update-plan.dto';
 import { SuspendSubscriptionDto } from './dto/suspend-subscription.dto';
 import { AssignSubscriptionDto } from './dto/assign-subscription.dto';
 import { ChangePlanDto } from './dto/change-plan.dto';
+import { AuditLog } from '../../common/decorators/audit-log.decorator';
 
 @ApiTags('Subscriptions')
 @ApiBearerAuth()
@@ -27,7 +28,7 @@ import { ChangePlanDto } from './dto/change-plan.dto';
 export class SubscriptionsController {
   constructor(private readonly subscriptionsService: SubscriptionsService) {}
 
-  // ─── Plans ───────────────────────────────────────────────────────────────
+  // â”€â”€â”€ Plans â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   @Get('plans')
   @Public()
@@ -45,6 +46,7 @@ export class SubscriptionsController {
     return { success: true, data };
   }
 
+  @AuditLog({ action: 'post_plans', module: 'subscriptions' })
   @Post('plans')
   @Roles(ROLES.SUPER_ADMIN)
   @ApiOperation({ summary: 'Create a new subscription plan' })
@@ -53,6 +55,11 @@ export class SubscriptionsController {
     return { success: true, data };
   }
 
+  @AuditLog({
+    action: 'put_plans_id',
+    module: 'subscriptions',
+    resourceIdParam: 'id',
+  })
   @Put('plans/:id')
   @Roles(ROLES.SUPER_ADMIN)
   @ApiOperation({ summary: 'Update a subscription plan' })
@@ -61,6 +68,11 @@ export class SubscriptionsController {
     return { success: true, data };
   }
 
+  @AuditLog({
+    action: 'delete_plans_id',
+    module: 'subscriptions',
+    resourceIdParam: 'id',
+  })
   @Delete('plans/:id')
   @Roles(ROLES.SUPER_ADMIN)
   @ApiOperation({ summary: 'Deactivate a subscription plan' })
@@ -69,7 +81,7 @@ export class SubscriptionsController {
     return { success: true, ...data };
   }
 
-  // ─── Tenant Subscriptions ────────────────────────────────────────────────
+  // â”€â”€â”€ Tenant Subscriptions â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   @Get('tenant/:tenantId')
   @Roles(ROLES.SUPER_ADMIN, ROLES.ORGANIZATION_OWNER)
@@ -88,6 +100,7 @@ export class SubscriptionsController {
     return { success: true, data };
   }
 
+  @AuditLog({ action: 'post_assign', module: 'subscriptions' })
   @Post('assign')
   @Roles(ROLES.SUPER_ADMIN)
   @ApiOperation({ summary: 'Assign a subscription plan to a tenant' })
@@ -96,6 +109,11 @@ export class SubscriptionsController {
     return { success: true, data };
   }
 
+  @AuditLog({
+    action: 'post_renew_tenantId',
+    module: 'subscriptions',
+    resourceIdParam: 'id',
+  })
   @Post('renew/:tenantId')
   @Roles(ROLES.SUPER_ADMIN)
   @ApiOperation({ summary: 'Renew subscription for a tenant' })
@@ -104,6 +122,11 @@ export class SubscriptionsController {
     return { success: true, data };
   }
 
+  @AuditLog({
+    action: 'post_change_plan_tenantId',
+    module: 'subscriptions',
+    resourceIdParam: 'id',
+  })
   @Post('change-plan/:tenantId')
   @Roles(ROLES.SUPER_ADMIN)
   @ApiOperation({ summary: 'Change plan for a tenant' })
@@ -118,6 +141,11 @@ export class SubscriptionsController {
     return { success: true, data };
   }
 
+  @AuditLog({
+    action: 'post_suspend_tenantId',
+    module: 'subscriptions',
+    resourceIdParam: 'id',
+  })
   @Post('suspend/:tenantId')
   @Roles(ROLES.SUPER_ADMIN)
   @ApiOperation({ summary: 'Suspend a tenant subscription' })
@@ -132,6 +160,11 @@ export class SubscriptionsController {
     return { success: true, ...data };
   }
 
+  @AuditLog({
+    action: 'post_cancel_tenantId',
+    module: 'subscriptions',
+    resourceIdParam: 'id',
+  })
   @Post('cancel/:tenantId')
   @Roles(ROLES.SUPER_ADMIN)
   @ApiOperation({ summary: 'Cancel a tenant subscription' })
@@ -140,7 +173,7 @@ export class SubscriptionsController {
     return { success: true, ...data };
   }
 
-  // ─── Plan Limit Checks ───────────────────────────────────────────────────
+  // â”€â”€â”€ Plan Limit Checks â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   @Get('limits/:tenantId')
   @Roles(ROLES.SUPER_ADMIN, ROLES.ORGANIZATION_OWNER, ROLES.PRINCIPAL)
@@ -166,7 +199,7 @@ export class SubscriptionsController {
     };
   }
 
-  // ─── Admin & Reports ─────────────────────────────────────────────────────
+  // â”€â”€â”€ Admin & Reports â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   @Get('admin/all')
   @Roles(ROLES.SUPER_ADMIN)

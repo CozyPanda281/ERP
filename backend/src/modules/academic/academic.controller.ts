@@ -20,6 +20,7 @@ import { CreateClassDto } from './dto/create-class.dto';
 import { UpdateClassDto } from './dto/update-class.dto';
 import { CreateSectionDto } from './dto/create-section.dto';
 import { CreateSubjectDto } from './dto/create-subject.dto';
+import { AuditLog } from '../../common/decorators/audit-log.decorator';
 
 @ApiTags('Academic')
 @ApiBearerAuth()
@@ -27,6 +28,7 @@ import { CreateSubjectDto } from './dto/create-subject.dto';
 export class AcademicController {
   constructor(private readonly academicService: AcademicService) {}
 
+  @AuditLog({ action: 'post_academic_years', module: 'academic' })
   @Post('academic-years')
   @Roles(ROLES.ORGANIZATION_OWNER, ROLES.PRINCIPAL, ROLES.SUPER_ADMIN)
   @ApiOperation({ summary: 'Create academic year' })
@@ -49,6 +51,11 @@ export class AcademicController {
     return { success: true, data };
   }
 
+  @AuditLog({
+    action: 'put_academic_years_id_set_current',
+    module: 'academic',
+    resourceIdParam: 'id',
+  })
   @Put('academic-years/:id/set-current')
   @Roles(ROLES.ORGANIZATION_OWNER, ROLES.PRINCIPAL)
   @ApiOperation({ summary: 'Set current academic year' })
@@ -65,6 +72,7 @@ export class AcademicController {
     return { success: true, data };
   }
 
+  @AuditLog({ action: 'post_departments', module: 'academic' })
   @Post('departments')
   @Roles(ROLES.ORGANIZATION_OWNER, ROLES.PRINCIPAL)
   @ApiOperation({ summary: 'Create department' })
@@ -87,6 +95,11 @@ export class AcademicController {
     return { success: true, data };
   }
 
+  @AuditLog({
+    action: 'put_departments_id',
+    module: 'academic',
+    resourceIdParam: 'id',
+  })
   @Put('departments/:id')
   @Roles(ROLES.ORGANIZATION_OWNER, ROLES.PRINCIPAL)
   @ApiOperation({ summary: 'Update department' })
@@ -98,6 +111,11 @@ export class AcademicController {
     return { success: true, data };
   }
 
+  @AuditLog({
+    action: 'delete_departments_id',
+    module: 'academic',
+    resourceIdParam: 'id',
+  })
   @Delete('departments/:id')
   @Roles(ROLES.ORGANIZATION_OWNER, ROLES.PRINCIPAL)
   @ApiOperation({ summary: 'Delete department' })
@@ -106,6 +124,7 @@ export class AcademicController {
     return { success: true, message: 'Department deleted' };
   }
 
+  @AuditLog({ action: 'post_classes', module: 'academic' })
   @Post('classes')
   @Roles(ROLES.ORGANIZATION_OWNER, ROLES.PRINCIPAL)
   @ApiOperation({ summary: 'Create class' })
@@ -130,6 +149,11 @@ export class AcademicController {
     return { success: true, data };
   }
 
+  @AuditLog({
+    action: 'put_classes_id',
+    module: 'academic',
+    resourceIdParam: 'id',
+  })
   @Put('classes/:id')
   @Roles(ROLES.ORGANIZATION_OWNER, ROLES.PRINCIPAL)
   @ApiOperation({ summary: 'Update class' })
@@ -138,6 +162,11 @@ export class AcademicController {
     return { success: true, data };
   }
 
+  @AuditLog({
+    action: 'delete_classes_id',
+    module: 'academic',
+    resourceIdParam: 'id',
+  })
   @Delete('classes/:id')
   @Roles(ROLES.ORGANIZATION_OWNER, ROLES.PRINCIPAL)
   @ApiOperation({ summary: 'Delete class' })
@@ -146,6 +175,7 @@ export class AcademicController {
     return { success: true, message: 'Class deleted' };
   }
 
+  @AuditLog({ action: 'post_sections', module: 'academic' })
   @Post('sections')
   @Roles(ROLES.ORGANIZATION_OWNER, ROLES.PRINCIPAL)
   @ApiOperation({ summary: 'Create section' })
@@ -165,6 +195,7 @@ export class AcademicController {
     return { success: true, data };
   }
 
+  @AuditLog({ action: 'post_subjects', module: 'academic' })
   @Post('subjects')
   @Roles(ROLES.ORGANIZATION_OWNER, ROLES.PRINCIPAL)
   @ApiOperation({ summary: 'Create subject' })

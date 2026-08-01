@@ -15,6 +15,7 @@ import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { ROLES } from '../../common/constants';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
+import { AuditLog } from '../../common/decorators/audit-log.decorator';
 
 @ApiTags('Users')
 @ApiBearerAuth()
@@ -22,6 +23,7 @@ import { UpdateUserDto } from './dto/update-user.dto';
 export class UsersController {
   constructor(private readonly usersService: UsersService) {}
 
+  @AuditLog({ action: 'post_root', module: 'users', includeBody: false })
   @Post()
   @Roles(ROLES.ORGANIZATION_OWNER, ROLES.PRINCIPAL, ROLES.HR, ROLES.SUPER_ADMIN)
   @ApiOperation({ summary: 'Create a user within a tenant' })
@@ -33,6 +35,7 @@ export class UsersController {
     return { success: true, data };
   }
 
+  @AuditLog({ action: 'post_bulk', module: 'users', includeBody: false })
   @Post('bulk')
   @Roles(ROLES.ORGANIZATION_OWNER, ROLES.PRINCIPAL, ROLES.HR)
   @ApiOperation({ summary: 'Bulk import users' })
@@ -63,6 +66,12 @@ export class UsersController {
     return { success: true, data };
   }
 
+  @AuditLog({
+    action: 'put_id',
+    module: 'users',
+    resourceIdParam: 'id',
+    includeBody: false,
+  })
   @Put(':id')
   @Roles(ROLES.ORGANIZATION_OWNER, ROLES.PRINCIPAL, ROLES.HR, ROLES.SUPER_ADMIN)
   @ApiOperation({ summary: 'Update user' })
@@ -75,6 +84,12 @@ export class UsersController {
     return { success: true, data };
   }
 
+  @AuditLog({
+    action: 'delete_id',
+    module: 'users',
+    resourceIdParam: 'id',
+    includeBody: false,
+  })
   @Delete(':id')
   @Roles(ROLES.ORGANIZATION_OWNER, ROLES.PRINCIPAL, ROLES.HR, ROLES.SUPER_ADMIN)
   @ApiOperation({ summary: 'Soft delete user' })

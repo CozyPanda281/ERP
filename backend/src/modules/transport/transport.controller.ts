@@ -12,6 +12,7 @@ import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { TransportService } from './transport.service';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
+import { RequiresFeature } from '../../common/decorators/requires-feature.decorator';
 import { ROLES } from '../../common/constants';
 import { CreateVehicleDto } from './dto/create-vehicle.dto';
 import { UpdateVehicleDto } from './dto/update-vehicle.dto';
@@ -19,13 +20,16 @@ import { CreateRouteDto } from './dto/create-route.dto';
 import { UpdateRouteDto } from './dto/update-route.dto';
 import { AssignStudentDto } from './dto/assign-student.dto';
 import { TransportQueryDto } from './dto/transport-query.dto';
+import { AuditLog } from '../../common/decorators/audit-log.decorator';
 
 @ApiTags('Transport')
 @ApiBearerAuth()
+@RequiresFeature('transport')
 @Controller('transport')
 export class TransportController {
   constructor(private readonly service: TransportService) {}
 
+  @AuditLog({ action: 'post_vehicles', module: 'transport' })
   @Post('vehicles')
   @Roles(ROLES.SUPER_ADMIN, ROLES.PRINCIPAL, ROLES.ORGANIZATION_OWNER)
   @ApiOperation({ summary: 'Create a vehicle' })
@@ -60,6 +64,11 @@ export class TransportController {
     return { success: true, data };
   }
 
+  @AuditLog({
+    action: 'put_vehicles_id',
+    module: 'transport',
+    resourceIdParam: 'id',
+  })
   @Put('vehicles/:id')
   @Roles(ROLES.SUPER_ADMIN, ROLES.PRINCIPAL, ROLES.ORGANIZATION_OWNER)
   @ApiOperation({ summary: 'Update vehicle' })
@@ -68,6 +77,11 @@ export class TransportController {
     return { success: true, data };
   }
 
+  @AuditLog({
+    action: 'delete_vehicles_id',
+    module: 'transport',
+    resourceIdParam: 'id',
+  })
   @Delete('vehicles/:id')
   @Roles(ROLES.SUPER_ADMIN, ROLES.PRINCIPAL, ROLES.ORGANIZATION_OWNER)
   @ApiOperation({ summary: 'Delete vehicle' })
@@ -75,6 +89,7 @@ export class TransportController {
     return { success: true, data: await this.service.deleteVehicle(id) };
   }
 
+  @AuditLog({ action: 'post_routes', module: 'transport' })
   @Post('routes')
   @Roles(ROLES.SUPER_ADMIN, ROLES.PRINCIPAL, ROLES.ORGANIZATION_OWNER)
   @ApiOperation({ summary: 'Create a route' })
@@ -103,6 +118,11 @@ export class TransportController {
     return { success: true, data };
   }
 
+  @AuditLog({
+    action: 'put_routes_id',
+    module: 'transport',
+    resourceIdParam: 'id',
+  })
   @Put('routes/:id')
   @Roles(ROLES.SUPER_ADMIN, ROLES.PRINCIPAL, ROLES.ORGANIZATION_OWNER)
   @ApiOperation({ summary: 'Update route' })
@@ -111,6 +131,11 @@ export class TransportController {
     return { success: true, data };
   }
 
+  @AuditLog({
+    action: 'delete_routes_id',
+    module: 'transport',
+    resourceIdParam: 'id',
+  })
   @Delete('routes/:id')
   @Roles(ROLES.SUPER_ADMIN, ROLES.PRINCIPAL, ROLES.ORGANIZATION_OWNER)
   @ApiOperation({ summary: 'Delete route' })
@@ -118,6 +143,7 @@ export class TransportController {
     return { success: true, data: await this.service.deleteRoute(id) };
   }
 
+  @AuditLog({ action: 'post_assignments', module: 'transport' })
   @Post('assignments')
   @Roles(ROLES.SUPER_ADMIN, ROLES.PRINCIPAL, ROLES.ORGANIZATION_OWNER)
   @ApiOperation({ summary: 'Assign student to route' })
@@ -147,6 +173,11 @@ export class TransportController {
     return { success: true, ...data };
   }
 
+  @AuditLog({
+    action: 'delete_assignments_id',
+    module: 'transport',
+    resourceIdParam: 'id',
+  })
   @Delete('assignments/:id')
   @Roles(ROLES.SUPER_ADMIN, ROLES.PRINCIPAL, ROLES.ORGANIZATION_OWNER)
   @ApiOperation({ summary: 'Unassign student' })

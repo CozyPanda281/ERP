@@ -3,6 +3,7 @@ import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { AuditService } from './audit.service';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { ROLES } from '../../common/constants';
+import { AuditLog } from '../../common/decorators/audit-log.decorator';
 
 @ApiTags('Audit Logs')
 @ApiBearerAuth()

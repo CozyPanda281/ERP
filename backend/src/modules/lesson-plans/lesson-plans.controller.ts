@@ -12,17 +12,21 @@ import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { LessonPlansService } from './lesson-plans.service';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
+import { RequiresFeature } from '../../common/decorators/requires-feature.decorator';
 import { ROLES } from '../../common/constants';
 import { CreateLessonPlanDto } from './dto/create-lesson-plan.dto';
 import { UpdateLessonPlanDto } from './dto/update-lesson-plan.dto';
 import { LessonPlanQueryDto } from './dto/lesson-plan-query.dto';
+import { AuditLog } from '../../common/decorators/audit-log.decorator';
 
 @ApiTags('Lesson Plans')
 @ApiBearerAuth()
+@RequiresFeature('lesson_plans')
 @Controller('lesson-plans')
 export class LessonPlansController {
   constructor(private readonly service: LessonPlansService) {}
 
+  @AuditLog({ action: 'post_root', module: 'lesson-plans' })
   @Post()
   @Roles(ROLES.SUPER_ADMIN, ROLES.PRINCIPAL, ROLES.ORGANIZATION_OWNER)
   @ApiOperation({ summary: 'Create lesson plan' })
@@ -51,6 +55,7 @@ export class LessonPlansController {
     return { success: true, data };
   }
 
+  @AuditLog({ action: 'put_id', module: 'lesson-plans', resourceIdParam: 'id' })
   @Put(':id')
   @Roles(ROLES.SUPER_ADMIN, ROLES.PRINCIPAL, ROLES.ORGANIZATION_OWNER)
   @ApiOperation({ summary: 'Update lesson plan' })
@@ -59,6 +64,11 @@ export class LessonPlansController {
     return { success: true, data };
   }
 
+  @AuditLog({
+    action: 'delete_id',
+    module: 'lesson-plans',
+    resourceIdParam: 'id',
+  })
   @Delete(':id')
   @Roles(ROLES.SUPER_ADMIN, ROLES.PRINCIPAL, ROLES.ORGANIZATION_OWNER)
   @ApiOperation({ summary: 'Delete lesson plan' })

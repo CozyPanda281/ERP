@@ -12,6 +12,7 @@ import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { AttendanceService } from './attendance.service';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
+import { AuditLog } from '../../common/decorators/audit-log.decorator';
 import { ROLES } from '../../common/constants';
 import { CreateAttendanceSessionDto } from './dto/create-attendance-session.dto';
 import { UpdateAttendanceDto } from './dto/update-attendance.dto';
@@ -26,6 +27,11 @@ import {
 export class AttendanceController {
   constructor(private readonly attendanceService: AttendanceService) {}
 
+  @AuditLog({
+    action: 'post_attendance_sessions',
+    module: 'attendance',
+    includeBody: true,
+  })
   @Post('attendance/sessions')
   @Roles(ROLES.TEACHER, ROLES.PRINCIPAL)
   @ApiOperation({ summary: 'Create attendance session with records' })
@@ -52,6 +58,12 @@ export class AttendanceController {
     return { success: true, data };
   }
 
+  @AuditLog({
+    action: 'put_attendance_records',
+    module: 'attendance',
+    resourceIdParam: 'id',
+    includeBody: true,
+  })
   @Put('attendance/records/:id')
   @Roles(ROLES.TEACHER, ROLES.PRINCIPAL)
   @ApiOperation({ summary: 'Update single attendance record' })

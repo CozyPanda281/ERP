@@ -3,17 +3,21 @@ import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { PayrollService } from './payroll.service';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
+import { RequiresFeature } from '../../common/decorators/requires-feature.decorator';
 import { ROLES } from '../../common/constants';
 import { CreateSalaryComponentDto } from './dto/create-salary-component.dto';
 import { ProcessPayrollDto } from './dto/process-payroll.dto';
 import { PayrollQueryDto } from './dto/payroll-query.dto';
+import { AuditLog } from '../../common/decorators/audit-log.decorator';
 
 @ApiTags('Payroll')
 @ApiBearerAuth()
+@RequiresFeature('payroll')
 @Controller('payroll')
 export class PayrollController {
   constructor(private readonly service: PayrollService) {}
 
+  @AuditLog({ action: 'post_salary_components', module: 'payroll' })
   @Post('salary-components')
   @Roles(ROLES.SUPER_ADMIN, ROLES.ORGANIZATION_OWNER, ROLES.ACCOUNTANT)
   @ApiOperation({ summary: 'Create salary component' })
@@ -37,6 +41,7 @@ export class PayrollController {
     return { success: true, data };
   }
 
+  @AuditLog({ action: 'post_process', module: 'payroll' })
   @Post('process')
   @Roles(ROLES.SUPER_ADMIN, ROLES.ORGANIZATION_OWNER, ROLES.ACCOUNTANT)
   @ApiOperation({ summary: 'Process payroll' })
@@ -74,6 +79,11 @@ export class PayrollController {
     return { success: true, data };
   }
 
+  @AuditLog({
+    action: 'put_id_status',
+    module: 'payroll',
+    resourceIdParam: 'id',
+  })
   @Put(':id/status')
   @Roles(ROLES.SUPER_ADMIN, ROLES.ORGANIZATION_OWNER, ROLES.ACCOUNTANT)
   @ApiOperation({ summary: 'Update payroll status' })

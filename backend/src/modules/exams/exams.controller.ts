@@ -20,6 +20,7 @@ import { UpdateScheduleDto } from './dto/update-schedule.dto';
 import { BulkMarksDto } from './dto/enter-marks.dto';
 import { UpdateMarkDto } from './dto/update-mark.dto';
 import { ExamQueryDto, MarksQueryDto } from './dto/exam-query.dto';
+import { AuditLog } from '../../common/decorators/audit-log.decorator';
 
 @ApiTags('Exams')
 @ApiBearerAuth()
@@ -27,8 +28,9 @@ import { ExamQueryDto, MarksQueryDto } from './dto/exam-query.dto';
 export class ExamsController {
   constructor(private readonly examsService: ExamsService) {}
 
-  // ─── Exams ────────────────────────────────────────────────────────────────
+  // â”€â”€â”€ Exams â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
+  @AuditLog({ action: 'post_exams', module: 'exams' })
   @Post('exams')
   @Roles(ROLES.PRINCIPAL, ROLES.ORGANIZATION_OWNER)
   @ApiOperation({ summary: 'Create exam' })
@@ -60,6 +62,7 @@ export class ExamsController {
     return { success: true, data };
   }
 
+  @AuditLog({ action: 'put_exams_id', module: 'exams', resourceIdParam: 'id' })
   @Put('exams/:id')
   @Roles(ROLES.PRINCIPAL, ROLES.ORGANIZATION_OWNER)
   @ApiOperation({ summary: 'Update exam' })
@@ -68,6 +71,11 @@ export class ExamsController {
     return { success: true, data };
   }
 
+  @AuditLog({
+    action: 'delete_exams_id',
+    module: 'exams',
+    resourceIdParam: 'id',
+  })
   @Delete('exams/:id')
   @Roles(ROLES.PRINCIPAL, ROLES.ORGANIZATION_OWNER)
   @ApiOperation({ summary: 'Delete exam' })
@@ -76,8 +84,13 @@ export class ExamsController {
     return { success: true, message: 'Exam deleted' };
   }
 
-  // ─── Schedules ────────────────────────────────────────────────────────────
+  // â”€â”€â”€ Schedules â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
+  @AuditLog({
+    action: 'post_exams_examId_schedules',
+    module: 'exams',
+    resourceIdParam: 'id',
+  })
   @Post('exams/:examId/schedules')
   @Roles(ROLES.PRINCIPAL)
   @ApiOperation({ summary: 'Create exam schedule' })
@@ -97,6 +110,11 @@ export class ExamsController {
     return { success: true, data };
   }
 
+  @AuditLog({
+    action: 'put_exam_schedules_id',
+    module: 'exams',
+    resourceIdParam: 'id',
+  })
   @Put('exam-schedules/:id')
   @Roles(ROLES.PRINCIPAL)
   @ApiOperation({ summary: 'Update exam schedule' })
@@ -108,6 +126,11 @@ export class ExamsController {
     return { success: true, data };
   }
 
+  @AuditLog({
+    action: 'delete_exam_schedules_id',
+    module: 'exams',
+    resourceIdParam: 'id',
+  })
   @Delete('exam-schedules/:id')
   @Roles(ROLES.PRINCIPAL)
   @ApiOperation({ summary: 'Delete exam schedule' })
@@ -116,8 +139,9 @@ export class ExamsController {
     return { success: true, message: 'Schedule deleted' };
   }
 
-  // ─── Marks ────────────────────────────────────────────────────────────────
+  // â”€â”€â”€ Marks â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
+  @AuditLog({ action: 'post_exam_marks_bulk', module: 'exams' })
   @Post('exam-marks/bulk')
   @Roles(ROLES.TEACHER, ROLES.PRINCIPAL)
   @ApiOperation({ summary: 'Bulk enter marks for a schedule' })
@@ -159,6 +183,11 @@ export class ExamsController {
     return { success: true, ...data };
   }
 
+  @AuditLog({
+    action: 'put_exam_marks_id',
+    module: 'exams',
+    resourceIdParam: 'id',
+  })
   @Put('exam-marks/:id')
   @Roles(ROLES.TEACHER, ROLES.PRINCIPAL)
   @ApiOperation({ summary: 'Update a mark entry' })
@@ -171,8 +200,13 @@ export class ExamsController {
     return { success: true, data };
   }
 
-  // ─── Results ──────────────────────────────────────────────────────────────
+  // â”€â”€â”€ Results â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
+  @AuditLog({
+    action: 'post_exams_examId_generate_results',
+    module: 'exams',
+    resourceIdParam: 'id',
+  })
   @Post('exams/:examId/generate-results')
   @Roles(ROLES.PRINCIPAL)
   @ApiOperation({ summary: 'Generate exam results' })

@@ -15,6 +15,7 @@ import {
 } from '@nestjs/swagger';
 import { FileInterceptor, FilesInterceptor } from '@nestjs/platform-express';
 import { UploadsService } from './uploads.service';
+import { AuditLog } from '../../common/decorators/audit-log.decorator';
 
 @ApiTags('Uploads')
 @ApiBearerAuth()
@@ -22,6 +23,7 @@ import { UploadsService } from './uploads.service';
 export class UploadsController {
   constructor(private readonly uploadsService: UploadsService) {}
 
+  @AuditLog({ action: 'post_single', module: 'uploads' })
   @Post('single')
   @ApiOperation({ summary: 'Upload a single file' })
   @ApiConsumes('multipart/form-data')
@@ -38,6 +40,7 @@ export class UploadsController {
     return { success: true, data: result };
   }
 
+  @AuditLog({ action: 'post_multiple', module: 'uploads' })
   @Post('multiple')
   @ApiOperation({ summary: 'Upload multiple files' })
   @ApiConsumes('multipart/form-data')

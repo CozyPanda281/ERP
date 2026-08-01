@@ -23,6 +23,7 @@ import { UpdateFeeItemDto } from './dto/update-fee-item.dto';
 import { UpdateDiscountDto } from './dto/update-discount.dto';
 import { GenerateInvoiceDto } from './dto/generate-invoice.dto';
 import { FeeQueryDto, PaymentQueryDto } from './dto/fee-query.dto';
+import { AuditLog } from '../../common/decorators/audit-log.decorator';
 
 @ApiTags('Fee')
 @ApiBearerAuth()
@@ -30,8 +31,9 @@ import { FeeQueryDto, PaymentQueryDto } from './dto/fee-query.dto';
 export class FeeController {
   constructor(private readonly feeService: FeeService) {}
 
-  // ─── Fee Structures ──────────────────────────────────────────────────────
+  // â”€â”€â”€ Fee Structures â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
+  @AuditLog({ action: 'post_fee_structures', module: 'fee' })
   @Post('fee-structures')
   @Roles(ROLES.PRINCIPAL, ROLES.ORGANIZATION_OWNER, ROLES.ACCOUNTANT)
   @ApiOperation({ summary: 'Create fee structure with items' })
@@ -66,6 +68,11 @@ export class FeeController {
     return { success: true, data };
   }
 
+  @AuditLog({
+    action: 'put_fee_structures_id',
+    module: 'fee',
+    resourceIdParam: 'id',
+  })
   @Put('fee-structures/:id')
   @Roles(ROLES.PRINCIPAL, ROLES.ORGANIZATION_OWNER, ROLES.ACCOUNTANT)
   @ApiOperation({ summary: 'Update fee structure' })
@@ -77,6 +84,11 @@ export class FeeController {
     return { success: true, data };
   }
 
+  @AuditLog({
+    action: 'delete_fee_structures_id',
+    module: 'fee',
+    resourceIdParam: 'id',
+  })
   @Delete('fee-structures/:id')
   @Roles(ROLES.PRINCIPAL, ROLES.ORGANIZATION_OWNER)
   @ApiOperation({ summary: 'Delete fee structure' })
@@ -85,8 +97,13 @@ export class FeeController {
     return { success: true, message: 'Fee structure deleted' };
   }
 
-  // ─── Fee Items ───────────────────────────────────────────────────────────
+  // â”€â”€â”€ Fee Items â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
+  @AuditLog({
+    action: 'post_fee_structures_structureId_items',
+    module: 'fee',
+    resourceIdParam: 'id',
+  })
   @Post('fee-structures/:structureId/items')
   @Roles(ROLES.PRINCIPAL, ROLES.ACCOUNTANT)
   @ApiOperation({ summary: 'Add item to fee structure' })
@@ -98,6 +115,11 @@ export class FeeController {
     return { success: true, data };
   }
 
+  @AuditLog({
+    action: 'put_fee_items_id',
+    module: 'fee',
+    resourceIdParam: 'id',
+  })
   @Put('fee-items/:id')
   @Roles(ROLES.PRINCIPAL, ROLES.ACCOUNTANT)
   @ApiOperation({ summary: 'Update fee item' })
@@ -106,6 +128,11 @@ export class FeeController {
     return { success: true, data };
   }
 
+  @AuditLog({
+    action: 'delete_fee_items_id',
+    module: 'fee',
+    resourceIdParam: 'id',
+  })
   @Delete('fee-items/:id')
   @Roles(ROLES.PRINCIPAL, ROLES.ACCOUNTANT)
   @ApiOperation({ summary: 'Remove fee item' })
@@ -114,8 +141,9 @@ export class FeeController {
     return { success: true, message: 'Fee item removed' };
   }
 
-  // ─── Discounts ───────────────────────────────────────────────────────────
+  // â”€â”€â”€ Discounts â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
+  @AuditLog({ action: 'post_fee_discounts', module: 'fee' })
   @Post('fee-discounts')
   @Roles(ROLES.PRINCIPAL, ROLES.ACCOUNTANT)
   @ApiOperation({ summary: 'Create discount' })
@@ -139,6 +167,11 @@ export class FeeController {
     return { success: true, data };
   }
 
+  @AuditLog({
+    action: 'put_fee_discounts_id',
+    module: 'fee',
+    resourceIdParam: 'id',
+  })
   @Put('fee-discounts/:id')
   @Roles(ROLES.PRINCIPAL, ROLES.ACCOUNTANT)
   @ApiOperation({ summary: 'Update discount' })
@@ -151,6 +184,11 @@ export class FeeController {
     return { success: true, data };
   }
 
+  @AuditLog({
+    action: 'delete_fee_discounts_id',
+    module: 'fee',
+    resourceIdParam: 'id',
+  })
   @Delete('fee-discounts/:id')
   @Roles(ROLES.PRINCIPAL, ROLES.ACCOUNTANT)
   @ApiOperation({ summary: 'Delete discount' })
@@ -159,8 +197,9 @@ export class FeeController {
     return { success: true, message: 'Discount deleted' };
   }
 
-  // ─── Student Fee Accounts ────────────────────────────────────────────────
+  // â”€â”€â”€ Student Fee Accounts â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
+  @AuditLog({ action: 'post_fee_accounts_assign', module: 'fee' })
   @Post('fee-accounts/assign')
   @Roles(ROLES.PRINCIPAL, ROLES.ACCOUNTANT)
   @ApiOperation({ summary: 'Assign fee structure to students' })
@@ -203,8 +242,9 @@ export class FeeController {
     return { success: true, data };
   }
 
-  // ─── Invoices ────────────────────────────────────────────────────────────
+  // â”€â”€â”€ Invoices â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
+  @AuditLog({ action: 'post_fee_invoices_generate', module: 'fee' })
   @Post('fee-invoices/generate')
   @Roles(ROLES.PRINCIPAL, ROLES.ACCOUNTANT)
   @ApiOperation({ summary: 'Generate invoice for a student' })
@@ -255,8 +295,9 @@ export class FeeController {
     return { success: true, data };
   }
 
-  // ─── Payments ────────────────────────────────────────────────────────────
+  // â”€â”€â”€ Payments â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
+  @AuditLog({ action: 'post_fee_payments', module: 'fee' })
   @Post('fee-payments')
   @Roles(ROLES.PRINCIPAL, ROLES.ACCOUNTANT)
   @ApiOperation({ summary: 'Record a payment' })
@@ -308,7 +349,7 @@ export class FeeController {
     return { success: true, data };
   }
 
-  // ─── Reports ─────────────────────────────────────────────────────────────
+  // â”€â”€â”€ Reports â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   @Get('fee-reports/collection')
   @Roles(ROLES.PRINCIPAL, ROLES.ACCOUNTANT)

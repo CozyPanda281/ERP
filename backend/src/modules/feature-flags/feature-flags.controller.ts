@@ -5,6 +5,7 @@ import { Roles } from '../../common/decorators/roles.decorator';
 import { ROLES } from '../../common/constants';
 import { ToggleFeatureDto } from './dto/toggle-feature.dto';
 import { UpdatePlanFeatureDto } from './dto/update-plan-feature.dto';
+import { AuditLog } from '../../common/decorators/audit-log.decorator';
 
 @ApiTags('Feature Flags')
 @ApiBearerAuth()
@@ -29,6 +30,11 @@ export class FeatureFlagsController {
     return { success: true, data: features };
   }
 
+  @AuditLog({
+    action: 'post_tenant_tenantId_featureCode',
+    module: 'feature-flags',
+    resourceIdParam: 'id',
+  })
   @Post('tenant/:tenantId/:featureCode')
   @Roles(ROLES.SUPER_ADMIN)
   @ApiOperation({ summary: 'Override a feature flag for a tenant' })
@@ -46,6 +52,11 @@ export class FeatureFlagsController {
     return { success: true, message: 'Feature override updated' };
   }
 
+  @AuditLog({
+    action: 'put_plan_planId_featureCode',
+    module: 'feature-flags',
+    resourceIdParam: 'id',
+  })
   @Put('plan/:planId/:featureCode')
   @Roles(ROLES.SUPER_ADMIN)
   @ApiOperation({ summary: 'Update a feature flag for a plan' })

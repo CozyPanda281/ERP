@@ -7,6 +7,7 @@ import { ROLES } from '../../common/constants';
 import { CreateLeaveTypeDto } from './dto/create-leave-type.dto';
 import { RequestLeaveDto } from './dto/request-leave.dto';
 import { LeaveQueryDto } from './dto/leave-query.dto';
+import { AuditLog } from '../../common/decorators/audit-log.decorator';
 
 @ApiTags('Leave')
 @ApiBearerAuth()
@@ -14,6 +15,7 @@ import { LeaveQueryDto } from './dto/leave-query.dto';
 export class LeaveController {
   constructor(private readonly service: LeaveService) {}
 
+  @AuditLog({ action: 'post_types', module: 'leave' })
   @Post('types')
   @Roles(ROLES.SUPER_ADMIN, ROLES.PRINCIPAL, ROLES.ORGANIZATION_OWNER)
   @ApiOperation({ summary: 'Create leave type' })
@@ -36,6 +38,7 @@ export class LeaveController {
     return { success: true, data };
   }
 
+  @AuditLog({ action: 'post_requests', module: 'leave' })
   @Post('requests')
   @Roles(ROLES.SUPER_ADMIN, ROLES.PRINCIPAL, ROLES.ORGANIZATION_OWNER)
   @ApiOperation({ summary: 'Request leave' })
@@ -64,6 +67,11 @@ export class LeaveController {
     return { success: true, data };
   }
 
+  @AuditLog({
+    action: 'put_requests_id_approve',
+    module: 'leave',
+    resourceIdParam: 'id',
+  })
   @Put('requests/:id/approve')
   @Roles(ROLES.SUPER_ADMIN, ROLES.PRINCIPAL, ROLES.ORGANIZATION_OWNER)
   @ApiOperation({ summary: 'Approve leave request' })
@@ -72,6 +80,11 @@ export class LeaveController {
     return { success: true, data };
   }
 
+  @AuditLog({
+    action: 'put_requests_id_reject',
+    module: 'leave',
+    resourceIdParam: 'id',
+  })
   @Put('requests/:id/reject')
   @Roles(ROLES.SUPER_ADMIN, ROLES.PRINCIPAL, ROLES.ORGANIZATION_OWNER)
   @ApiOperation({ summary: 'Reject leave request' })

@@ -9,6 +9,7 @@ import { SendNotificationDto } from './dto/send-notification.dto';
 import { CreateAnnouncementDto } from './dto/create-announcement.dto';
 import { CreateCircularDto } from './dto/create-circular.dto';
 import { NotificationQueryDto } from './dto/notification-query.dto';
+import { AuditLog } from '../../common/decorators/audit-log.decorator';
 
 @ApiTags('Notifications')
 @ApiBearerAuth()
@@ -16,6 +17,7 @@ import { NotificationQueryDto } from './dto/notification-query.dto';
 export class NotificationsController {
   constructor(private readonly service: NotificationsService) {}
 
+  @AuditLog({ action: 'post_templates', module: 'notifications' })
   @Post('templates')
   @Roles(ROLES.SUPER_ADMIN, ROLES.ORGANIZATION_OWNER)
   @ApiOperation({ summary: 'Create notification template' })
@@ -38,6 +40,7 @@ export class NotificationsController {
     return { success: true, data };
   }
 
+  @AuditLog({ action: 'post_send', module: 'notifications' })
   @Post('send')
   @Roles(ROLES.SUPER_ADMIN, ROLES.ORGANIZATION_OWNER)
   @ApiOperation({ summary: 'Send notification' })
@@ -67,6 +70,7 @@ export class NotificationsController {
     return { success: true, ...data };
   }
 
+  @AuditLog({ action: 'post_announcements', module: 'notifications' })
   @Post('announcements')
   @Roles(ROLES.SUPER_ADMIN, ROLES.PRINCIPAL, ROLES.ORGANIZATION_OWNER)
   @ApiOperation({ summary: 'Create announcement' })
@@ -97,6 +101,7 @@ export class NotificationsController {
     return { success: true, ...data };
   }
 
+  @AuditLog({ action: 'post_circulars', module: 'notifications' })
   @Post('circulars')
   @Roles(ROLES.SUPER_ADMIN, ROLES.PRINCIPAL, ROLES.ORGANIZATION_OWNER)
   @ApiOperation({ summary: 'Create circular' })

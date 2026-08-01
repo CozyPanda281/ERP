@@ -15,6 +15,7 @@ import { ROLES } from '../../common/constants';
 import { AssignPermissionsDto } from './dto/assign-permissions.dto';
 import { CreateRoleDto } from './dto/create-role.dto';
 import { UpdateRoleDto } from './dto/update-role.dto';
+import { AuditLog } from '../../common/decorators/audit-log.decorator';
 
 @ApiTags('Roles')
 @ApiBearerAuth()
@@ -22,6 +23,7 @@ import { UpdateRoleDto } from './dto/update-role.dto';
 export class RolesController {
   constructor(private readonly rolesService: RolesService) {}
 
+  @AuditLog({ action: 'post_root', module: 'roles' })
   @Post()
   @Roles(ROLES.ORGANIZATION_OWNER, ROLES.SUPER_ADMIN)
   @ApiOperation({ summary: 'Create a role' })
@@ -49,6 +51,7 @@ export class RolesController {
     return { success: true, data };
   }
 
+  @AuditLog({ action: 'put_id', module: 'roles', resourceIdParam: 'id' })
   @Put(':id')
   @Roles(ROLES.ORGANIZATION_OWNER, ROLES.SUPER_ADMIN)
   @ApiOperation({ summary: 'Update a role' })
@@ -61,6 +64,7 @@ export class RolesController {
     return { success: true, data };
   }
 
+  @AuditLog({ action: 'delete_id', module: 'roles', resourceIdParam: 'id' })
   @Delete(':id')
   @Roles(ROLES.SUPER_ADMIN)
   @ApiOperation({ summary: 'Delete a role' })
@@ -77,6 +81,11 @@ export class RolesController {
     return { success: true, data };
   }
 
+  @AuditLog({
+    action: 'post_id_permissions',
+    module: 'roles',
+    resourceIdParam: 'id',
+  })
   @Post(':id/permissions')
   @Roles(ROLES.ORGANIZATION_OWNER, ROLES.SUPER_ADMIN)
   @ApiOperation({ summary: 'Assign permissions to a role' })

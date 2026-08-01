@@ -9,6 +9,7 @@ import { CreateIncomeCategoryDto } from './dto/create-income-category.dto';
 import { CreateExpenseDto } from './dto/create-expense.dto';
 import { CreateIncomeDto } from './dto/create-income.dto';
 import { ExpenseQueryDto } from './dto/expense-query.dto';
+import { AuditLog } from '../../common/decorators/audit-log.decorator';
 
 @ApiTags('Expenses')
 @ApiBearerAuth()
@@ -16,6 +17,7 @@ import { ExpenseQueryDto } from './dto/expense-query.dto';
 export class ExpensesController {
   constructor(private readonly service: ExpensesService) {}
 
+  @AuditLog({ action: 'post_expense_categories', module: 'expenses' })
   @Post('expense-categories')
   @Roles(ROLES.SUPER_ADMIN, ROLES.ORGANIZATION_OWNER, ROLES.ACCOUNTANT)
   @ApiOperation({ summary: 'Create expense category' })
@@ -40,6 +42,7 @@ export class ExpensesController {
     return { success: true, data };
   }
 
+  @AuditLog({ action: 'post_income_categories', module: 'expenses' })
   @Post('income-categories')
   @Roles(ROLES.SUPER_ADMIN, ROLES.ORGANIZATION_OWNER, ROLES.ACCOUNTANT)
   @ApiOperation({ summary: 'Create income category' })
@@ -62,6 +65,7 @@ export class ExpensesController {
     return { success: true, data };
   }
 
+  @AuditLog({ action: 'post_root', module: 'expenses' })
   @Post()
   @Roles(ROLES.SUPER_ADMIN, ROLES.ORGANIZATION_OWNER, ROLES.ACCOUNTANT)
   @ApiOperation({ summary: 'Record expense' })
@@ -91,6 +95,7 @@ export class ExpensesController {
     return { success: true, ...data };
   }
 
+  @AuditLog({ action: 'post_income', module: 'expenses' })
   @Post('income')
   @Roles(ROLES.SUPER_ADMIN, ROLES.ORGANIZATION_OWNER, ROLES.ACCOUNTANT)
   @ApiOperation({ summary: 'Record income' })

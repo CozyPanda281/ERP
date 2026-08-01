@@ -12,9 +12,11 @@ import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { BranchesService } from './branches.service';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
+import { RequiresFeature } from '../../common/decorators/requires-feature.decorator';
 import { ROLES } from '../../common/constants';
 import { CreateBranchDto } from './dto/create-branch.dto';
 import { UpdateBranchDto } from './dto/update-branch.dto';
+import { AuditLog } from '../../common/decorators/audit-log.decorator';
 
 @ApiTags('Branches')
 @ApiBearerAuth()
@@ -22,8 +24,10 @@ import { UpdateBranchDto } from './dto/update-branch.dto';
 export class BranchesController {
   constructor(private readonly branchesService: BranchesService) {}
 
+  @AuditLog({ action: 'post_root', module: 'branches' })
   @Post()
   @Roles(ROLES.ORGANIZATION_OWNER, ROLES.SUPER_ADMIN)
+  @RequiresFeature('multi_branch')
   @ApiOperation({ summary: 'Create a branch' })
   async create(@CurrentUser() user: any, @Body() dto: CreateBranchDto) {
     const data = await this.branchesService.create({
@@ -52,6 +56,7 @@ export class BranchesController {
     return { success: true, data };
   }
 
+  @AuditLog({ action: 'put_id', module: 'branches', resourceIdParam: 'id' })
   @Put(':id')
   @Roles(ROLES.ORGANIZATION_OWNER, ROLES.SUPER_ADMIN)
   @ApiOperation({ summary: 'Update branch' })
@@ -60,6 +65,7 @@ export class BranchesController {
     return { success: true, data };
   }
 
+  @AuditLog({ action: 'delete_id', module: 'branches', resourceIdParam: 'id' })
   @Delete(':id')
   @Roles(ROLES.ORGANIZATION_OWNER, ROLES.SUPER_ADMIN)
   @ApiOperation({ summary: 'Delete branch' })

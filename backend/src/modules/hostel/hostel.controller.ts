@@ -12,6 +12,7 @@ import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { HostelService } from './hostel.service';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
+import { RequiresFeature } from '../../common/decorators/requires-feature.decorator';
 import { ROLES } from '../../common/constants';
 import { CreateHostelDto } from './dto/create-hostel.dto';
 import { UpdateHostelDto } from './dto/update-hostel.dto';
@@ -19,13 +20,16 @@ import { CreateRoomDto } from './dto/create-room.dto';
 import { UpdateRoomDto } from './dto/update-room.dto';
 import { AllocateBedDto } from './dto/allocate-bed.dto';
 import { HostelQueryDto } from './dto/hostel-query.dto';
+import { AuditLog } from '../../common/decorators/audit-log.decorator';
 
 @ApiTags('Hostel')
 @ApiBearerAuth()
+@RequiresFeature('hostel')
 @Controller('hostel')
 export class HostelController {
   constructor(private readonly service: HostelService) {}
 
+  @AuditLog({ action: 'post_root', module: 'hostel' })
   @Post()
   @Roles(ROLES.SUPER_ADMIN, ROLES.PRINCIPAL, ROLES.ORGANIZATION_OWNER)
   @ApiOperation({ summary: 'Create a hostel' })
@@ -54,6 +58,7 @@ export class HostelController {
     return { success: true, data };
   }
 
+  @AuditLog({ action: 'put_id', module: 'hostel', resourceIdParam: 'id' })
   @Put(':id')
   @Roles(ROLES.SUPER_ADMIN, ROLES.PRINCIPAL, ROLES.ORGANIZATION_OWNER)
   @ApiOperation({ summary: 'Update hostel' })
@@ -62,6 +67,7 @@ export class HostelController {
     return { success: true, data };
   }
 
+  @AuditLog({ action: 'delete_id', module: 'hostel', resourceIdParam: 'id' })
   @Delete(':id')
   @Roles(ROLES.SUPER_ADMIN, ROLES.PRINCIPAL, ROLES.ORGANIZATION_OWNER)
   @ApiOperation({ summary: 'Delete hostel' })
@@ -69,6 +75,11 @@ export class HostelController {
     return { success: true, data: await this.service.deleteHostel(id) };
   }
 
+  @AuditLog({
+    action: 'post_hostelId_rooms',
+    module: 'hostel',
+    resourceIdParam: 'id',
+  })
   @Post(':hostelId/rooms')
   @Roles(ROLES.SUPER_ADMIN, ROLES.PRINCIPAL, ROLES.ORGANIZATION_OWNER)
   @ApiOperation({ summary: 'Create a room' })
@@ -99,6 +110,7 @@ export class HostelController {
     return { success: true, data };
   }
 
+  @AuditLog({ action: 'put_rooms_id', module: 'hostel', resourceIdParam: 'id' })
   @Put('rooms/:id')
   @Roles(ROLES.SUPER_ADMIN, ROLES.PRINCIPAL, ROLES.ORGANIZATION_OWNER)
   @ApiOperation({ summary: 'Update room' })
@@ -107,6 +119,11 @@ export class HostelController {
     return { success: true, data };
   }
 
+  @AuditLog({
+    action: 'delete_rooms_id',
+    module: 'hostel',
+    resourceIdParam: 'id',
+  })
   @Delete('rooms/:id')
   @Roles(ROLES.SUPER_ADMIN, ROLES.PRINCIPAL, ROLES.ORGANIZATION_OWNER)
   @ApiOperation({ summary: 'Delete room' })
@@ -114,6 +131,7 @@ export class HostelController {
     return { success: true, data: await this.service.deleteRoom(id) };
   }
 
+  @AuditLog({ action: 'post_allocations', module: 'hostel' })
   @Post('allocations')
   @Roles(ROLES.SUPER_ADMIN, ROLES.PRINCIPAL, ROLES.ORGANIZATION_OWNER)
   @ApiOperation({ summary: 'Allocate bed to student' })
@@ -140,6 +158,11 @@ export class HostelController {
     return { success: true, ...data };
   }
 
+  @AuditLog({
+    action: 'delete_allocations_id',
+    module: 'hostel',
+    resourceIdParam: 'id',
+  })
   @Delete('allocations/:id')
   @Roles(ROLES.SUPER_ADMIN, ROLES.PRINCIPAL, ROLES.ORGANIZATION_OWNER)
   @ApiOperation({ summary: 'Vacate bed' })

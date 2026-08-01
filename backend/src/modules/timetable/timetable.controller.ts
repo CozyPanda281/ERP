@@ -19,6 +19,7 @@ import { CreateEntryDto } from './dto/create-entry.dto';
 import { UpdateEntryDto } from './dto/update-entry.dto';
 import { BatchEntriesDto } from './dto/batch-entries.dto';
 import { ListTimetablesQueryDto } from './dto/list-timetables-query.dto';
+import { AuditLog } from '../../common/decorators/audit-log.decorator';
 
 @ApiTags('Timetable')
 @ApiBearerAuth()
@@ -26,6 +27,7 @@ import { ListTimetablesQueryDto } from './dto/list-timetables-query.dto';
 export class TimetableController {
   constructor(private readonly timetableService: TimetableService) {}
 
+  @AuditLog({ action: 'post_timetables', module: 'timetable' })
   @Post('timetables')
   @Roles(ROLES.PRINCIPAL, ROLES.ORGANIZATION_OWNER)
   @ApiOperation({ summary: 'Create timetable' })
@@ -56,6 +58,11 @@ export class TimetableController {
     return { success: true, data };
   }
 
+  @AuditLog({
+    action: 'put_timetables_id',
+    module: 'timetable',
+    resourceIdParam: 'id',
+  })
   @Put('timetables/:id')
   @Roles(ROLES.PRINCIPAL, ROLES.ORGANIZATION_OWNER)
   @ApiOperation({ summary: 'Update timetable' })
@@ -64,6 +71,11 @@ export class TimetableController {
     return { success: true, data };
   }
 
+  @AuditLog({
+    action: 'delete_timetables_id',
+    module: 'timetable',
+    resourceIdParam: 'id',
+  })
   @Delete('timetables/:id')
   @Roles(ROLES.PRINCIPAL, ROLES.ORGANIZATION_OWNER)
   @ApiOperation({ summary: 'Delete timetable' })
@@ -72,6 +84,11 @@ export class TimetableController {
     return { success: true, message: 'Timetable deleted' };
   }
 
+  @AuditLog({
+    action: 'post_timetables_id_activate',
+    module: 'timetable',
+    resourceIdParam: 'id',
+  })
   @Post('timetables/:id/activate')
   @Roles(ROLES.PRINCIPAL, ROLES.ORGANIZATION_OWNER)
   @ApiOperation({ summary: 'Set timetable as active for its class' })
@@ -80,6 +97,11 @@ export class TimetableController {
     return { success: true, data };
   }
 
+  @AuditLog({
+    action: 'post_timetables_id_entries',
+    module: 'timetable',
+    resourceIdParam: 'id',
+  })
   @Post('timetables/:id/entries')
   @Roles(ROLES.PRINCIPAL)
   @ApiOperation({ summary: 'Add entry to timetable' })
@@ -88,6 +110,11 @@ export class TimetableController {
     return { success: true, data };
   }
 
+  @AuditLog({
+    action: 'put_timetable_entries_id',
+    module: 'timetable',
+    resourceIdParam: 'id',
+  })
   @Put('timetable-entries/:id')
   @Roles(ROLES.PRINCIPAL)
   @ApiOperation({ summary: 'Update timetable entry' })
@@ -96,6 +123,11 @@ export class TimetableController {
     return { success: true, data };
   }
 
+  @AuditLog({
+    action: 'delete_timetable_entries_id',
+    module: 'timetable',
+    resourceIdParam: 'id',
+  })
   @Delete('timetable-entries/:id')
   @Roles(ROLES.PRINCIPAL)
   @ApiOperation({ summary: 'Remove timetable entry' })
@@ -104,6 +136,11 @@ export class TimetableController {
     return { success: true, message: 'Entry removed' };
   }
 
+  @AuditLog({
+    action: 'post_timetables_id_entries_batch',
+    module: 'timetable',
+    resourceIdParam: 'id',
+  })
   @Post('timetables/:id/entries/batch')
   @Roles(ROLES.PRINCIPAL)
   @ApiOperation({ summary: 'Batch update entries for a day' })

@@ -24,6 +24,7 @@ import {
 import { Roles } from '../../common/decorators/roles.decorator';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { ROLES } from '../../common/constants';
+import { AuditLog } from '../../common/decorators/audit-log.decorator';
 
 @ApiTags('Communication')
 @ApiBearerAuth()
@@ -31,6 +32,7 @@ import { ROLES } from '../../common/constants';
 export class CommunicationController {
   constructor(private readonly service: CommunicationService) {}
 
+  @AuditLog({ action: 'post_templates', module: 'communication' })
   @Post('templates')
   @Roles(ROLES.SUPER_ADMIN, ROLES.PRINCIPAL, ROLES.ORGANIZATION_OWNER)
   @ApiOperation({ summary: 'Create notification template' })
@@ -38,16 +40,30 @@ export class CommunicationController {
     @Body() body: CreateTemplateDto,
     @CurrentUser() user: any,
   ) {
-    return { success: true, data: await this.service.createTemplate({ ...body, tenantId: user.tenantId }) };
+    return {
+      success: true,
+      data: await this.service.createTemplate({
+        ...body,
+        tenantId: user.tenantId,
+      }),
+    };
   }
 
   @Get('templates')
   @Roles(ROLES.SUPER_ADMIN, ROLES.PRINCIPAL, ROLES.ORGANIZATION_OWNER)
   @ApiOperation({ summary: 'List notification templates' })
   async findTemplates(@CurrentUser() user: any) {
-    return { success: true, data: await this.service.findTemplatesByTenant(user.tenantId) };
+    return {
+      success: true,
+      data: await this.service.findTemplatesByTenant(user.tenantId),
+    };
   }
 
+  @AuditLog({
+    action: 'put_templates_id',
+    module: 'communication',
+    resourceIdParam: 'id',
+  })
   @Put('templates/:id')
   @Roles(ROLES.SUPER_ADMIN, ROLES.PRINCIPAL, ROLES.ORGANIZATION_OWNER)
   @ApiOperation({ summary: 'Update notification template' })
@@ -56,16 +72,28 @@ export class CommunicationController {
     @Body() body: UpdateTemplateDto,
     @CurrentUser() user: any,
   ) {
-    return { success: true, data: await this.service.updateTemplate(id, user.tenantId, body) };
+    return {
+      success: true,
+      data: await this.service.updateTemplate(id, user.tenantId, body),
+    };
   }
 
+  @AuditLog({
+    action: 'delete_templates_id',
+    module: 'communication',
+    resourceIdParam: 'id',
+  })
   @Delete('templates/:id')
   @Roles(ROLES.SUPER_ADMIN, ROLES.PRINCIPAL, ROLES.ORGANIZATION_OWNER)
   @ApiOperation({ summary: 'Delete notification template' })
   async deleteTemplate(@Param('id') id: string, @CurrentUser() user: any) {
-    return { success: true, data: await this.service.deleteTemplate(id, user.tenantId) };
+    return {
+      success: true,
+      data: await this.service.deleteTemplate(id, user.tenantId),
+    };
   }
 
+  @AuditLog({ action: 'post_notifications', module: 'communication' })
   @Post('notifications')
   @Roles(ROLES.SUPER_ADMIN, ROLES.PRINCIPAL, ROLES.TEACHER)
   @ApiOperation({ summary: 'Send notification' })
@@ -73,12 +101,15 @@ export class CommunicationController {
     @Body() body: CreateNotificationDto,
     @CurrentUser() user: any,
   ) {
-    return { success: true, data: await this.service.createNotification({
-      ...body,
-      tenantId: user.tenantId,
-      branchId: user.branchId,
-      senderId: user.id,
-    }) };
+    return {
+      success: true,
+      data: await this.service.createNotification({
+        ...body,
+        tenantId: user.tenantId,
+        branchId: user.branchId,
+        senderId: user.id,
+      }),
+    };
   }
 
   @Get('notifications/mine')
@@ -94,9 +125,21 @@ export class CommunicationController {
     @CurrentUser() user: any,
     @Query() query: NotificationQueryDto,
   ) {
-    return { success: true, data: await this.service.findMyNotifications(user.id, user.branchId, query) };
+    return {
+      success: true,
+      data: await this.service.findMyNotifications(
+        user.id,
+        user.branchId,
+        query,
+      ),
+    };
   }
 
+  @AuditLog({
+    action: 'put_notifications_id_read',
+    module: 'communication',
+    resourceIdParam: 'id',
+  })
   @Put('notifications/:id/read')
   @Roles(
     ROLES.SUPER_ADMIN,
@@ -110,6 +153,7 @@ export class CommunicationController {
     return { success: true, data: await this.service.markAsRead(id, user.id) };
   }
 
+  @AuditLog({ action: 'put_notifications_read_all', module: 'communication' })
   @Put('notifications/read-all')
   @Roles(
     ROLES.SUPER_ADMIN,
@@ -120,9 +164,13 @@ export class CommunicationController {
   )
   @ApiOperation({ summary: 'Mark all notifications as read' })
   async markAllAsRead(@CurrentUser() user: any) {
-    return { success: true, data: await this.service.markAllAsRead(user.id, user.branchId) };
+    return {
+      success: true,
+      data: await this.service.markAllAsRead(user.id, user.branchId),
+    };
   }
 
+  @AuditLog({ action: 'post_announcements', module: 'communication' })
   @Post('announcements')
   @Roles(ROLES.SUPER_ADMIN, ROLES.PRINCIPAL, ROLES.ORGANIZATION_OWNER)
   @ApiOperation({ summary: 'Create announcement' })
@@ -130,12 +178,15 @@ export class CommunicationController {
     @Body() body: CreateAnnouncementDto,
     @CurrentUser() user: any,
   ) {
-    return { success: true, data: await this.service.createAnnouncement({
-      ...body,
-      tenantId: user.tenantId,
-      branchId: user.branchId,
-      createdBy: user.id,
-    }) };
+    return {
+      success: true,
+      data: await this.service.createAnnouncement({
+        ...body,
+        tenantId: user.tenantId,
+        branchId: user.branchId,
+        createdBy: user.id,
+      }),
+    };
   }
 
   @Get('announcements')
@@ -151,9 +202,17 @@ export class CommunicationController {
     @CurrentUser() user: any,
     @Query() query: AnnouncementQueryDto,
   ) {
-    return { success: true, data: await this.service.findAnnouncementsByBranch(user.branchId, query) };
+    return {
+      success: true,
+      data: await this.service.findAnnouncementsByBranch(user.branchId, query),
+    };
   }
 
+  @AuditLog({
+    action: 'put_announcements_id',
+    module: 'communication',
+    resourceIdParam: 'id',
+  })
   @Put('announcements/:id')
   @Roles(ROLES.SUPER_ADMIN, ROLES.PRINCIPAL, ROLES.ORGANIZATION_OWNER)
   @ApiOperation({ summary: 'Update announcement' })
@@ -162,13 +221,24 @@ export class CommunicationController {
     @Body() body: UpdateAnnouncementDto,
     @CurrentUser() user: any,
   ) {
-    return { success: true, data: await this.service.updateAnnouncement(id, user.branchId, body) };
+    return {
+      success: true,
+      data: await this.service.updateAnnouncement(id, user.branchId, body),
+    };
   }
 
+  @AuditLog({
+    action: 'delete_announcements_id',
+    module: 'communication',
+    resourceIdParam: 'id',
+  })
   @Delete('announcements/:id')
   @Roles(ROLES.SUPER_ADMIN, ROLES.PRINCIPAL, ROLES.ORGANIZATION_OWNER)
   @ApiOperation({ summary: 'Delete announcement' })
   async deleteAnnouncement(@Param('id') id: string, @CurrentUser() user: any) {
-    return { success: true, data: await this.service.deleteAnnouncement(id, user.branchId) };
+    return {
+      success: true,
+      data: await this.service.deleteAnnouncement(id, user.branchId),
+    };
   }
 }

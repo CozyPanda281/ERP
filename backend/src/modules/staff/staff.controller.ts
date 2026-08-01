@@ -17,6 +17,7 @@ import { CreateStaffDto } from './dto/create-staff.dto';
 import { UpdateStaffDto } from './dto/update-staff.dto';
 import { AddDocumentDto } from './dto/add-document.dto';
 import { StaffQueryDto } from './dto/staff-query.dto';
+import { AuditLog } from '../../common/decorators/audit-log.decorator';
 
 @ApiTags('Staff')
 @ApiBearerAuth()
@@ -24,6 +25,7 @@ import { StaffQueryDto } from './dto/staff-query.dto';
 export class StaffController {
   constructor(private readonly service: StaffService) {}
 
+  @AuditLog({ action: 'post_root', module: 'staff' })
   @Post()
   @Roles(ROLES.SUPER_ADMIN, ROLES.PRINCIPAL, ROLES.ORGANIZATION_OWNER)
   @ApiOperation({ summary: 'Create staff member' })
@@ -52,6 +54,7 @@ export class StaffController {
     return { success: true, data };
   }
 
+  @AuditLog({ action: 'put_id', module: 'staff', resourceIdParam: 'id' })
   @Put(':id')
   @Roles(ROLES.SUPER_ADMIN, ROLES.PRINCIPAL, ROLES.ORGANIZATION_OWNER)
   @ApiOperation({ summary: 'Update staff' })
@@ -60,6 +63,7 @@ export class StaffController {
     return { success: true, data };
   }
 
+  @AuditLog({ action: 'delete_id', module: 'staff', resourceIdParam: 'id' })
   @Delete(':id')
   @Roles(ROLES.SUPER_ADMIN, ROLES.PRINCIPAL, ROLES.ORGANIZATION_OWNER)
   @ApiOperation({ summary: 'Delete staff' })
@@ -67,6 +71,11 @@ export class StaffController {
     return { success: true, data: await this.service.delete(id) };
   }
 
+  @AuditLog({
+    action: 'post_staffId_documents',
+    module: 'staff',
+    resourceIdParam: 'id',
+  })
   @Post(':staffId/documents')
   @Roles(ROLES.SUPER_ADMIN, ROLES.PRINCIPAL, ROLES.ORGANIZATION_OWNER)
   @ApiOperation({ summary: 'Add document' })

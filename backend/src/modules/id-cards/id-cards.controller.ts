@@ -8,6 +8,7 @@ import { CreateIdCardTemplateDto } from './dto/create-id-card-template.dto';
 import { CreateCertificateTemplateDto } from './dto/create-certificate-template.dto';
 import { IssueCertificateDto } from './dto/issue-certificate.dto';
 import { IdCardQueryDto } from './dto/id-card-query.dto';
+import { AuditLog } from '../../common/decorators/audit-log.decorator';
 
 @ApiTags('ID Cards & Certificates')
 @ApiBearerAuth()
@@ -15,6 +16,7 @@ import { IdCardQueryDto } from './dto/id-card-query.dto';
 export class IdCardsController {
   constructor(private readonly service: IdCardsService) {}
 
+  @AuditLog({ action: 'post_templates', module: 'id-cards' })
   @Post('templates')
   @Roles(ROLES.SUPER_ADMIN, ROLES.PRINCIPAL, ROLES.ORGANIZATION_OWNER)
   @ApiOperation({ summary: 'Create ID card template' })
@@ -46,6 +48,7 @@ export class IdCardsController {
     return { success: true, data };
   }
 
+  @AuditLog({ action: 'post_certificate_templates', module: 'id-cards' })
   @Post('certificate-templates')
   @Roles(ROLES.SUPER_ADMIN, ROLES.PRINCIPAL, ROLES.ORGANIZATION_OWNER)
   @ApiOperation({ summary: 'Create certificate template' })
@@ -79,6 +82,7 @@ export class IdCardsController {
     return { success: true, data };
   }
 
+  @AuditLog({ action: 'post_certificates', module: 'id-cards' })
   @Post('certificates')
   @Roles(ROLES.SUPER_ADMIN, ROLES.PRINCIPAL, ROLES.ORGANIZATION_OWNER)
   @ApiOperation({ summary: 'Issue certificate' })

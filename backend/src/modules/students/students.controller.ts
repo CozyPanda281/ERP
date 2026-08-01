@@ -29,6 +29,7 @@ import { ListStudentsQueryDto } from './dto/list-students-query.dto';
 import { CreateParentDto } from './dto/create-parent.dto';
 import { WithdrawStudentDto } from './dto/withdraw-student.dto';
 import { PromoteStudentDto } from './dto/promote-student.dto';
+import { AuditLog } from '../../common/decorators/audit-log.decorator';
 
 @ApiTags('Students')
 @ApiBearerAuth()
@@ -36,8 +37,9 @@ import { PromoteStudentDto } from './dto/promote-student.dto';
 export class StudentsController {
   constructor(private readonly studentsService: StudentsService) {}
 
-  // ─── Enquiries ────────────────────────────────────────────────────────────
+  // â”€â”€â”€ Enquiries â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
+  @AuditLog({ action: 'post_enquiries', module: 'students' })
   @Post('enquiries')
   @Roles(ROLES.RECEPTION, ROLES.PRINCIPAL, ROLES.ORGANIZATION_OWNER)
   @ApiOperation({ summary: 'Create enquiry' })
@@ -72,6 +74,11 @@ export class StudentsController {
     return { success: true, data };
   }
 
+  @AuditLog({
+    action: 'put_enquiries_id',
+    module: 'students',
+    resourceIdParam: 'id',
+  })
   @Put('enquiries/:id')
   @Roles(ROLES.RECEPTION, ROLES.PRINCIPAL)
   @ApiOperation({ summary: 'Update enquiry' })
@@ -80,6 +87,11 @@ export class StudentsController {
     return { success: true, data };
   }
 
+  @AuditLog({
+    action: 'post_enquiries_id_convert',
+    module: 'students',
+    resourceIdParam: 'id',
+  })
   @Post('enquiries/:id/convert')
   @Roles(ROLES.RECEPTION, ROLES.PRINCIPAL)
   @ApiOperation({ summary: 'Convert enquiry to application' })
@@ -88,8 +100,9 @@ export class StudentsController {
     return { success: true, data };
   }
 
-  // ─── Applications ─────────────────────────────────────────────────────────
+  // â”€â”€â”€ Applications â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
+  @AuditLog({ action: 'post_applications', module: 'students' })
   @Post('applications')
   @Roles(ROLES.RECEPTION, ROLES.PRINCIPAL, ROLES.ORGANIZATION_OWNER)
   @ApiOperation({ summary: 'Submit application' })
@@ -127,6 +140,11 @@ export class StudentsController {
     return { success: true, data };
   }
 
+  @AuditLog({
+    action: 'put_applications_id',
+    module: 'students',
+    resourceIdParam: 'id',
+  })
   @Put('applications/:id')
   @Roles(ROLES.RECEPTION, ROLES.PRINCIPAL)
   @ApiOperation({ summary: 'Update application' })
@@ -138,6 +156,11 @@ export class StudentsController {
     return { success: true, data };
   }
 
+  @AuditLog({
+    action: 'post_applications_id_review',
+    module: 'students',
+    resourceIdParam: 'id',
+  })
   @Post('applications/:id/review')
   @Roles(ROLES.PRINCIPAL, ROLES.ORGANIZATION_OWNER)
   @ApiOperation({ summary: 'Review application' })
@@ -155,6 +178,11 @@ export class StudentsController {
     return { success: true, data };
   }
 
+  @AuditLog({
+    action: 'post_applications_id_admit',
+    module: 'students',
+    resourceIdParam: 'id',
+  })
   @Post('applications/:id/admit')
   @Roles(ROLES.PRINCIPAL, ROLES.ORGANIZATION_OWNER)
   @ApiOperation({ summary: 'Admit application as student' })
@@ -163,8 +191,9 @@ export class StudentsController {
     return { success: true, data };
   }
 
-  // ─── Students ─────────────────────────────────────────────────────────────
+  // â”€â”€â”€ Students â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
+  @AuditLog({ action: 'post_students', module: 'students' })
   @Post('students')
   @Roles(ROLES.PRINCIPAL, ROLES.ORGANIZATION_OWNER)
   @ApiOperation({ summary: 'Create student directly' })
@@ -199,6 +228,11 @@ export class StudentsController {
     return { success: true, data };
   }
 
+  @AuditLog({
+    action: 'put_students_id',
+    module: 'students',
+    resourceIdParam: 'id',
+  })
   @Put('students/:id')
   @Roles(ROLES.PRINCIPAL, ROLES.ORGANIZATION_OWNER)
   @ApiOperation({ summary: 'Update student' })
@@ -207,6 +241,11 @@ export class StudentsController {
     return { success: true, data };
   }
 
+  @AuditLog({
+    action: 'post_students_id_withdraw',
+    module: 'students',
+    resourceIdParam: 'id',
+  })
   @Post('students/:id/withdraw')
   @Roles(ROLES.PRINCIPAL, ROLES.ORGANIZATION_OWNER)
   @ApiOperation({ summary: 'Withdraw student' })
@@ -238,8 +277,9 @@ export class StudentsController {
     return { success: true, data };
   }
 
-  // ─── Parents ──────────────────────────────────────────────────────────────
+  // â”€â”€â”€ Parents â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
+  @AuditLog({ action: 'post_parents', module: 'students' })
   @Post('parents')
   @Roles(ROLES.PRINCIPAL, ROLES.RECEPTION)
   @ApiOperation({ summary: 'Create parent' })
@@ -259,6 +299,11 @@ export class StudentsController {
     return { success: true, data };
   }
 
+  @AuditLog({
+    action: 'put_parents_id',
+    module: 'students',
+    resourceIdParam: 'id',
+  })
   @Put('parents/:id')
   @Roles(ROLES.PRINCIPAL)
   @ApiOperation({ summary: 'Update parent' })
@@ -267,6 +312,11 @@ export class StudentsController {
     return { success: true, data };
   }
 
+  @AuditLog({
+    action: 'post_students_id_parents',
+    module: 'students',
+    resourceIdParam: 'id',
+  })
   @Post('students/:id/parents')
   @Roles(ROLES.PRINCIPAL, ROLES.RECEPTION)
   @ApiOperation({ summary: 'Link parent to student' })
@@ -294,8 +344,13 @@ export class StudentsController {
     return { success: true, data };
   }
 
-  // ─── Documents ────────────────────────────────────────────────────────────
+  // â”€â”€â”€ Documents â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
+  @AuditLog({
+    action: 'post_students_id_documents',
+    module: 'students',
+    resourceIdParam: 'id',
+  })
   @Post('students/:id/documents')
   @Roles(ROLES.PRINCIPAL, ROLES.RECEPTION)
   @ApiOperation({ summary: 'Add document to student' })
@@ -312,6 +367,11 @@ export class StudentsController {
     return { success: true, data };
   }
 
+  @AuditLog({
+    action: 'put_documents_id',
+    module: 'students',
+    resourceIdParam: 'id',
+  })
   @Put('documents/:id')
   @Roles(ROLES.PRINCIPAL)
   @ApiOperation({ summary: 'Update document' })
@@ -323,6 +383,11 @@ export class StudentsController {
     return { success: true, data };
   }
 
+  @AuditLog({
+    action: 'delete_documents_id',
+    module: 'students',
+    resourceIdParam: 'id',
+  })
   @Delete('documents/:id')
   @Roles(ROLES.PRINCIPAL)
   @ApiOperation({ summary: 'Delete document' })
@@ -331,8 +396,13 @@ export class StudentsController {
     return { success: true, message: 'Document deleted' };
   }
 
-  // ─── Academic Records ─────────────────────────────────────────────────────
+  // â”€â”€â”€ Academic Records â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
+  @AuditLog({
+    action: 'post_students_id_academic_records',
+    module: 'students',
+    resourceIdParam: 'id',
+  })
   @Post('students/:id/academic-records')
   @Roles(ROLES.PRINCIPAL, ROLES.ORGANIZATION_OWNER)
   @ApiOperation({ summary: 'Create academic record' })
@@ -350,6 +420,11 @@ export class StudentsController {
     return { success: true, data };
   }
 
+  @AuditLog({
+    action: 'post_students_id_promote',
+    module: 'students',
+    resourceIdParam: 'id',
+  })
   @Post('students/:id/promote')
   @Roles(ROLES.PRINCIPAL, ROLES.ORGANIZATION_OWNER)
   @ApiOperation({ summary: 'Promote student to next class' })

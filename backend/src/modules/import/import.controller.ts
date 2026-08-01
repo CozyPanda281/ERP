@@ -24,6 +24,7 @@ import { UpdatePreviewDto } from './dto/update-preview.dto';
 import { ApproveBatchDto } from './dto/approve-batch.dto';
 import { RejectBatchDto } from './dto/reject-batch.dto';
 import { ListBatchesQueryDto } from './dto/list-batches-query.dto';
+import { AuditLog } from '../../common/decorators/audit-log.decorator';
 
 @ApiTags('Import')
 @ApiBearerAuth()
@@ -41,6 +42,7 @@ export class ImportController {
     };
   }
 
+  @AuditLog({ action: 'post_upload', module: 'import' })
   @Post('upload')
   @Roles(ROLES.PRINCIPAL, ROLES.ORGANIZATION_OWNER, ROLES.HR, ROLES.RECEPTION)
   @ApiOperation({ summary: 'Upload a file for bulk import' })
@@ -88,6 +90,11 @@ export class ImportController {
     return { success: true, data };
   }
 
+  @AuditLog({
+    action: 'put_batches_id_preview',
+    module: 'import',
+    resourceIdParam: 'id',
+  })
   @Put('batches/:id/preview')
   @Roles(ROLES.PRINCIPAL, ROLES.ORGANIZATION_OWNER, ROLES.HR)
   @ApiOperation({ summary: 'Update rows in a batch preview before approval' })
@@ -96,6 +103,11 @@ export class ImportController {
     return { success: true, data };
   }
 
+  @AuditLog({
+    action: 'post_batches_id_approve',
+    module: 'import',
+    resourceIdParam: 'id',
+  })
   @Post('batches/:id/approve')
   @Roles(ROLES.PRINCIPAL, ROLES.ORGANIZATION_OWNER)
   @ApiOperation({ summary: 'Approve import batch for deployment' })
@@ -108,6 +120,11 @@ export class ImportController {
     return { success: true, data };
   }
 
+  @AuditLog({
+    action: 'post_batches_id_reject',
+    module: 'import',
+    resourceIdParam: 'id',
+  })
   @Post('batches/:id/reject')
   @Roles(ROLES.PRINCIPAL, ROLES.ORGANIZATION_OWNER)
   @ApiOperation({ summary: 'Reject import batch' })
@@ -120,6 +137,11 @@ export class ImportController {
     return { success: true, data };
   }
 
+  @AuditLog({
+    action: 'post_batches_id_deploy',
+    module: 'import',
+    resourceIdParam: 'id',
+  })
   @Post('batches/:id/deploy')
   @Roles(ROLES.PRINCIPAL, ROLES.ORGANIZATION_OWNER)
   @ApiOperation({ summary: 'Deploy approved batch to database' })
@@ -128,6 +150,11 @@ export class ImportController {
     return { success: true, data };
   }
 
+  @AuditLog({
+    action: 'post_batches_id_rollback',
+    module: 'import',
+    resourceIdParam: 'id',
+  })
   @Post('batches/:id/rollback')
   @Roles(ROLES.PRINCIPAL, ROLES.ORGANIZATION_OWNER)
   @ApiOperation({ summary: 'Rollback a deployed batch' })

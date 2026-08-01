@@ -21,6 +21,7 @@ import { UpdateTenantDto } from './dto/update-tenant.dto';
 import { TenantQueryDto } from './dto/tenant-query.dto';
 import { SetupTenantDto } from './dto/setup-tenant.dto';
 import { UpdateTenantStatusDto } from './dto/update-status.dto';
+import { AuditLog } from '../../common/decorators/audit-log.decorator';
 
 @ApiTags('Tenants')
 @ApiBearerAuth()
@@ -29,6 +30,7 @@ export class TenantsController {
   constructor(private readonly tenantsService: TenantsService) {}
 
   @Public()
+  @AuditLog({ action: 'post_root', module: 'tenants', includeBody: false })
   @Post()
   @ApiOperation({ summary: 'Create a new tenant (public registration)' })
   async create(@Body() dto: CreateTenantDto) {
@@ -62,6 +64,12 @@ export class TenantsController {
     return { success: true, data };
   }
 
+  @AuditLog({
+    action: 'put_id',
+    module: 'tenants',
+    resourceIdParam: 'id',
+    includeBody: false,
+  })
   @Put(':id')
   @Roles(ROLES.SUPER_ADMIN, ROLES.ORGANIZATION_OWNER)
   @ApiOperation({ summary: 'Update tenant details' })
@@ -77,6 +85,12 @@ export class TenantsController {
     return { success: true, data };
   }
 
+  @AuditLog({
+    action: 'patch_id_status',
+    module: 'tenants',
+    resourceIdParam: 'id',
+    includeBody: false,
+  })
   @Patch(':id/status')
   @Roles(ROLES.SUPER_ADMIN)
   @ApiOperation({ summary: 'Activate or suspend a tenant (SuperAdmin)' })
@@ -88,6 +102,12 @@ export class TenantsController {
     return { success: true, data };
   }
 
+  @AuditLog({
+    action: 'post_id_setup',
+    module: 'tenants',
+    resourceIdParam: 'id',
+    includeBody: false,
+  })
   @Post(':id/setup')
   @Roles(ROLES.ORGANIZATION_OWNER, ROLES.SUPER_ADMIN)
   @ApiOperation({ summary: 'First-run setup for a new tenant' })
@@ -103,6 +123,12 @@ export class TenantsController {
     return { success: true, data };
   }
 
+  @AuditLog({
+    action: 'delete_id',
+    module: 'tenants',
+    resourceIdParam: 'id',
+    includeBody: false,
+  })
   @Delete(':id')
   @Roles(ROLES.SUPER_ADMIN)
   @ApiOperation({ summary: 'Soft-delete a tenant (SuperAdmin)' })

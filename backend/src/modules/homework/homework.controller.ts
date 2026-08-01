@@ -3,12 +3,14 @@ import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { HomeworkService } from './homework.service';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
+import { RequiresFeature } from '../../common/decorators/requires-feature.decorator';
 import { ROLES } from '../../common/constants';
 import { CreateHomeworkDto } from './dto/create-homework.dto';
 import { SubmitHomeworkDto } from './dto/submit-homework.dto';
 import { GradeSubmissionDto } from './dto/grade-submission.dto';
 import { CreateAssignmentDto } from './dto/create-assignment.dto';
 import { HomeworkQueryDto } from './dto/homework-query.dto';
+import { AuditLog } from '../../common/decorators/audit-log.decorator';
 
 @ApiTags('Homework')
 @ApiBearerAuth()
@@ -16,6 +18,7 @@ import { HomeworkQueryDto } from './dto/homework-query.dto';
 export class HomeworkController {
   constructor(private readonly service: HomeworkService) {}
 
+  @AuditLog({ action: 'post_root', module: 'homework' })
   @Post()
   @Roles(ROLES.SUPER_ADMIN, ROLES.PRINCIPAL, ROLES.ORGANIZATION_OWNER)
   @ApiOperation({ summary: 'Create homework' })
@@ -42,6 +45,11 @@ export class HomeworkController {
     return { success: true, ...data };
   }
 
+  @AuditLog({
+    action: 'post_homeworkId_submissions',
+    module: 'homework',
+    resourceIdParam: 'id',
+  })
   @Post(':homeworkId/submissions')
   @Roles(ROLES.SUPER_ADMIN, ROLES.PRINCIPAL, ROLES.ORGANIZATION_OWNER)
   @ApiOperation({ summary: 'Submit homework' })
@@ -66,6 +74,11 @@ export class HomeworkController {
     return { success: true, data };
   }
 
+  @AuditLog({
+    action: 'put_submissions_id_grade',
+    module: 'homework',
+    resourceIdParam: 'id',
+  })
   @Put('submissions/:id/grade')
   @Roles(ROLES.SUPER_ADMIN, ROLES.PRINCIPAL, ROLES.ORGANIZATION_OWNER)
   @ApiOperation({ summary: 'Grade submission' })
@@ -83,8 +96,10 @@ export class HomeworkController {
     return { success: true, data };
   }
 
+  @AuditLog({ action: 'post_assignments', module: 'homework' })
   @Post('assignments')
   @Roles(ROLES.SUPER_ADMIN, ROLES.PRINCIPAL, ROLES.ORGANIZATION_OWNER)
+  @RequiresFeature('assignments')
   @ApiOperation({ summary: 'Create assignment' })
   async createAssignment(
     @Body() body: CreateAssignmentDto,
@@ -100,6 +115,7 @@ export class HomeworkController {
 
   @Get('assignments')
   @Roles(ROLES.SUPER_ADMIN, ROLES.PRINCIPAL, ROLES.ORGANIZATION_OWNER)
+  @RequiresFeature('assignments')
   @ApiOperation({ summary: 'List assignments' })
   async getAssignments(
     @CurrentUser() user: any,
@@ -112,8 +128,14 @@ export class HomeworkController {
     return { success: true, ...data };
   }
 
+  @AuditLog({
+    action: 'post_assignments_assignmentId_submissions',
+    module: 'homework',
+    resourceIdParam: 'id',
+  })
   @Post('assignments/:assignmentId/submissions')
   @Roles(ROLES.SUPER_ADMIN, ROLES.PRINCIPAL, ROLES.ORGANIZATION_OWNER)
+  @RequiresFeature('assignments')
   @ApiOperation({ summary: 'Submit assignment' })
   async submitAssignment(
     @Param('assignmentId') assignmentId: string,
@@ -130,14 +152,21 @@ export class HomeworkController {
 
   @Get('assignments/:assignmentId/submissions')
   @Roles(ROLES.SUPER_ADMIN, ROLES.PRINCIPAL, ROLES.ORGANIZATION_OWNER)
+  @RequiresFeature('assignments')
   @ApiOperation({ summary: 'List assignment submissions' })
   async getAssignmentSubmissions(@Param('assignmentId') assignmentId: string) {
     const data = await this.service.findAssignmentSubmissions(assignmentId);
     return { success: true, data };
   }
 
+  @AuditLog({
+    action: 'put_assignments_submissions_id_grade',
+    module: 'homework',
+    resourceIdParam: 'id',
+  })
   @Put('assignments/submissions/:id/grade')
   @Roles(ROLES.SUPER_ADMIN, ROLES.PRINCIPAL, ROLES.ORGANIZATION_OWNER)
+  @RequiresFeature('assignments')
   @ApiOperation({ summary: 'Grade assignment submission' })
   async gradeAssignmentSubmission(
     @Param('id') id: string,

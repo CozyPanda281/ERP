@@ -23,6 +23,7 @@ import { InventoryQueryDto } from './dto/inventory-query.dto';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { ROLES } from '../../common/constants';
+import { AuditLog } from '../../common/decorators/audit-log.decorator';
 
 @ApiTags('Inventory')
 @ApiBearerAuth()
@@ -30,8 +31,9 @@ import { ROLES } from '../../common/constants';
 export class InventoryController {
   constructor(private readonly service: InventoryService) {}
 
-  // ─── Categories ──────────────────────────────────────────────────────────
+  // â”€â”€â”€ Categories â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
+  @AuditLog({ action: 'post_categories', module: 'inventory' })
   @Post('categories')
   @Roles(ROLES.SUPER_ADMIN, ROLES.PRINCIPAL, ROLES.ORGANIZATION_OWNER)
   @ApiOperation({ summary: 'Create inventory category' })
@@ -39,11 +41,14 @@ export class InventoryController {
     @Body() body: CreateCategoryDto,
     @CurrentUser() user: any,
   ) {
-    return { success: true, data: await this.service.createCategory({
-      ...body,
-      tenantId: user.tenantId,
-      branchId: user.branchId,
-    }) };
+    return {
+      success: true,
+      data: await this.service.createCategory({
+        ...body,
+        tenantId: user.tenantId,
+        branchId: user.branchId,
+      }),
+    };
   }
 
   @Get('categories')
@@ -55,7 +60,10 @@ export class InventoryController {
   )
   @ApiOperation({ summary: 'List categories by branch' })
   async getCategories(@CurrentUser() user: any) {
-    return { success: true, data: await this.service.findCategoriesByBranch(user.branchId) };
+    return {
+      success: true,
+      data: await this.service.findCategoriesByBranch(user.branchId),
+    };
   }
 
   @Get('categories/:id')
@@ -67,9 +75,17 @@ export class InventoryController {
   )
   @ApiOperation({ summary: 'Get category by ID' })
   async getCategoryById(@Param('id') id: string, @CurrentUser() user: any) {
-    return { success: true, data: await this.service.findCategoryById(id, user.branchId) };
+    return {
+      success: true,
+      data: await this.service.findCategoryById(id, user.branchId),
+    };
   }
 
+  @AuditLog({
+    action: 'put_categories_id',
+    module: 'inventory',
+    resourceIdParam: 'id',
+  })
   @Put('categories/:id')
   @Roles(ROLES.SUPER_ADMIN, ROLES.PRINCIPAL, ROLES.ORGANIZATION_OWNER)
   @ApiOperation({ summary: 'Update category' })
@@ -78,27 +94,42 @@ export class InventoryController {
     @Body() body: UpdateCategoryDto,
     @CurrentUser() user: any,
   ) {
-    return { success: true, data: await this.service.updateCategory(id, user.branchId, body) };
+    return {
+      success: true,
+      data: await this.service.updateCategory(id, user.branchId, body),
+    };
   }
 
+  @AuditLog({
+    action: 'delete_categories_id',
+    module: 'inventory',
+    resourceIdParam: 'id',
+  })
   @Delete('categories/:id')
   @Roles(ROLES.SUPER_ADMIN, ROLES.PRINCIPAL, ROLES.ORGANIZATION_OWNER)
   @ApiOperation({ summary: 'Delete category' })
   async deleteCategory(@Param('id') id: string, @CurrentUser() user: any) {
-    return { success: true, data: await this.service.deleteCategory(id, user.branchId) };
+    return {
+      success: true,
+      data: await this.service.deleteCategory(id, user.branchId),
+    };
   }
 
-  // ─── Items ───────────────────────────────────────────────────────────────
+  // â”€â”€â”€ Items â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
+  @AuditLog({ action: 'post_items', module: 'inventory' })
   @Post('items')
   @Roles(ROLES.SUPER_ADMIN, ROLES.PRINCIPAL, ROLES.ORGANIZATION_OWNER)
   @ApiOperation({ summary: 'Create inventory item' })
   async createItem(@Body() body: CreateItemDto, @CurrentUser() user: any) {
-    return { success: true, data: await this.service.createItem({
-      ...body,
-      tenantId: user.tenantId,
-      branchId: user.branchId,
-    }) };
+    return {
+      success: true,
+      data: await this.service.createItem({
+        ...body,
+        tenantId: user.tenantId,
+        branchId: user.branchId,
+      }),
+    };
   }
 
   @Get('items')
@@ -110,7 +141,10 @@ export class InventoryController {
   )
   @ApiOperation({ summary: 'List items by branch' })
   async getItems(@CurrentUser() user: any, @Query() query: InventoryQueryDto) {
-    return { success: true, data: await this.service.findItemsByBranch(user.branchId, query) };
+    return {
+      success: true,
+      data: await this.service.findItemsByBranch(user.branchId, query),
+    };
   }
 
   @Get('items/low-stock')
@@ -120,7 +154,10 @@ export class InventoryController {
     @CurrentUser() user: any,
     @Query() query: InventoryQueryDto,
   ) {
-    return { success: true, data: await this.service.findLowStockItems(user.branchId, query) };
+    return {
+      success: true,
+      data: await this.service.findLowStockItems(user.branchId, query),
+    };
   }
 
   @Get('items/:id')
@@ -132,9 +169,17 @@ export class InventoryController {
   )
   @ApiOperation({ summary: 'Get item by ID' })
   async getItemById(@Param('id') id: string, @CurrentUser() user: any) {
-    return { success: true, data: await this.service.findItemById(id, user.branchId) };
+    return {
+      success: true,
+      data: await this.service.findItemById(id, user.branchId),
+    };
   }
 
+  @AuditLog({
+    action: 'put_items_id',
+    module: 'inventory',
+    resourceIdParam: 'id',
+  })
   @Put('items/:id')
   @Roles(ROLES.SUPER_ADMIN, ROLES.PRINCIPAL, ROLES.ORGANIZATION_OWNER)
   @ApiOperation({ summary: 'Update item' })
@@ -143,18 +188,30 @@ export class InventoryController {
     @Body() body: UpdateItemDto,
     @CurrentUser() user: any,
   ) {
-    return { success: true, data: await this.service.updateItem(id, user.branchId, body) };
+    return {
+      success: true,
+      data: await this.service.updateItem(id, user.branchId, body),
+    };
   }
 
+  @AuditLog({
+    action: 'delete_items_id',
+    module: 'inventory',
+    resourceIdParam: 'id',
+  })
   @Delete('items/:id')
   @Roles(ROLES.SUPER_ADMIN, ROLES.PRINCIPAL, ROLES.ORGANIZATION_OWNER)
   @ApiOperation({ summary: 'Delete item' })
   async deleteItem(@Param('id') id: string, @CurrentUser() user: any) {
-    return { success: true, data: await this.service.deleteItem(id, user.branchId) };
+    return {
+      success: true,
+      data: await this.service.deleteItem(id, user.branchId),
+    };
   }
 
-  // ─── Suppliers ───────────────────────────────────────────────────────────
+  // â”€â”€â”€ Suppliers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
+  @AuditLog({ action: 'post_suppliers', module: 'inventory' })
   @Post('suppliers')
   @Roles(ROLES.SUPER_ADMIN, ROLES.PRINCIPAL, ROLES.ORGANIZATION_OWNER)
   @ApiOperation({ summary: 'Create supplier' })
@@ -162,11 +219,14 @@ export class InventoryController {
     @Body() body: CreateSupplierDto,
     @CurrentUser() user: any,
   ) {
-    return { success: true, data: await this.service.createSupplier({
-      ...body,
-      tenantId: user.tenantId,
-      branchId: user.branchId,
-    }) };
+    return {
+      success: true,
+      data: await this.service.createSupplier({
+        ...body,
+        tenantId: user.tenantId,
+        branchId: user.branchId,
+      }),
+    };
   }
 
   @Get('suppliers')
@@ -178,7 +238,10 @@ export class InventoryController {
   )
   @ApiOperation({ summary: 'List suppliers' })
   async getSuppliers(@CurrentUser() user: any) {
-    return { success: true, data: await this.service.findSuppliersByBranch(user.branchId) };
+    return {
+      success: true,
+      data: await this.service.findSuppliersByBranch(user.branchId),
+    };
   }
 
   @Get('suppliers/:id')
@@ -190,9 +253,17 @@ export class InventoryController {
   )
   @ApiOperation({ summary: 'Get supplier by ID' })
   async getSupplierById(@Param('id') id: string, @CurrentUser() user: any) {
-    return { success: true, data: await this.service.findSupplierById(id, user.branchId) };
+    return {
+      success: true,
+      data: await this.service.findSupplierById(id, user.branchId),
+    };
   }
 
+  @AuditLog({
+    action: 'put_suppliers_id',
+    module: 'inventory',
+    resourceIdParam: 'id',
+  })
   @Put('suppliers/:id')
   @Roles(ROLES.SUPER_ADMIN, ROLES.PRINCIPAL, ROLES.ORGANIZATION_OWNER)
   @ApiOperation({ summary: 'Update supplier' })
@@ -201,18 +272,30 @@ export class InventoryController {
     @Body() body: CreateSupplierDto,
     @CurrentUser() user: any,
   ) {
-    return { success: true, data: await this.service.updateSupplier(id, user.branchId, body) };
+    return {
+      success: true,
+      data: await this.service.updateSupplier(id, user.branchId, body),
+    };
   }
 
+  @AuditLog({
+    action: 'delete_suppliers_id',
+    module: 'inventory',
+    resourceIdParam: 'id',
+  })
   @Delete('suppliers/:id')
   @Roles(ROLES.SUPER_ADMIN, ROLES.PRINCIPAL, ROLES.ORGANIZATION_OWNER)
   @ApiOperation({ summary: 'Delete supplier' })
   async deleteSupplier(@Param('id') id: string, @CurrentUser() user: any) {
-    return { success: true, data: await this.service.deleteSupplier(id, user.branchId) };
+    return {
+      success: true,
+      data: await this.service.deleteSupplier(id, user.branchId),
+    };
   }
 
-  // ─── Purchase Orders ─────────────────────────────────────────────────────
+  // â”€â”€â”€ Purchase Orders â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
+  @AuditLog({ action: 'post_purchase_orders', module: 'inventory' })
   @Post('purchase-orders')
   @Roles(ROLES.SUPER_ADMIN, ROLES.PRINCIPAL, ROLES.ORGANIZATION_OWNER)
   @ApiOperation({ summary: 'Create purchase order' })
@@ -220,12 +303,15 @@ export class InventoryController {
     @Body() body: CreatePurchaseOrderDto,
     @CurrentUser() user: any,
   ) {
-    return { success: true, data: await this.service.createPurchaseOrder({
-      ...body,
-      tenantId: user.tenantId,
-      branchId: user.branchId,
-      createdBy: user.id,
-    }) };
+    return {
+      success: true,
+      data: await this.service.createPurchaseOrder({
+        ...body,
+        tenantId: user.tenantId,
+        branchId: user.branchId,
+        createdBy: user.id,
+      }),
+    };
   }
 
   @Get('purchase-orders')
@@ -240,7 +326,10 @@ export class InventoryController {
     @CurrentUser() user: any,
     @Query() query: InventoryQueryDto,
   ) {
-    return { success: true, data: await this.service.findPurchaseOrdersByBranch(user.branchId, query) };
+    return {
+      success: true,
+      data: await this.service.findPurchaseOrdersByBranch(user.branchId, query),
+    };
   }
 
   @Get('purchase-orders/:id')
@@ -255,9 +344,17 @@ export class InventoryController {
     @Param('id') id: string,
     @CurrentUser() user: any,
   ) {
-    return { success: true, data: await this.service.findPurchaseOrderById(id, user.branchId) };
+    return {
+      success: true,
+      data: await this.service.findPurchaseOrderById(id, user.branchId),
+    };
   }
 
+  @AuditLog({
+    action: 'put_purchase_orders_id_status',
+    module: 'inventory',
+    resourceIdParam: 'id',
+  })
   @Put('purchase-orders/:id/status')
   @Roles(ROLES.SUPER_ADMIN, ROLES.PRINCIPAL, ROLES.ORGANIZATION_OWNER)
   @ApiOperation({ summary: 'Update purchase order status' })
@@ -266,9 +363,21 @@ export class InventoryController {
     @Body('status') status: string,
     @CurrentUser() user: any,
   ) {
-    return { success: true, data: await this.service.updatePurchaseOrderStatus(id, user.branchId, status) };
+    return {
+      success: true,
+      data: await this.service.updatePurchaseOrderStatus(
+        id,
+        user.branchId,
+        status,
+      ),
+    };
   }
 
+  @AuditLog({
+    action: 'post_purchase_orders_id_items',
+    module: 'inventory',
+    resourceIdParam: 'id',
+  })
   @Post('purchase-orders/:id/items')
   @Roles(ROLES.SUPER_ADMIN, ROLES.PRINCIPAL, ROLES.ORGANIZATION_OWNER)
   @ApiOperation({ summary: 'Add item to purchase order' })
@@ -277,11 +386,15 @@ export class InventoryController {
     @Body() body: AddPoItemDto,
     @CurrentUser() user: any,
   ) {
-    return { success: true, data: await this.service.addPoItem(id, user.branchId, body) };
+    return {
+      success: true,
+      data: await this.service.addPoItem(id, user.branchId, body),
+    };
   }
 
-  // ─── Goods Receipts ──────────────────────────────────────────────────────
+  // â”€â”€â”€ Goods Receipts â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
+  @AuditLog({ action: 'post_goods_receipts', module: 'inventory' })
   @Post('goods-receipts')
   @Roles(ROLES.SUPER_ADMIN, ROLES.PRINCIPAL, ROLES.ORGANIZATION_OWNER)
   @ApiOperation({ summary: 'Create goods receipt' })
@@ -292,12 +405,15 @@ export class InventoryController {
     },
     @CurrentUser() user: any,
   ) {
-    return { success: true, data: await this.service.createGoodsReceipt({
-      ...body,
-      tenantId: user.tenantId,
-      branchId: user.branchId,
-      createdBy: user.id,
-    }) };
+    return {
+      success: true,
+      data: await this.service.createGoodsReceipt({
+        ...body,
+        tenantId: user.tenantId,
+        branchId: user.branchId,
+        createdBy: user.id,
+      }),
+    };
   }
 
   @Get('goods-receipts')
@@ -312,7 +428,10 @@ export class InventoryController {
     @CurrentUser() user: any,
     @Query() query: InventoryQueryDto,
   ) {
-    return { success: true, data: await this.service.findGoodsReceiptsByBranch(user.branchId, query) };
+    return {
+      success: true,
+      data: await this.service.findGoodsReceiptsByBranch(user.branchId, query),
+    };
   }
 
   @Get('goods-receipts/:id')
@@ -324,11 +443,15 @@ export class InventoryController {
   )
   @ApiOperation({ summary: 'Get goods receipt by ID' })
   async getGoodsReceiptById(@Param('id') id: string, @CurrentUser() user: any) {
-    return { success: true, data: await this.service.findGoodsReceiptById(id, user.branchId) };
+    return {
+      success: true,
+      data: await this.service.findGoodsReceiptById(id, user.branchId),
+    };
   }
 
-  // ─── Stock Adjustments ───────────────────────────────────────────────────
+  // â”€â”€â”€ Stock Adjustments â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
+  @AuditLog({ action: 'post_stock_adjustments', module: 'inventory' })
   @Post('stock-adjustments')
   @Roles(ROLES.SUPER_ADMIN, ROLES.PRINCIPAL, ROLES.ORGANIZATION_OWNER)
   @ApiOperation({ summary: 'Create stock adjustment' })
@@ -336,12 +459,15 @@ export class InventoryController {
     @Body() body: StockAdjustmentDto,
     @CurrentUser() user: any,
   ) {
-    return { success: true, data: await this.service.createStockAdjustment({
-      ...body,
-      tenantId: user.tenantId,
-      branchId: user.branchId,
-      adjustedBy: user.id,
-    }) };
+    return {
+      success: true,
+      data: await this.service.createStockAdjustment({
+        ...body,
+        tenantId: user.tenantId,
+        branchId: user.branchId,
+        adjustedBy: user.id,
+      }),
+    };
   }
 
   @Get('stock-adjustments')
@@ -356,6 +482,12 @@ export class InventoryController {
     @CurrentUser() user: any,
     @Query() query: InventoryQueryDto,
   ) {
-    return { success: true, data: await this.service.findStockAdjustmentsByBranch(user.branchId, query) };
+    return {
+      success: true,
+      data: await this.service.findStockAdjustmentsByBranch(
+        user.branchId,
+        query,
+      ),
+    };
   }
 }

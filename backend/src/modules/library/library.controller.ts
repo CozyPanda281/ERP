@@ -12,19 +12,23 @@ import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { LibraryService } from './library.service';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
+import { RequiresFeature } from '../../common/decorators/requires-feature.decorator';
 import { ROLES } from '../../common/constants';
 import { CreateBookDto } from './dto/create-book.dto';
 import { UpdateBookDto } from './dto/update-book.dto';
 import { CreateMemberDto } from './dto/create-member.dto';
 import { IssueBookDto } from './dto/issue-book.dto';
 import { LibraryQueryDto } from './dto/library-query.dto';
+import { AuditLog } from '../../common/decorators/audit-log.decorator';
 
 @ApiTags('Library')
 @ApiBearerAuth()
+@RequiresFeature('library')
 @Controller('library')
 export class LibraryController {
   constructor(private readonly service: LibraryService) {}
 
+  @AuditLog({ action: 'post_books', module: 'library' })
   @Post('books')
   @Roles(ROLES.SUPER_ADMIN, ROLES.PRINCIPAL, ROLES.ORGANIZATION_OWNER)
   @ApiOperation({ summary: 'Create a book' })
@@ -53,6 +57,11 @@ export class LibraryController {
     return { success: true, data };
   }
 
+  @AuditLog({
+    action: 'put_books_id',
+    module: 'library',
+    resourceIdParam: 'id',
+  })
   @Put('books/:id')
   @Roles(ROLES.SUPER_ADMIN, ROLES.PRINCIPAL, ROLES.ORGANIZATION_OWNER)
   @ApiOperation({ summary: 'Update book' })
@@ -61,6 +70,11 @@ export class LibraryController {
     return { success: true, data };
   }
 
+  @AuditLog({
+    action: 'delete_books_id',
+    module: 'library',
+    resourceIdParam: 'id',
+  })
   @Delete('books/:id')
   @Roles(ROLES.SUPER_ADMIN, ROLES.PRINCIPAL, ROLES.ORGANIZATION_OWNER)
   @ApiOperation({ summary: 'Delete book' })
@@ -68,6 +82,7 @@ export class LibraryController {
     return { success: true, data: await this.service.deleteBook(id) };
   }
 
+  @AuditLog({ action: 'post_members', module: 'library' })
   @Post('members')
   @Roles(ROLES.SUPER_ADMIN, ROLES.PRINCIPAL, ROLES.ORGANIZATION_OWNER)
   @ApiOperation({ summary: 'Create a library member' })
@@ -88,6 +103,7 @@ export class LibraryController {
     return { success: true, ...data };
   }
 
+  @AuditLog({ action: 'post_issues', module: 'library' })
   @Post('issues')
   @Roles(ROLES.SUPER_ADMIN, ROLES.PRINCIPAL, ROLES.ORGANIZATION_OWNER)
   @ApiOperation({ summary: 'Issue a book' })
@@ -100,6 +116,11 @@ export class LibraryController {
     return { success: true, data };
   }
 
+  @AuditLog({
+    action: 'post_issues_id_return',
+    module: 'library',
+    resourceIdParam: 'id',
+  })
   @Post('issues/:id/return')
   @Roles(ROLES.SUPER_ADMIN, ROLES.PRINCIPAL, ROLES.ORGANIZATION_OWNER)
   @ApiOperation({ summary: 'Return a book' })

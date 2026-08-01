@@ -4,6 +4,7 @@ import { SystemConfigService } from './system-config.service';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { ROLES } from '../../common/constants';
 import { UpdateSystemConfigDto } from './dto/update-config.dto';
+import { AuditLog } from '../../common/decorators/audit-log.decorator';
 
 @ApiTags('System Config')
 @ApiBearerAuth()
@@ -26,6 +27,11 @@ export class SystemConfigController {
     return { success: true, data };
   }
 
+  @AuditLog({
+    action: 'put_key',
+    module: 'system-config',
+    resourceIdParam: 'id',
+  })
   @Put(':key')
   @ApiOperation({ summary: 'Set a config value' })
   async set(@Param('key') key: string, @Body() dto: UpdateSystemConfigDto) {
@@ -37,6 +43,11 @@ export class SystemConfigController {
     return { success: true, data };
   }
 
+  @AuditLog({
+    action: 'delete_key',
+    module: 'system-config',
+    resourceIdParam: 'id',
+  })
   @Delete(':key')
   @ApiOperation({ summary: 'Delete a config key' })
   async delete(@Param('key') key: string) {

@@ -17,6 +17,7 @@ import { CreateAccountDto } from './dto/create-account.dto';
 import { UpdateAccountDto } from './dto/update-account.dto';
 import { CreateJournalEntryDto } from './dto/create-journal-entry.dto';
 import { AccountingQueryDto } from './dto/accounting-query.dto';
+import { AuditLog } from '../../common/decorators/audit-log.decorator';
 
 @ApiTags('Accounting')
 @ApiBearerAuth()
@@ -24,8 +25,9 @@ import { AccountingQueryDto } from './dto/accounting-query.dto';
 export class AccountingController {
   constructor(private readonly accountingService: AccountingService) {}
 
-  // ─── Chart of Accounts ─────────────────────────────────────────────────────
+  // â”€â”€â”€ Chart of Accounts â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
+  @AuditLog({ action: 'post_accounts', module: 'accounting' })
   @Post('accounts')
   @Roles(ROLES.ORGANIZATION_OWNER, ROLES.ACCOUNTANT)
   @ApiOperation({ summary: 'Create an account' })
@@ -74,6 +76,11 @@ export class AccountingController {
     return { success: true, data };
   }
 
+  @AuditLog({
+    action: 'put_accounts_id',
+    module: 'accounting',
+    resourceIdParam: 'id',
+  })
   @Put('accounts/:id')
   @Roles(ROLES.ORGANIZATION_OWNER, ROLES.ACCOUNTANT)
   @ApiOperation({ summary: 'Update account' })
@@ -82,6 +89,11 @@ export class AccountingController {
     return { success: true, data };
   }
 
+  @AuditLog({
+    action: 'delete_accounts_id',
+    module: 'accounting',
+    resourceIdParam: 'id',
+  })
   @Delete('accounts/:id')
   @Roles(ROLES.ORGANIZATION_OWNER, ROLES.SUPER_ADMIN)
   @ApiOperation({ summary: 'Delete account' })
@@ -90,8 +102,9 @@ export class AccountingController {
     return { success: true, message: 'Account deleted' };
   }
 
-  // ─── Journal Entries ───────────────────────────────────────────────────────
+  // â”€â”€â”€ Journal Entries â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
+  @AuditLog({ action: 'post_journal_entries', module: 'accounting' })
   @Post('journal-entries')
   @Roles(ROLES.ACCOUNTANT, ROLES.ORGANIZATION_OWNER)
   @ApiOperation({ summary: 'Create a journal entry' })
@@ -130,7 +143,7 @@ export class AccountingController {
     return { success: true, data };
   }
 
-  // ─── Reports ───────────────────────────────────────────────────────────────
+  // â”€â”€â”€ Reports â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   @Get('trial-balance')
   @Roles(ROLES.ACCOUNTANT, ROLES.ORGANIZATION_OWNER, ROLES.PRINCIPAL)
