@@ -1,14 +1,18 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import * as nodemailer from 'nodemailer';
+import { QueueService } from '../../modules/queue/queue.service';
 
 @Injectable()
-export class EmailService {
+export class EmailService implements OnModuleInit {
   private readonly logger = new Logger(EmailService.name);
   private transporter: nodemailer.Transporter;
   private from: string;
 
-  constructor(private configService: ConfigService) {
+  constructor(
+    private configService: ConfigService,
+    private queueService: QueueService,
+  ) {
     const host = this.configService.get('SMTP_HOST');
     this.from = this.configService.get('SMTP_FROM', 'noreply@erp.com');
 
@@ -27,6 +31,12 @@ export class EmailService {
     }
   }
 
+  onModuleInit() {
+    this.queueService.setEmailHandler(async (data) => {
+      await this.sendMail(data);
+    });
+  }
+
   async send(params: {
     to: string;
     subject: string;
@@ -39,6 +49,16 @@ export class EmailService {
       );
       return false;
     }
+    if (await this.queueService.enqueueEmail(params)) return true;
+    return this.sendMail(params);
+  }
+
+  private async sendMail(params: {
+    to: string;
+    subject: string;
+    html: string;
+    text?: string;
+  }): Promise<boolean> {
     try {
       await this.transporter.sendMail({
         from: this.from,

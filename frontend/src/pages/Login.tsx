@@ -144,6 +144,42 @@ export default function Login() {
               <code className="text-indigo-700">Test@123</code> + same tenant
             </li>
             <li>
+              Teacher — <code className="text-indigo-700">teacher3@school.com</code> /{' '}
+              <code className="text-indigo-700">Test@123</code> + same tenant
+            </li>
+            <li>
+              Student — <code className="text-indigo-700">student3@school.com</code> /{' '}
+              <code className="text-indigo-700">Test@123</code> + same tenant
+            </li>
+            <li>
+              Parent — <code className="text-indigo-700">parent3@school.com</code> /{' '}
+              <code className="text-indigo-700">Test@123</code> + same tenant
+            </li>
+            <li>
+              Accountant — <code className="text-indigo-700">acc3@school.com</code> /{' '}
+              <code className="text-indigo-700">Test@123</code> + same tenant
+            </li>
+            <li>
+              HR — <code className="text-indigo-700">hr3@school.com</code> /{' '}
+              <code className="text-indigo-700">Test@123</code> + same tenant
+            </li>
+            <li>
+              Reception — <code className="text-indigo-700">reception3@school.com</code> /{' '}
+              <code className="text-indigo-700">Test@123</code> + same tenant
+            </li>
+            <li>
+              Librarian — <code className="text-indigo-700">librarian3@school.com</code> /{' '}
+              <code className="text-indigo-700">Test@123</code> + same tenant
+            </li>
+            <li>
+              Transport — <code className="text-indigo-700">transport3@school.com</code> /{' '}
+              <code className="text-indigo-700">Test@123</code> + same tenant
+            </li>
+            <li>
+              Hostel — <code className="text-indigo-700">hostel3@school.com</code> /{' '}
+              <code className="text-indigo-700">Test@123</code> + same tenant
+            </li>
+            <li>
               SuperAdmin — <code className="text-indigo-700">admin@erp.com</code> /{' '}
               <code className="text-indigo-700">Admin@123</code> (no tenant ID)
             </li>

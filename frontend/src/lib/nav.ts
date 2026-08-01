@@ -52,6 +52,15 @@ export function homeFor(user: AuthUser): string {
   const role = primaryRole(user)
   if (role === 'organization-owner') return '/owner'
   if (role === 'principal') return '/principal'
+  if (role === 'teacher') return '/teacher'
+  if (role === 'student') return '/student'
+  if (role === 'parent') return '/parent'
+  if (role === 'accountant') return '/accountant'
+  if (role === 'hr') return '/hr'
+  if (role === 'reception') return '/reception'
+  if (role === 'librarian') return '/librarian'
+  if (role === 'transport-manager') return '/transport'
+  if (role === 'hostel-manager') return '/hostel'
   return '/portal'
 }
 
@@ -78,51 +87,51 @@ const TENANT_NAV: Record<string, NavItem[]> = {
     { to: '/notices', label: 'Notices', icon: Megaphone },
   ],
   reception: [
-    { to: '/portal', label: 'Home', icon: LayoutDashboard },
+    { to: '/reception', label: 'Dashboard', icon: LayoutDashboard },
     { to: '/students', label: 'Admissions', icon: GraduationCap },
     { to: '/visitors', label: 'Visitors', icon: Users },
     { to: '/notices', label: 'Notices', icon: Megaphone },
   ],
   teacher: [
-    { to: '/portal', label: 'Home', icon: LayoutDashboard },
+    { to: '/teacher', label: 'Dashboard', icon: LayoutDashboard },
     { to: '/attendance', label: 'Attendance', icon: CalendarDays },
     { to: '/homework', label: 'Homework', icon: FileText },
     { to: '/exams', label: 'Exams & Results', icon: ClipboardList },
     { to: '/notices', label: 'Notices', icon: Megaphone },
   ],
   accountant: [
-    { to: '/portal', label: 'Home', icon: LayoutDashboard },
+    { to: '/accountant', label: 'Dashboard', icon: LayoutDashboard },
     { to: '/fees', label: 'Fees & Billing', icon: Landmark },
     { to: '/expenses', label: 'Expenses', icon: CreditCard },
     { to: '/accounting', label: 'Accounting', icon: ScrollText },
   ],
   hr: [
-    { to: '/portal', label: 'Home', icon: LayoutDashboard },
+    { to: '/hr', label: 'Dashboard', icon: LayoutDashboard },
     { to: '/staff', label: 'Staff', icon: Users },
     { to: '/payroll', label: 'Payroll', icon: Landmark },
     { to: '/leave', label: 'Leave', icon: CalendarDays },
   ],
   librarian: [
-    { to: '/portal', label: 'Home', icon: LayoutDashboard },
+    { to: '/librarian', label: 'Dashboard', icon: LayoutDashboard },
     { to: '/library', label: 'Library', icon: BookOpen },
   ],
   'transport-manager': [
-    { to: '/portal', label: 'Home', icon: LayoutDashboard },
+    { to: '/transport', label: 'Dashboard', icon: LayoutDashboard },
     { to: '/transport', label: 'Transport', icon: CalendarDays },
   ],
   'hostel-manager': [
-    { to: '/portal', label: 'Home', icon: LayoutDashboard },
+    { to: '/hostel', label: 'Dashboard', icon: LayoutDashboard },
     { to: '/hostel', label: 'Hostel', icon: Building2 },
   ],
   student: [
-    { to: '/portal', label: 'Home', icon: LayoutDashboard },
+    { to: '/student', label: 'Dashboard', icon: LayoutDashboard },
     { to: '/attendance', label: 'My Attendance', icon: CalendarDays },
     { to: '/exams', label: 'My Results', icon: ClipboardList },
     { to: '/homework', label: 'Homework', icon: FileText },
     { to: '/fees', label: 'My Fees', icon: Landmark },
   ],
   parent: [
-    { to: '/portal', label: 'Home', icon: LayoutDashboard },
+    { to: '/parent', label: 'Dashboard', icon: LayoutDashboard },
     { to: '/attendance', label: 'Attendance', icon: CalendarDays },
     { to: '/fees', label: 'Fees', icon: Landmark },
     { to: '/notices', label: 'Notices', icon: Megaphone },

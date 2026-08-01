@@ -418,3 +418,122 @@ Tests:       39 passed, 39 total
 
 - `common/test/mocks.ts` — Reusable `MockDatabaseProvider`, `mockJwtService`, `mockConfigService`, `mockReflector`
 - Jest configured with ESM transform support for `uuid`, `drizzle-orm`, `pg`
+
+---
+
+## [2026-08-02] Phases 2–5: Platform Admin through Secondary Modules (consolidated)
+
+**Status:** `completed`
+
+**Description:**
+Backend modules built after Phase 1 (logged below in condensed form — each was built, unit-tested, and live-verified against the demo tenant).
+
+| Phase | Modules | Highlights |
+|---|---|---|
+| **2 — Platform Admin** | tenants, subscriptions, users, roles, feature-flags, system-config, audit | Tenant lifecycle (suspend/activate), plan enforcement via subscription limits, superadmin-only routes |
+| **3 — Tenant Onboarding** | branches, academic (departments/classes/sections/subjects), staff, students | School structure setup, student/staff records with branch scoping |
+| **4 — Core Modules** | admissions (enquiries/applications), attendance, fees, exams, timetable, homework, import | Fee accounts + invoices + payments + receipts + collection reports, attendance with class/date unique constraints, CSV bulk import with validation batches |
+| **5 — Secondary Modules** | communication (notices/announcements/circulars), library, transport, hostel, hr, payroll, leave, inventory, expenses, lesson-plans, notifications, id-cards, visitors, uploads | Full CRUD per module, role-guarded, branch-aware, audit-logged |
+
+**Verification:** 30 Jest suites / 237 tests green; every module exercised against `4b51a390-259b-409f-ba70-ccfb5460af74`.
+
+---
+
+## [2026-08-02] Phase 6a: Frontend Foundation + Password Reset
+
+**Status:** `completed`
+
+**Description:**
+React SPA foundation and the password-reset flow that replaced the dev-only "reset all passwords" endpoint.
+
+### Frontend Stack (final)
+
+Vite 8 + React 19 + TypeScript + Tailwind 4 (via `@tailwindcss/vite`) + TanStack Query + react-router-dom 7 + axios + lucide-react + `vite-plugin-pwa` (offline-ready PWA manifest, SW via generateSW).
+
+### Key Pieces
+
+| Piece | Detail |
+|---|---|
+| `src/lib/api.ts` | Axios instance → `/api/v1` (dev proxy to :3000), JWT auto-refresh on 401, envelope unwrapping, auth persisted in localStorage |
+| `src/lib/auth.tsx` | Login/logout context, `persistLogin()` extracts `sessionId` from JWT payload |
+| `src/lib/nav.ts` | `ROLE_LABELS`, per-role nav, `homeFor()` redirect map |
+| `src/components/Shell.tsx` | Sidebar + topbar layout, mobile hamburger, role badge |
+| Routes | `/login`, `/forgot-password`, `/reset-password`, role dashboards, `ComingSoon` placeholders for module pages, `RequireAuth`/`RequireRole` guards |
+
+### Password Reset (backend)
+
+- `POST /auth/forgot-password`, `POST /auth/reset-password` — public, throttled 5/min
+- Reset token = JWT (uses `JWT_REFRESH_SECRET`, 15m expiry, `type: 'password-reset'`)
+- On reset: bcrypt-12 rehash, clears lockout, invalidates all sessions
+- `devResetLink` returned in the response when SMTP is not configured (dev convenience)
+
+---
+
+## [2026-08-02] Phase 6b: Role Dashboards & Portals
+
+**Status:** `completed`
+
+**Description:**
+Backend dashboard endpoints + frontend portal pages for all 12 roles.
+
+### Backend (`GET /api/v1/dashboard/*`)
+
+| Endpoint | Roles | Content |
+|---|---|---|
+| `/overview` | owner, principal | Counts (students/staff/classes/…), fees collected (month/total/due), 6-month fee series, attendance today + weekly |
+| `/teacher` | teacher | My classes, today's periods, open homework, submissions pending grading, today's attendance rate, upcoming exams |
+| `/student` | student | Enrollment, 30-day attendance, fee account + recent payments, results, homework (resolved by email match) |
+| `/parent` | parent | Linked children (via `student_parents`), per-child 30-day attendance + fee totals |
+| `/accountant` | accountant | Collections (today/month/total), pending/overdue invoices, due accounts, expenses/income/net this month, recent payments |
+| `/hr` | hr | Staff totals (active/teaching/inactive/joined this month), pending leave requests, open job postings |
+| `/reception` | reception | Visitors today + checked-in now, enquiries, applications, active notices, recent visitors |
+| `/librarian` | librarian | Books total/available, members, active/overdue/due-today issues, recent issues |
+| `/transport` | transport-manager | Vehicles, active routes/assignments, fuel cost this month, maintenance due, recent fuel logs |
+| `/hostel` | hostel-manager | Hostels, rooms + occupancy rate, active allocations, today's attendance |
+
+All endpoints are role-guarded, branch-aware, and return `{ linked: false, message }` when no identity record is linked (teacher/student/parent).
+
+### Frontend
+
+- `OverviewDashboard` (owner/principal), `SuperAdminDashboard`, `TeacherDashboard`, `StudentDashboard`, `ParentDashboard`
+- `PortalDashboard` — one config-driven page covering accountant, HR, reception, librarian, transport, hostel
+- Routes: `/owner`, `/principal`, `/admin`, `/teacher`, `/student`, `/parent`, `/accountant`, `/hr`, `/reception`, `/librarian`, `/transport`, `/hostel`
+- Demo credentials on the login page for all 12 roles (all passwords `Test@123` except owner `Owner@123` / superadmin `Admin@123`)
+
+### Demo Data (DB, not committed)
+
+teacher3 → Neha Sharma (EMP-001); student3 → STD-00001 (Class 9); parent3 → linked parent; acc3/hr3/reception3/librarian3/transport3/hostel3 → passwords standardized to `Test@123`.
+
+---
+
+## [2026-08-02] Phase 6 Housekeeping
+
+**Status:** `completed`
+
+**Description:**
+Security/architecture items outstanding from earlier phases.
+
+### 1. RLS rolled out to every tenant table
+
+- `backend/db/migrations/rls-full-tenancy.sql` — enables RLS + `tenant_isolation` policy on all 95 `tenant_id NOT NULL` tables (dynamic loop over `pg_class`), plus nullable-tenant policies for `users`, `roles`, `notification_templates`, `audit_logs` (user_sessions pattern)
+- Applied to the DB; verified 95/95 tables RLS-enabled. `force=false` (app connects as superuser; forcing requires per-request GUC wiring first — documented in the migration)
+- Known gap documented: 6 entity tables without `tenant_id` (hostel_rooms, transport_route_stops, inventory_*_items, accounting_journal_entry_items) — future schema-normalization migration
+
+### 2. Job queue wired (BullMQ)
+
+- `QueueModule` (@Global) + `QueueService` — TCP-probes Redis at boot; if reachable, creates the `email-jobs` queue + worker (concurrency 5, 3 attempts, exponential backoff)
+- `EmailService.send()` prefers the queue and falls back to inline sending when Redis is down — dev works without Redis, prod gets durability/retries
+- Both `bullmq` and `redis` packages were already in dependencies
+
+### 3. Fee module quirk fixed
+
+- All branch-scoped read queries (`findStructuresByBranch`, `findDiscountsByBranch`, `findAccountByStudent`, `findAccountsByBranch`, `findInvoicesBy*`, `findPaymentsBy*`) now take `(tenantId, branchId | null)`:
+  - Always filter by tenant (defense in depth)
+  - Skip the branch filter when `branchId` is null — branch-less owner accounts now see tenant-wide data instead of nothing
+- `ORGANIZATION_OWNER` added to all read-only fee endpoints
+
+### 4. Frontend tests (Vitest)
+
+- `vitest` added; `npm test` → 36 tests across `api.test.ts` (unwrap/errorMessage/persistLogin), `nav.test.ts` (homeFor/navFor/ROLE_LABELS), `SimpleBars.test.tsx` (rendering/scaling)
+
+**Backend:** 30 suites / 237 tests green · **Frontend:** 36 tests green · build clean both sides

@@ -150,16 +150,18 @@ export class FeeService {
   }
 
   async findStructuresByBranch(
-    branchId: string,
+    tenantId: string,
+    branchId: string | null,
     query: { page?: number; limit?: number; classId?: string },
   ) {
     const page = query.page || 1;
     const limit = Math.min(query.limit || 20, 100);
     const offset = (page - 1) * limit;
     const conditions: any[] = [
-      eq(schema.feeStructures.branchId, branchId),
+      eq(schema.feeStructures.tenantId, tenantId),
       isNull(schema.feeStructures.deletedAt),
     ];
+    if (branchId) conditions.push(eq(schema.feeStructures.branchId, branchId));
 
     if (query.classId)
       conditions.push(eq(schema.feeStructures.classId, query.classId));
@@ -344,11 +346,13 @@ export class FeeService {
     return discount;
   }
 
-  async findDiscountsByBranch(branchId: string) {
+  async findDiscountsByBranch(tenantId: string, branchId: string | null) {
+    const conditions: any[] = [eq(schema.feeDiscounts.tenantId, tenantId)];
+    if (branchId) conditions.push(eq(schema.feeDiscounts.branchId, branchId));
     return this.db.db
       .select()
       .from(schema.feeDiscounts)
-      .where(eq(schema.feeDiscounts.branchId, branchId))
+      .where(and(...conditions))
       .orderBy(desc(schema.feeDiscounts.createdAt));
   }
 
@@ -471,7 +475,18 @@ export class FeeService {
       .where(inArray(schema.studentFeeAccounts.studentId, params.studentIds));
   }
 
-  async findAccountByStudent(studentId: string, branchId: string) {
+  async findAccountByStudent(
+    studentId: string,
+    tenantId: string,
+    branchId: string | null,
+  ) {
+    const conditions: any[] = [
+      eq(schema.studentFeeAccounts.studentId, studentId),
+      eq(schema.studentFeeAccounts.tenantId, tenantId),
+    ];
+    if (branchId)
+      conditions.push(eq(schema.studentFeeAccounts.branchId, branchId));
+
     const [account] = await this.db.db
       .select({
         id: schema.studentFeeAccounts.id,
@@ -504,7 +519,10 @@ export class FeeService {
       .where(
         and(
           eq(schema.studentFeeAccounts.studentId, studentId),
-          eq(schema.studentFeeAccounts.branchId, branchId),
+          eq(schema.studentFeeAccounts.tenantId, tenantId),
+          ...(branchId
+            ? [eq(schema.studentFeeAccounts.branchId, branchId)]
+            : []),
         ),
       )
       .limit(1);
@@ -515,15 +533,18 @@ export class FeeService {
   }
 
   async findAccountsByBranch(
-    branchId: string,
+    tenantId: string,
+    branchId: string | null,
     query: { page?: number; limit?: number; classId?: string; status?: string },
   ) {
     const page = query.page || 1;
     const limit = Math.min(query.limit || 20, 100);
     const offset = (page - 1) * limit;
     const conditions: any[] = [
-      eq(schema.studentFeeAccounts.branchId, branchId),
+      eq(schema.studentFeeAccounts.tenantId, tenantId),
     ];
+    if (branchId)
+      conditions.push(eq(schema.studentFeeAccounts.branchId, branchId));
 
     if (query.status)
       conditions.push(eq(schema.studentFeeAccounts.status, query.status));
@@ -640,7 +661,8 @@ export class FeeService {
 
   async findInvoicesByStudent(
     studentId: string,
-    branchId: string,
+    tenantId: string,
+    branchId: string | null,
     query: { page?: number; limit?: number; status?: string },
   ) {
     const page = query.page || 1;
@@ -648,8 +670,9 @@ export class FeeService {
     const offset = (page - 1) * limit;
     const conditions: any[] = [
       eq(schema.feeInvoices.studentId, studentId),
-      eq(schema.feeInvoices.branchId, branchId),
+      eq(schema.feeInvoices.tenantId, tenantId),
     ];
+    if (branchId) conditions.push(eq(schema.feeInvoices.branchId, branchId));
     if (query.status)
       conditions.push(eq(schema.feeInvoices.status, query.status));
 
@@ -670,7 +693,8 @@ export class FeeService {
   }
 
   async findInvoicesByBranch(
-    branchId: string,
+    tenantId: string,
+    branchId: string | null,
     query: {
       page?: number;
       limit?: number;
@@ -682,7 +706,8 @@ export class FeeService {
     const page = query.page || 1;
     const limit = Math.min(query.limit || 20, 100);
     const offset = (page - 1) * limit;
-    const conditions: any[] = [eq(schema.feeInvoices.branchId, branchId)];
+    const conditions: any[] = [eq(schema.feeInvoices.tenantId, tenantId)];
+    if (branchId) conditions.push(eq(schema.feeInvoices.branchId, branchId));
 
     if (query.status)
       conditions.push(eq(schema.feeInvoices.status, query.status));
@@ -849,22 +874,25 @@ export class FeeService {
 
   async findPaymentsByStudent(
     studentId: string,
-    branchId: string,
+    tenantId: string,
+    branchId: string | null,
     query: { page?: number; limit?: number },
   ) {
     const page = query.page || 1;
     const limit = Math.min(query.limit || 20, 100);
     const offset = (page - 1) * limit;
 
+    const conditions: any[] = [
+      eq(schema.feeTransactions.studentId, studentId),
+      eq(schema.feeTransactions.tenantId, tenantId),
+    ];
+    if (branchId)
+      conditions.push(eq(schema.feeTransactions.branchId, branchId));
+
     const data = await this.db.db
       .select()
       .from(schema.feeTransactions)
-      .where(
-        and(
-          eq(schema.feeTransactions.studentId, studentId),
-          eq(schema.feeTransactions.branchId, branchId),
-        ),
-      )
+      .where(and(...conditions))
       .orderBy(desc(schema.feeTransactions.createdAt))
       .limit(limit)
       .offset(offset);
@@ -872,18 +900,14 @@ export class FeeService {
     const [total] = await this.db.db
       .select({ count: count() })
       .from(schema.feeTransactions)
-      .where(
-        and(
-          eq(schema.feeTransactions.studentId, studentId),
-          eq(schema.feeTransactions.branchId, branchId),
-        ),
-      );
+      .where(and(...conditions));
 
     return { data, pagination: { page, limit, total: Number(total.count) } };
   }
 
   async findPaymentsByBranch(
-    branchId: string,
+    tenantId: string,
+    branchId: string | null,
     query: {
       page?: number;
       limit?: number;
@@ -895,7 +919,9 @@ export class FeeService {
     const page = query.page || 1;
     const limit = Math.min(query.limit || 20, 100);
     const offset = (page - 1) * limit;
-    const conditions: any[] = [eq(schema.feeTransactions.branchId, branchId)];
+    const conditions: any[] = [eq(schema.feeTransactions.tenantId, tenantId)];
+    if (branchId)
+      conditions.push(eq(schema.feeTransactions.branchId, branchId));
 
     if (query.paymentMethod)
       conditions.push(

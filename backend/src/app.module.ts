@@ -35,7 +35,9 @@ import { LessonPlansModule } from './modules/lesson-plans/lesson-plans.module';
 import { NotificationsModule } from './modules/notifications/notifications.module';
 import { IdCardsModule } from './modules/id-cards/id-cards.module';
 import { VisitorsModule } from './modules/visitors/visitors.module';
+import { DashboardModule } from './modules/dashboard/dashboard.module';
 import { UploadsModule } from './modules/uploads/uploads.module';
+import { QueueModule } from './modules/queue/queue.module';
 import { SharedModule } from './shared/shared.module';
 import { TenantMiddleware } from './common/middleware/tenant.middleware';
 import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
@@ -97,7 +99,9 @@ import encryptionConfig from './config/encryption.config';
     NotificationsModule,
     IdCardsModule,
     VisitorsModule,
+    DashboardModule,
     UploadsModule,
+    QueueModule,
     SharedModule,
   ],
   providers: [

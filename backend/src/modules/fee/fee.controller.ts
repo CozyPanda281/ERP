@@ -50,10 +50,11 @@ export class FeeController {
   }
 
   @Get('fee-structures')
-  @Roles(ROLES.PRINCIPAL, ROLES.ACCOUNTANT)
+  @Roles(ROLES.PRINCIPAL, ROLES.ACCOUNTANT, ROLES.ORGANIZATION_OWNER)
   @ApiOperation({ summary: 'List fee structures' })
   async findStructures(@CurrentUser() user: any, @Query() query: FeeQueryDto) {
     const data = await this.feeService.findStructuresByBranch(
+      user.tenantId,
       user.branchId,
       query,
     );
@@ -61,7 +62,7 @@ export class FeeController {
   }
 
   @Get('fee-structures/:id')
-  @Roles(ROLES.PRINCIPAL, ROLES.ACCOUNTANT)
+  @Roles(ROLES.PRINCIPAL, ROLES.ACCOUNTANT, ROLES.ORGANIZATION_OWNER)
   @ApiOperation({ summary: 'Get fee structure with items' })
   async findStructure(@Param('id') id: string) {
     const data = await this.feeService.findStructureById(id);
@@ -160,10 +161,13 @@ export class FeeController {
   }
 
   @Get('fee-discounts')
-  @Roles(ROLES.PRINCIPAL, ROLES.ACCOUNTANT)
+  @Roles(ROLES.PRINCIPAL, ROLES.ACCOUNTANT, ROLES.ORGANIZATION_OWNER)
   @ApiOperation({ summary: 'List discounts' })
   async findDiscounts(@CurrentUser() user: any) {
-    const data = await this.feeService.findDiscountsByBranch(user.branchId);
+    const data = await this.feeService.findDiscountsByBranch(
+      user.tenantId,
+      user.branchId,
+    );
     return { success: true, data };
   }
 
@@ -218,10 +222,11 @@ export class FeeController {
   }
 
   @Get('fee-accounts')
-  @Roles(ROLES.PRINCIPAL, ROLES.ACCOUNTANT)
+  @Roles(ROLES.PRINCIPAL, ROLES.ACCOUNTANT, ROLES.ORGANIZATION_OWNER)
   @ApiOperation({ summary: 'List fee accounts' })
   async findAccounts(@CurrentUser() user: any, @Query() query: FeeQueryDto) {
     const data = await this.feeService.findAccountsByBranch(
+      user.tenantId,
       user.branchId,
       query,
     );
@@ -229,7 +234,7 @@ export class FeeController {
   }
 
   @Get('fee-accounts/student/:studentId')
-  @Roles(ROLES.PRINCIPAL, ROLES.ACCOUNTANT, ROLES.STUDENT)
+  @Roles(ROLES.PRINCIPAL, ROLES.ACCOUNTANT, ROLES.STUDENT, ROLES.ORGANIZATION_OWNER)
   @ApiOperation({ summary: 'Get fee account for a student' })
   async findAccountByStudent(
     @Param('studentId') studentId: string,
@@ -237,6 +242,7 @@ export class FeeController {
   ) {
     const data = await this.feeService.findAccountByStudent(
       studentId,
+      user.tenantId,
       user.branchId,
     );
     return { success: true, data };
@@ -261,10 +267,11 @@ export class FeeController {
   }
 
   @Get('fee-invoices')
-  @Roles(ROLES.PRINCIPAL, ROLES.ACCOUNTANT)
+  @Roles(ROLES.PRINCIPAL, ROLES.ACCOUNTANT, ROLES.ORGANIZATION_OWNER)
   @ApiOperation({ summary: 'List invoices' })
   async findInvoices(@CurrentUser() user: any, @Query() query: FeeQueryDto) {
     const data = await this.feeService.findInvoicesByBranch(
+      user.tenantId,
       user.branchId,
       query,
     );
@@ -272,7 +279,7 @@ export class FeeController {
   }
 
   @Get('fee-invoices/student/:studentId')
-  @Roles(ROLES.PRINCIPAL, ROLES.ACCOUNTANT, ROLES.STUDENT)
+  @Roles(ROLES.PRINCIPAL, ROLES.ACCOUNTANT, ROLES.STUDENT, ROLES.ORGANIZATION_OWNER)
   @ApiOperation({ summary: 'Get invoices for a student' })
   async findInvoicesByStudent(
     @Param('studentId') studentId: string,
@@ -281,6 +288,7 @@ export class FeeController {
   ) {
     const data = await this.feeService.findInvoicesByStudent(
       studentId,
+      user.tenantId,
       user.branchId,
       query,
     );
@@ -288,7 +296,7 @@ export class FeeController {
   }
 
   @Get('fee-invoices/:id')
-  @Roles(ROLES.PRINCIPAL, ROLES.ACCOUNTANT, ROLES.STUDENT)
+  @Roles(ROLES.PRINCIPAL, ROLES.ACCOUNTANT, ROLES.STUDENT, ROLES.ORGANIZATION_OWNER)
   @ApiOperation({ summary: 'Get invoice by ID' })
   async findInvoice(@Param('id') id: string) {
     const data = await this.feeService.findInvoiceById(id);
@@ -312,13 +320,14 @@ export class FeeController {
   }
 
   @Get('fee-payments')
-  @Roles(ROLES.PRINCIPAL, ROLES.ACCOUNTANT)
+  @Roles(ROLES.PRINCIPAL, ROLES.ACCOUNTANT, ROLES.ORGANIZATION_OWNER)
   @ApiOperation({ summary: 'List payments' })
   async findPayments(
     @CurrentUser() user: any,
     @Query() query: PaymentQueryDto,
   ) {
     const data = await this.feeService.findPaymentsByBranch(
+      user.tenantId,
       user.branchId,
       query,
     );
@@ -326,7 +335,7 @@ export class FeeController {
   }
 
   @Get('fee-payments/student/:studentId')
-  @Roles(ROLES.PRINCIPAL, ROLES.ACCOUNTANT, ROLES.STUDENT)
+  @Roles(ROLES.PRINCIPAL, ROLES.ACCOUNTANT, ROLES.STUDENT, ROLES.ORGANIZATION_OWNER)
   @ApiOperation({ summary: 'Get payments for a student' })
   async findPaymentsByStudent(
     @Param('studentId') studentId: string,
@@ -335,6 +344,7 @@ export class FeeController {
   ) {
     const data = await this.feeService.findPaymentsByStudent(
       studentId,
+      user.tenantId,
       user.branchId,
       query,
     );
@@ -342,7 +352,7 @@ export class FeeController {
   }
 
   @Get('fee-payments/:transactionId/receipt')
-  @Roles(ROLES.PRINCIPAL, ROLES.ACCOUNTANT, ROLES.STUDENT)
+  @Roles(ROLES.PRINCIPAL, ROLES.ACCOUNTANT, ROLES.STUDENT, ROLES.ORGANIZATION_OWNER)
   @ApiOperation({ summary: 'Get receipt for a transaction' })
   async findReceipt(@Param('transactionId') transactionId: string) {
     const data = await this.feeService.findReceiptByTransaction(transactionId);
@@ -352,7 +362,7 @@ export class FeeController {
   // â”€â”€â”€ Reports â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   @Get('fee-reports/collection')
-  @Roles(ROLES.PRINCIPAL, ROLES.ACCOUNTANT)
+  @Roles(ROLES.PRINCIPAL, ROLES.ACCOUNTANT, ROLES.ORGANIZATION_OWNER)
   @ApiOperation({ summary: 'Get fee collection report' })
   async getCollectionReport(
     @CurrentUser() user: any,

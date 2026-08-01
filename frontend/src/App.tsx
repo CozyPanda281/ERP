@@ -8,6 +8,10 @@ import ForgotPassword from './pages/ForgotPassword'
 import ResetPassword from './pages/ResetPassword'
 import OverviewDashboard from './pages/OverviewDashboard'
 import SuperAdminDashboard from './pages/SuperAdminDashboard'
+import TeacherDashboard from './pages/TeacherDashboard'
+import StudentDashboard from './pages/StudentDashboard'
+import ParentDashboard from './pages/ParentDashboard'
+import PortalDashboard from './pages/PortalDashboard'
 import ComingSoon from './pages/ComingSoon'
 
 function RequireAuth({ children }: { children: React.ReactNode }) {
@@ -43,6 +47,12 @@ function RedirectIfAuthed() {
   const { isAuthenticated, user } = useAuth()
   if (isAuthenticated && user) return <Navigate to={homeFor(user)} replace />
   return <Login />
+}
+
+function RolePortal({ role }: { role: string }) {
+  const { user } = useAuth()
+  if (!user) return <Navigate to="/login" replace />
+  return <PortalDashboard role={role} user={user} />
 }
 
 function ScrollToTop() {
@@ -115,6 +125,78 @@ export default function App() {
             element={
               <RequireRole roles={['erp-superadmin']}>
                 <SuperAdminDashboard />
+              </RequireRole>
+            }
+          />
+          <Route
+            path="/teacher"
+            element={
+              <RequireRole roles={['teacher']}>
+                <TeacherDashboard />
+              </RequireRole>
+            }
+          />
+          <Route
+            path="/student"
+            element={
+              <RequireRole roles={['student']}>
+                <StudentDashboard />
+              </RequireRole>
+            }
+          />
+          <Route
+            path="/parent"
+            element={
+              <RequireRole roles={['parent']}>
+                <ParentDashboard />
+              </RequireRole>
+            }
+          />
+          <Route
+            path="/accountant"
+            element={
+              <RequireRole roles={['accountant']}>
+                <RolePortal role="accountant" />
+              </RequireRole>
+            }
+          />
+          <Route
+            path="/hr"
+            element={
+              <RequireRole roles={['hr']}>
+                <RolePortal role="hr" />
+              </RequireRole>
+            }
+          />
+          <Route
+            path="/reception"
+            element={
+              <RequireRole roles={['reception']}>
+                <RolePortal role="reception" />
+              </RequireRole>
+            }
+          />
+          <Route
+            path="/librarian"
+            element={
+              <RequireRole roles={['librarian']}>
+                <RolePortal role="librarian" />
+              </RequireRole>
+            }
+          />
+          <Route
+            path="/transport"
+            element={
+              <RequireRole roles={['transport-manager']}>
+                <RolePortal role="transport" />
+              </RequireRole>
+            }
+          />
+          <Route
+            path="/hostel"
+            element={
+              <RequireRole roles={['hostel-manager']}>
+                <RolePortal role="hostel" />
               </RequireRole>
             }
           />
