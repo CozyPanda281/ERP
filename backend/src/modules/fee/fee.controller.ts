@@ -106,7 +106,7 @@ export class FeeController {
     resourceIdParam: 'id',
   })
   @Post('fee-structures/:structureId/items')
-  @Roles(ROLES.PRINCIPAL, ROLES.ACCOUNTANT)
+  @Roles(ROLES.PRINCIPAL, ROLES.ACCOUNTANT, ROLES.ORGANIZATION_OWNER)
   @ApiOperation({ summary: 'Add item to fee structure' })
   async addItem(
     @Param('structureId') structureId: string,
@@ -122,7 +122,7 @@ export class FeeController {
     resourceIdParam: 'id',
   })
   @Put('fee-items/:id')
-  @Roles(ROLES.PRINCIPAL, ROLES.ACCOUNTANT)
+  @Roles(ROLES.PRINCIPAL, ROLES.ACCOUNTANT, ROLES.ORGANIZATION_OWNER)
   @ApiOperation({ summary: 'Update fee item' })
   async updateItem(@Param('id') id: string, @Body() dto: UpdateFeeItemDto) {
     const data = await this.feeService.updateItem(id, dto);
@@ -135,7 +135,7 @@ export class FeeController {
     resourceIdParam: 'id',
   })
   @Delete('fee-items/:id')
-  @Roles(ROLES.PRINCIPAL, ROLES.ACCOUNTANT)
+  @Roles(ROLES.PRINCIPAL, ROLES.ACCOUNTANT, ROLES.ORGANIZATION_OWNER)
   @ApiOperation({ summary: 'Remove fee item' })
   async removeItem(@Param('id') id: string) {
     await this.feeService.removeItem(id);
@@ -146,7 +146,7 @@ export class FeeController {
 
   @AuditLog({ action: 'post_fee_discounts', module: 'fee' })
   @Post('fee-discounts')
-  @Roles(ROLES.PRINCIPAL, ROLES.ACCOUNTANT)
+  @Roles(ROLES.PRINCIPAL, ROLES.ACCOUNTANT, ROLES.ORGANIZATION_OWNER)
   @ApiOperation({ summary: 'Create discount' })
   async createDiscount(
     @CurrentUser() user: any,
@@ -177,7 +177,7 @@ export class FeeController {
     resourceIdParam: 'id',
   })
   @Put('fee-discounts/:id')
-  @Roles(ROLES.PRINCIPAL, ROLES.ACCOUNTANT)
+  @Roles(ROLES.PRINCIPAL, ROLES.ACCOUNTANT, ROLES.ORGANIZATION_OWNER)
   @ApiOperation({ summary: 'Update discount' })
   async updateDiscount(
     @Param('id') id: string,
@@ -194,7 +194,7 @@ export class FeeController {
     resourceIdParam: 'id',
   })
   @Delete('fee-discounts/:id')
-  @Roles(ROLES.PRINCIPAL, ROLES.ACCOUNTANT)
+  @Roles(ROLES.PRINCIPAL, ROLES.ACCOUNTANT, ROLES.ORGANIZATION_OWNER)
   @ApiOperation({ summary: 'Delete discount' })
   async deleteDiscount(@Param('id') id: string, @CurrentUser() user: any) {
     await this.feeService.deleteDiscount(id, user.branchId);
@@ -205,7 +205,7 @@ export class FeeController {
 
   @AuditLog({ action: 'post_fee_accounts_assign', module: 'fee' })
   @Post('fee-accounts/assign')
-  @Roles(ROLES.PRINCIPAL, ROLES.ACCOUNTANT)
+  @Roles(ROLES.PRINCIPAL, ROLES.ACCOUNTANT, ROLES.ORGANIZATION_OWNER)
   @ApiOperation({ summary: 'Assign fee structure to students' })
   async assignFeeStructure(
     @CurrentUser() user: any,
@@ -252,7 +252,7 @@ export class FeeController {
 
   @AuditLog({ action: 'post_fee_invoices_generate', module: 'fee' })
   @Post('fee-invoices/generate')
-  @Roles(ROLES.PRINCIPAL, ROLES.ACCOUNTANT)
+  @Roles(ROLES.PRINCIPAL, ROLES.ACCOUNTANT, ROLES.ORGANIZATION_OWNER)
   @ApiOperation({ summary: 'Generate invoice for a student' })
   async generateInvoice(
     @CurrentUser() user: any,
@@ -307,7 +307,7 @@ export class FeeController {
 
   @AuditLog({ action: 'post_fee_payments', module: 'fee' })
   @Post('fee-payments')
-  @Roles(ROLES.PRINCIPAL, ROLES.ACCOUNTANT)
+  @Roles(ROLES.PRINCIPAL, ROLES.ACCOUNTANT, ROLES.ORGANIZATION_OWNER)
   @ApiOperation({ summary: 'Record a payment' })
   async recordPayment(@CurrentUser() user: any, @Body() dto: RecordPaymentDto) {
     const data = await this.feeService.recordPayment({

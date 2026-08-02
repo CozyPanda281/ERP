@@ -15,6 +15,7 @@ import PortalDashboard from './pages/PortalDashboard'
 import Integrations from './pages/Integrations'
 import Classes from './pages/Classes'
 import Students from './pages/Students'
+import Fees from './pages/Fees'
 import ComingSoon from './pages/ComingSoon'
 
 function RequireAuth({ children }: { children: React.ReactNode }) {
@@ -224,6 +225,14 @@ export default function App() {
             element={
               <RequireRole roles={['organization-owner', 'principal', 'teacher']}>
                 <Students />
+              </RequireRole>
+            }
+          />
+          <Route
+            path="/fees"
+            element={
+              <RequireRole roles={['organization-owner', 'principal', 'accountant']}>
+                <Fees />
               </RequireRole>
             }
           />
