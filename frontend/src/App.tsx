@@ -18,6 +18,9 @@ import Students from './pages/Students'
 import Fees from './pages/Fees'
 import Attendance from './pages/Attendance'
 import Notices from './pages/Notices'
+import Staff from './pages/Staff'
+import Branches from './pages/Branches'
+import Settings from './pages/Settings'
 import ComingSoon from './pages/ComingSoon'
 
 function RequireAuth({ children }: { children: React.ReactNode }) {
@@ -70,16 +73,8 @@ function ScrollToTop() {
 }
 
 const MODULE_PLACEHOLDERS = [
-  '/students',
-  '/staff',
-  '/fees',
-  '/classes',
-  '/branches',
-  '/attendance',
   '/exams',
   '/homework',
-  '/notices',
-  '/settings',
   '/tenants',
   '/subscriptions',
   '/audit',
@@ -251,6 +246,30 @@ export default function App() {
             element={
               <RequireRole roles={['organization-owner', 'principal', 'teacher', 'student', 'parent']}>
                 <Notices />
+              </RequireRole>
+            }
+          />
+          <Route
+            path="/staff"
+            element={
+              <RequireRole roles={['organization-owner', 'principal']}>
+                <Staff />
+              </RequireRole>
+            }
+          />
+          <Route
+            path="/branches"
+            element={
+              <RequireRole roles={['organization-owner']}>
+                <Branches />
+              </RequireRole>
+            }
+          />
+          <Route
+            path="/settings"
+            element={
+              <RequireRole roles={['organization-owner']}>
+                <Settings />
               </RequireRole>
             }
           />
