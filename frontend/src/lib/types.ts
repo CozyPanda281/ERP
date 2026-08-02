@@ -76,6 +76,69 @@ export interface Department {
   createdAt?: string | null
 }
 
+export interface Student {
+  id: string
+  tenantId: string
+  branchId: string
+  admissionNumber: string
+  rollNumber: string | null
+  applicationId: string | null
+  firstName: string
+  middleName: string | null
+  lastName: string
+  dateOfBirth: string | null
+  gender: string | null
+  bloodGroup: string | null
+  nationality: string | null
+  religion: string | null
+  caste: string | null
+  category: string | null
+  address: string | null
+  city: string | null
+  state: string | null
+  pincode: string | null
+  phone: string | null
+  email: string | null
+  profilePhotoUrl: string | null
+  aadharNumber: string | null
+  samagraId: string | null
+  isActive: boolean
+  status: string
+  admissionDate: string | null
+  leavingDate: string | null
+  leavingReason: string | null
+  createdAt?: string | null
+}
+
+export interface StudentAcademicRecord {
+  id: string
+  tenantId: string
+  studentId: string
+  classId: string
+  sectionId: string | null
+  academicYearId: string
+  rollNumber: string | null
+  isPromoted: boolean
+  promotedToClass: string | null
+  promotionDate: string | null
+  createdAt?: string | null
+}
+
+export interface ParentContact {
+  id: string
+  tenantId: string
+  name: string | null
+  relationship: string | null
+  phone: string | null
+  email: string | null
+  occupation: string | null
+  income: string | null
+  address: string | null
+  isPrimary: boolean
+  isActive: boolean
+  createdAt?: string | null
+}
+
 export interface FeeMonthlyPoint {
   month: string
   amount: number

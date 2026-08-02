@@ -270,7 +270,7 @@ export class StudentsController {
   }
 
   @Get('students/:id/academic-records')
-  @Roles(ROLES.PRINCIPAL, ROLES.TEACHER)
+  @Roles(ROLES.PRINCIPAL, ROLES.TEACHER, ROLES.ORGANIZATION_OWNER)
   @ApiOperation({ summary: 'Get student academic records' })
   async getStudentAcademicRecords(@Param('id') id: string) {
     const data = await this.studentsService.getStudentAcademicRecords(id);
@@ -337,7 +337,7 @@ export class StudentsController {
   }
 
   @Get('students/:id/parents')
-  @Roles(ROLES.PRINCIPAL, ROLES.TEACHER)
+  @Roles(ROLES.PRINCIPAL, ROLES.TEACHER, ROLES.ORGANIZATION_OWNER)
   @ApiOperation({ summary: 'Get student parents' })
   async getStudentParents(@Param('id') id: string) {
     const data = await this.studentsService.getStudentParents(id);
