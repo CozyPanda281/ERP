@@ -5,6 +5,7 @@ import {
   BadRequestException,
 } from '@nestjs/common';
 import { DatabaseProvider } from '../../database/database.provider';
+import { WebhooksService } from '../webhooks/webhooks.service';
 import * as schema from '../../database/schema';
 import {
   eq,
@@ -24,7 +25,10 @@ const VALID_STATUSES = ['present', 'absent', 'late', 'excused'] as const;
 
 @Injectable()
 export class AttendanceService {
-  constructor(private readonly db: DatabaseProvider) {}
+  constructor(
+    private readonly db: DatabaseProvider,
+    private readonly webhooks: WebhooksService,
+  ) {}
 
   // ─── Validation Helpers ─────────────────────────────────────────────────
 
@@ -149,6 +153,12 @@ export class AttendanceService {
     }
 
     let sessionId = '';
+    const presentCount = params.records.filter(
+      (r) => r.status === 'present',
+    ).length;
+    const absentCount = params.records.filter(
+      (r) => r.status === 'absent',
+    ).length;
 
     await this.db.db.transaction(async (tx) => {
       const [session] = await tx
@@ -169,13 +179,6 @@ export class AttendanceService {
         .returning({ id: schema.attendance.id });
 
       sessionId = session.id;
-
-      const presentCount = params.records.filter(
-        (r) => r.status === 'present',
-      ).length;
-      const absentCount = params.records.filter(
-        (r) => r.status === 'absent',
-      ).length;
 
       const values = params.records.map((r) => ({
         tenantId: params.tenantId,
@@ -198,6 +201,21 @@ export class AttendanceService {
         })
         .where(eq(schema.attendance.id, sessionId));
     });
+
+    this.webhooks.emit(
+      'attendance.marked',
+      {
+        attendanceId: sessionId,
+        date: dateStr,
+        subjectId: entry.subjectId,
+        timetableEntryId: params.timetableEntryId,
+        totalStudents: params.records.length,
+        totalPresent: presentCount,
+        totalAbsent: absentCount,
+        records: params.records,
+      },
+      params.tenantId,
+    );
 
     return this.getSessionById(sessionId, params.branchId);
   }

@@ -13,6 +13,7 @@ import {
   ShieldCheck,
   CreditCard,
   ScrollText,
+  Webhook,
   type LucideIcon,
 } from 'lucide-react'
 import type { AuthUser } from './types'
@@ -74,6 +75,7 @@ const TENANT_NAV: Record<string, NavItem[]> = {
     { to: '/branches', label: 'Branches', icon: Building2 },
     { to: '/attendance', label: 'Attendance', icon: CalendarDays },
     { to: '/notices', label: 'Notices', icon: Megaphone },
+    { to: '/integrations', label: 'API & Webhooks', icon: Webhook },
     { to: '/settings', label: 'Settings', icon: Settings },
   ],
   principal: [
@@ -85,6 +87,7 @@ const TENANT_NAV: Record<string, NavItem[]> = {
     { to: '/fees', label: 'Fees & Billing', icon: Landmark },
     { to: '/homework', label: 'Homework', icon: FileText },
     { to: '/notices', label: 'Notices', icon: Megaphone },
+    { to: '/integrations', label: 'API & Webhooks', icon: Webhook },
   ],
   reception: [
     { to: '/reception', label: 'Dashboard', icon: LayoutDashboard },

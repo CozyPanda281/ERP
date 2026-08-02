@@ -6,6 +6,7 @@ import {
 } from '@nestjs/common';
 import { AttendanceService } from './attendance.service';
 import { DatabaseProvider } from '../../database/database.provider';
+import { WebhooksService } from '../webhooks/webhooks.service';
 import { MockDatabaseProvider } from '../../common/test/mocks';
 
 describe('AttendanceService', () => {
@@ -18,6 +19,7 @@ describe('AttendanceService', () => {
       providers: [
         AttendanceService,
         { provide: DatabaseProvider, useValue: mockDb },
+        { provide: WebhooksService, useValue: { emit: jest.fn() } },
       ],
     }).compile();
     service = module.get<AttendanceService>(AttendanceService);

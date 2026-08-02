@@ -6,6 +6,7 @@ import {
 } from '@nestjs/common';
 import { FeeService } from './fee.service';
 import { DatabaseProvider } from '../../database/database.provider';
+import { WebhooksService } from '../webhooks/webhooks.service';
 import { MockDatabaseProvider } from '../../common/test/mocks';
 
 describe('FeeService', () => {
@@ -15,7 +16,11 @@ describe('FeeService', () => {
   beforeEach(async () => {
     mockDb = new MockDatabaseProvider();
     const module: TestingModule = await Test.createTestingModule({
-      providers: [FeeService, { provide: DatabaseProvider, useValue: mockDb }],
+      providers: [
+        FeeService,
+        { provide: DatabaseProvider, useValue: mockDb },
+        { provide: WebhooksService, useValue: { emit: jest.fn() } },
+      ],
     }).compile();
     service = module.get<FeeService>(FeeService);
   });

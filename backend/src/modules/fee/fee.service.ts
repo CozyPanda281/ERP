@@ -5,6 +5,7 @@ import {
   BadRequestException,
 } from '@nestjs/common';
 import { DatabaseProvider } from '../../database/database.provider';
+import { WebhooksService } from '../webhooks/webhooks.service';
 import * as schema from '../../database/schema';
 import {
   eq,
@@ -23,7 +24,10 @@ import { v4 as uuidv4 } from 'uuid';
 
 @Injectable()
 export class FeeService {
-  constructor(private readonly db: DatabaseProvider) {}
+  constructor(
+    private readonly db: DatabaseProvider,
+    private readonly webhooks: WebhooksService,
+  ) {}
 
   // ─── Fee Structures ──────────────────────────────────────────────────────
 
@@ -603,7 +607,7 @@ export class FeeService {
   }) {
     const invoiceNumber = `INV-${params.branchId.slice(0, 4).toUpperCase()}-${Date.now()}`;
 
-    const [invoice] = await this.db.db
+    const [invoiceRow] = await this.db.db
       .insert(schema.feeInvoices)
       .values({
         tenantId: params.tenantId,
@@ -622,7 +626,19 @@ export class FeeService {
       })
       .returning({ id: schema.feeInvoices.id });
 
-    return this.findInvoiceById(invoice.id, params.branchId);
+    const invoice = await this.findInvoiceById(invoiceRow.id, params.branchId);
+    this.webhooks.emit(
+      'fee.invoice.generated',
+      {
+        invoiceId: invoice.id,
+        invoiceNumber: invoice.invoiceNumber,
+        studentId: params.studentId,
+        totalAmount: params.totalAmount,
+        dueDate: params.dueDate,
+      },
+      params.tenantId,
+    );
+    return invoice;
   }
 
   async findInvoiceById(id: string, branchId?: string) {
@@ -776,7 +792,7 @@ export class FeeService {
     const paidDate =
       params.paymentDate || new Date().toISOString().split('T')[0];
 
-    return this.db.db.transaction(async (tx) => {
+    const txnResult = await this.db.db.transaction(async (tx) => {
       const [transaction] = await tx
         .insert(schema.feeTransactions)
         .values({
@@ -870,6 +886,20 @@ export class FeeService {
         .limit(1);
       return txnResult;
     });
+
+    this.webhooks.emit(
+      'fee.payment.recorded',
+      {
+        transactionId: txnResult.id,
+        transactionNo: txnResult.transactionNo,
+        studentId: params.studentId,
+        invoiceId: params.invoiceId,
+        amount: params.amount,
+        paymentMethod: params.paymentMethod || 'cash',
+      },
+      params.tenantId,
+    );
+    return txnResult;
   }
 
   async findPaymentsByStudent(

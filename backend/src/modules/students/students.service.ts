@@ -6,6 +6,7 @@ import {
 } from '@nestjs/common';
 import { DatabaseProvider } from '../../database/database.provider';
 import { CryptoService } from '../../shared/crypto/crypto.service';
+import { WebhooksService } from '../webhooks/webhooks.service';
 import { v4 as uuidv4 } from 'uuid';
 import * as schema from '../../database/schema';
 import {
@@ -26,6 +27,7 @@ export class StudentsService {
   constructor(
     private readonly db: DatabaseProvider,
     private readonly crypto: CryptoService,
+    private readonly webhooks: WebhooksService,
   ) {}
 
   private encrypt(val?: string | null): string | undefined {
@@ -573,10 +575,25 @@ export class StudentsService {
       });
     }
 
-    return this.decryptRow(
+    const student = this.decryptRow(
       await this.findStudentById(studentId, params.branchId),
       ['phone', 'email'],
     );
+
+    this.webhooks.emit(
+      'student.created',
+      {
+        studentId,
+        admissionNumber,
+        firstName: params.firstName,
+        lastName: params.lastName,
+        classId: params.classId,
+        academicYearId: params.academicYearId,
+      },
+      params.tenantId,
+    );
+
+    return student;
   }
 
   async findStudentById(id: string, branchId?: string) {

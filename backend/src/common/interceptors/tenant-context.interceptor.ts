@@ -33,7 +33,15 @@ export class TenantContextInterceptor implements NestInterceptor {
 
     if (tenantId) {
       setConfigs.push(
-        this.db.query(`SELECT set_config('app.current_tenant_id', $1, FALSE)`, [
+        this.db.query(
+          `SELECT set_config('app.current_tenant_id', $1, FALSE)`,
+          [tenantId],
+        ),
+      );
+      // Alias used by the RLS policies (tenant_isolation) — kept in sync so
+      // policies work even if the app connects as a non-owner role.
+      setConfigs.push(
+        this.db.query(`SELECT set_config('app.tenant_id', $1, FALSE)`, [
           tenantId,
         ]),
       );
@@ -79,6 +87,7 @@ export class TenantContextInterceptor implements NestInterceptor {
     const resetConfigs = () => {
       const resetConfigs = [
         'current_tenant_id',
+        'tenant_id',
         'current_user_id',
         'current_branch_id',
         'current_session_id',

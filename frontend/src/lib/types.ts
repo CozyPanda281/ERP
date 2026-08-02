@@ -296,3 +296,52 @@ export interface HostelOverview {
   allocations: { active: number; recent: AllocationRow[] }
   attendance: { today: number; present: number; absent: number }
 }
+
+export interface ApiKeyRecord {
+  id: string
+  tenantId: string
+  name: string
+  keyPrefix: string
+  scopes: string
+  rateLimitPerMinute: number
+  createdBy: string | null
+  lastUsedAt: string | null
+  expiresAt: string | null
+  isActive: boolean
+  createdAt: string
+}
+
+export interface ApiKeyCreated {
+  key: ApiKeyRecord
+  secret: string
+}
+
+export interface WebhookEndpoint {
+  id: string
+  tenantId: string
+  name: string
+  url: string
+  secret: string
+  events: string
+  description: string | null
+  isActive: boolean
+  createdAt: string
+  lastDeliveryAt: string | null
+  lastDeliveryStatus: string | null
+}
+
+export interface WebhookDelivery {
+  id: string
+  event: string
+  status: string
+  attempts: number
+  maxAttempts: number
+  responseStatus: number | null
+  responseBody: string | null
+  error: string | null
+  sentAt: string | null
+  nextRetryAt: string | null
+  createdAt: string
+  endpointName: string
+  endpointUrl: string
+}

@@ -537,3 +537,57 @@ Security/architecture items outstanding from earlier phases.
 - `vitest` added; `npm test` â†’ 36 tests across `api.test.ts` (unwrap/errorMessage/persistLogin), `nav.test.ts` (homeFor/navFor/ROLE_LABELS), `SimpleBars.test.tsx` (rendering/scaling)
 
 **Backend:** 30 suites / 237 tests green Â· **Frontend:** 36 tests green Â· build clean both sides
+
+---
+
+## [2026-08-02] Phase 7 — Public API & Webhooks
+
+**Status:** `completed`
+
+**Description:**
+Tenant-scoped API keys, a read-only public API, and signed webhook delivery with retries + delivery log.
+
+### 1. Schema + migration (`db/migrations/phase7-api-keys-webhooks.sql`)
+
+- `api_keys` — tenant-scoped; stores `key_prefix` + `key_hash` (SHA-256) only, never the secret; scopes, per-minute rate limit, expires_at, last_used_at, soft delete
+- `webhook_endpoints` — tenant-scoped; URL, signing secret, subscribed events (`*` or comma list), soft delete
+- `webhook_deliveries` — per-attempt log: status, attempts/max, response_status/body, error, sent_at, next_retry_at
+- RLS `tenant_isolation` policies applied to all three tables; migration idempotent (verified by double-apply)
+
+### 2. API keys (`/api/v1/api-keys`, owner + principal)
+
+- POST creates `erp_live_<base64url>` (secret returned once), GET lists (masked), PATCH updates, POST :id/revoke, DELETE soft-deletes
+- `ApiKeyGuard` (`common/guards/api-key.guard.ts`) — reads `Authorization: Bearer <key>` or `X-Api-Key`; hash lookup; rejects revoked/expired; per-key in-memory fixed-window rate limiter (429); stamps `last_used_at`
+- Scopes validated: `read` / `read,write`
+
+### 3. Public API (`/api/v1/public/*`, API-key auth)
+
+- `GET /students` (filters: classId, academicYearId, status, q, limit, offset), `GET /students/:id`
+- `GET /fee/accounts`, `GET /fee/invoices`, `GET /fee/payments` (studentId/status/date range filters)
+- `GET /attendance` (requires studentId or classId + from/to), `GET /results` (studentId or examId)
+- All read-only, tenant-scoped, `{ success, data }` envelope, paginated (max 100)
+- Verified live: 401 for missing/bad key AND for JWT tokens (keys only); valid key returns tenant data
+
+### 4. Webhooks (`/api/v1/webhooks`, owner + principal)
+
+- CRUD for endpoints (URL must be http(s), secret >= 16 chars, unknown events rejected)
+- `POST :id/test` ? `test.ping`; `GET /events` ? event catalog
+- `GET /deliveries` (limit/status/endpointId filters), `POST /deliveries/:id/retry` — resets attempt budget and re-delivers
+- Delivery: HMAC-SHA256 over `timestamp.payload` sent as `X-ERP-Signature` (+ X-ERP-Event/Timestamp/Delivery-Id headers); up to 3 attempts with exponential backoff (2s, 4s, …); every attempt logged
+- Verified live end-to-end: capture listener received signed POST (signature recomputed and matched); `fee.payment.recorded` fired automatically after a real payment; failed delivery retried 3x then manually retried to success
+
+### 5. Event emission hooks
+
+- `fee.payment.recorded`, `fee.invoice.generated` (fee.service), `student.created` (students.service), `attendance.marked` (attendance.service) — fire-and-forget after DB commit; `WebhooksModule` imported by fee/students/attendance modules (no circular deps)
+
+### 6. Frontend
+
+- `/integrations` page (owner + principal, nav "API & Webhooks"): API key create (secret shown once with reveal/copy) / revoke / delete; webhook create (event chips) / test ping / delete; deliveries table with retry for failures
+- Types added to `lib/types.ts`; route + nav wired in App.tsx/nav.ts
+
+### 7. Housekeeping
+
+- `TenantContextInterceptor` now also sets `app.tenant_id` (alias policies read) alongside `app.current_tenant_id` — policies work if the app ever connects as a non-owner role
+- Public API results endpoint uses `e.start_date` (exams has no exam_date column)
+
+**Backend:** 33 suites / 268 tests green (+31 new: api-keys 10, webhooks 12, guard 8, +1 baseline) A? **Frontend:** 36 tests green A? builds clean both sides A? live-verified end-to-end
