@@ -13,6 +13,7 @@ import StudentDashboard from './pages/StudentDashboard'
 import ParentDashboard from './pages/ParentDashboard'
 import PortalDashboard from './pages/PortalDashboard'
 import Integrations from './pages/Integrations'
+import Classes from './pages/Classes'
 import ComingSoon from './pages/ComingSoon'
 
 function RequireAuth({ children }: { children: React.ReactNode }) {
@@ -206,6 +207,14 @@ export default function App() {
             element={
               <RequireRole roles={['organization-owner', 'principal']}>
                 <Integrations />
+              </RequireRole>
+            }
+          />
+          <Route
+            path="/classes"
+            element={
+              <RequireRole roles={['organization-owner', 'principal']}>
+                <Classes />
               </RequireRole>
             }
           />

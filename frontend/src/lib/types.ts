@@ -16,6 +16,66 @@ export interface LoginResponse {
   user: AuthUser
 }
 
+export interface AcademicYear {
+  id: string
+  tenantId: string
+  branchId: string
+  name: string
+  startDate: string
+  endDate: string
+  isCurrent: boolean
+  isActive: boolean
+  createdAt?: string | null
+}
+
+export interface ClassRecord {
+  id: string
+  tenantId: string
+  branchId: string
+  name: string
+  code: string | null
+  description: string | null
+  displayOrder: number
+  isActive: boolean
+  createdAt?: string | null
+}
+
+export interface Section {
+  id: string
+  tenantId: string
+  branchId: string
+  classId: string
+  name: string
+  code: string | null
+  capacity: number
+  roomNumber: string | null
+  createdAt?: string | null
+}
+
+export interface Subject {
+  id: string
+  tenantId: string
+  branchId: string
+  name: string
+  code: string | null
+  subjectType: string | null
+  isLanguage: boolean
+  description: string | null
+  isActive: boolean
+  createdAt?: string | null
+}
+
+export interface Department {
+  id: string
+  tenantId: string
+  branchId: string
+  name: string
+  code: string | null
+  description: string | null
+  isActive: boolean
+  createdAt?: string | null
+}
+
 export interface FeeMonthlyPoint {
   month: string
   amount: number
