@@ -17,6 +17,8 @@ import { FileInterceptor, FilesInterceptor } from '@nestjs/platform-express';
 import { UploadsService } from './uploads.service';
 import { AuditLog } from '../../common/decorators/audit-log.decorator';
 
+const MAX_FILE_SIZE = 10 * 1024 * 1024;
+
 @ApiTags('Uploads')
 @ApiBearerAuth()
 @Controller('uploads')
@@ -27,7 +29,9 @@ export class UploadsController {
   @Post('single')
   @ApiOperation({ summary: 'Upload a single file' })
   @ApiConsumes('multipart/form-data')
-  @UseInterceptors(FileInterceptor('file'))
+  @UseInterceptors(
+    FileInterceptor('file', { limits: { fileSize: MAX_FILE_SIZE } }),
+  )
   async uploadSingle(
     @UploadedFile() file: Express.Multer.File,
     @Body('folder') folder?: string,
@@ -44,7 +48,9 @@ export class UploadsController {
   @Post('multiple')
   @ApiOperation({ summary: 'Upload multiple files' })
   @ApiConsumes('multipart/form-data')
-  @UseInterceptors(FilesInterceptor('files', 10))
+  @UseInterceptors(
+    FilesInterceptor('files', 10, { limits: { fileSize: MAX_FILE_SIZE } }),
+  )
   async uploadMultiple(
     @UploadedFiles() files: Express.Multer.File[],
     @Body('folder') folder?: string,

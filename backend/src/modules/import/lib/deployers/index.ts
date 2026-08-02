@@ -6,6 +6,7 @@ export interface DeployResult {
   inserted: number;
   failed: number;
   errors: { row: number; error: string }[];
+  generatedPasswords?: { email: string; password: string }[];
 }
 
 export interface EntityDeployer {

@@ -15,14 +15,27 @@ export class UploadsService {
     file: Express.Multer.File,
     subfolder = 'general',
   ): Promise<{ url: string; filename: string }> {
-    const destDir = path.join(this.storagePath, subfolder);
+    // Only allow simple, alphanumeric subfolder names; anything else (e.g.
+    // "..", absolute paths, nested paths) falls back to "general". This
+    // prevents path traversal via the client-supplied folder parameter.
+    const safeFolder = /^[a-z0-9_-]+$/i.test(subfolder) ? subfolder : 'general';
+
+    const destDir = path.join(this.storagePath, safeFolder);
     await fs.mkdir(destDir, { recursive: true });
 
-    const uniqueName = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}-${file.originalname}`;
+    // Use only the basename and strip path separators from the original
+    // filename so crafted names ("../../x") cannot escape destDir.
+    const safeBase = path
+      .basename(file.originalname)
+      .replace(/[\\/]/g, '-')
+      .replace(/^\.+/, '')
+      .slice(0, 120) || 'file';
+
+    const uniqueName = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}-${safeBase}`;
     const filePath = path.join(destDir, uniqueName);
     await fs.writeFile(filePath, file.buffer);
 
-    const url = `/uploads/${subfolder}/${uniqueName}`;
+    const url = `/uploads/${safeFolder}/${uniqueName}`;
     return { url, filename: uniqueName };
   }
 

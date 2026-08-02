@@ -5,6 +5,7 @@ import * as schema from '../../../../database/schema';
 import { v4 as uuidv4 } from 'uuid';
 import { eq, and } from 'drizzle-orm';
 import * as bcrypt from 'bcrypt';
+import * as crypto from 'crypto';
 
 function mapField(
   data: Record<string, string>,
@@ -13,6 +14,10 @@ function mapField(
 ): string | undefined {
   const src = Object.entries(mapping).find(([, v]) => v === field)?.[0];
   return src ? data[src] : undefined;
+}
+
+function generatePassword(): string {
+  return crypto.randomBytes(9).toString('hex');
 }
 
 export class UserDeployer implements EntityDeployer {
@@ -29,6 +34,10 @@ export class UserDeployer implements EntityDeployer {
     let inserted = 0;
     let failed = 0;
     const errors: { row: number; error: string }[] = [];
+    // Plaintext passwords only for rows that had NO password in the sheet.
+    // Returned once in the deploy response so the importer can hand them out;
+    // never persisted in plaintext.
+    const generatedPasswords: { email: string; password: string }[] = [];
 
     for (const row of rows) {
       try {
@@ -59,8 +68,15 @@ export class UserDeployer implements EntityDeployer {
           continue;
         }
 
-        const password =
-          mapField(row.data, columnMapping, 'password') || 'Welcome@123';
+        const explicitPassword = mapField(
+          row.data,
+          columnMapping,
+          'password',
+        );
+        const password = explicitPassword || generatePassword();
+        if (!explicitPassword) {
+          generatedPasswords.push({ email, password });
+        }
         const passwordHash = await bcrypt.hash(password, 12);
 
         await db.db.insert(schema.users).values({
@@ -82,6 +98,12 @@ export class UserDeployer implements EntityDeployer {
       }
     }
 
-    return { success: failed === 0, inserted, failed, errors };
+    return {
+      success: failed === 0,
+      inserted,
+      failed,
+      errors,
+      generatedPasswords,
+    };
   }
 }

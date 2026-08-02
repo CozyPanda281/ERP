@@ -347,8 +347,13 @@ export class AuthService {
       return { message: genericMessage };
     }
 
-    // No SMTP configured (dev/demo): surface the link so flows can still be
-    // exercised. Never done in production where SMTP_HOST is set.
+    // No SMTP configured: surface the link ONLY outside production so dev
+    // flows stay exercisable. In production, an email-less deployment never
+    // leaks a usable reset link to arbitrary callers.
+    if (process.env.NODE_ENV === 'production') {
+      return { message: genericMessage };
+    }
+
     return {
       message: genericMessage,
       devResetLink: resetLink,
