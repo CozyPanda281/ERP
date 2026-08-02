@@ -41,7 +41,7 @@ export class TimetableController {
   }
 
   @Get('branches/:branchId/timetables')
-  @Roles(ROLES.PRINCIPAL, ROLES.TEACHER)
+  @Roles(ROLES.PRINCIPAL, ROLES.TEACHER, ROLES.ORGANIZATION_OWNER)
   @ApiOperation({ summary: 'List timetables for a branch' })
   async findByBranch(
     @Param('branchId') branchId: string,
@@ -103,7 +103,7 @@ export class TimetableController {
     resourceIdParam: 'id',
   })
   @Post('timetables/:id/entries')
-  @Roles(ROLES.PRINCIPAL)
+  @Roles(ROLES.PRINCIPAL, ROLES.ORGANIZATION_OWNER)
   @ApiOperation({ summary: 'Add entry to timetable' })
   async addEntry(@Param('id') id: string, @Body() dto: CreateEntryDto) {
     const data = await this.timetableService.addEntry(id, dto);
@@ -154,7 +154,7 @@ export class TimetableController {
   }
 
   @Get('timetables/:id/day/:day')
-  @Roles(ROLES.PRINCIPAL, ROLES.TEACHER, ROLES.STUDENT)
+  @Roles(ROLES.PRINCIPAL, ROLES.TEACHER, ROLES.STUDENT, ROLES.ORGANIZATION_OWNER)
   @ApiOperation({ summary: 'Get entries for a specific day' })
   async getDayEntries(@Param('id') id: string, @Param('day') day: number) {
     const data = await this.timetableService.getDayEntries(id, day);

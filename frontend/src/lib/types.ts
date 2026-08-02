@@ -139,6 +139,18 @@ export interface ParentContact {
   createdAt?: string | null
 }
 
+export interface Timetable {
+  id: string
+  tenantId: string
+  branchId: string
+  name: string
+  classId: string
+  sectionId: string | null
+  academicYearId: string | null
+  isActive: boolean
+  createdAt?: string | null
+}
+
 export interface FeeMonthlyPoint {
   month: string
   amount: number

@@ -33,7 +33,7 @@ export class AttendanceController {
     includeBody: true,
   })
   @Post('attendance/sessions')
-  @Roles(ROLES.TEACHER, ROLES.PRINCIPAL)
+  @Roles(ROLES.TEACHER, ROLES.PRINCIPAL, ROLES.ORGANIZATION_OWNER)
   @ApiOperation({ summary: 'Create attendance session with records' })
   async createSession(
     @CurrentUser() user: any,
@@ -51,7 +51,7 @@ export class AttendanceController {
   }
 
   @Get('attendance/sessions/:id')
-  @Roles(ROLES.TEACHER, ROLES.PRINCIPAL, ROLES.STUDENT)
+  @Roles(ROLES.TEACHER, ROLES.PRINCIPAL, ROLES.STUDENT, ROLES.ORGANIZATION_OWNER)
   @ApiOperation({ summary: 'Get attendance session with records' })
   async getSession(@Param('id') id: string, @CurrentUser() user: any) {
     const data = await this.attendanceService.getSessionById(id, user.branchId);
@@ -65,7 +65,7 @@ export class AttendanceController {
     includeBody: true,
   })
   @Put('attendance/records/:id')
-  @Roles(ROLES.TEACHER, ROLES.PRINCIPAL)
+  @Roles(ROLES.TEACHER, ROLES.PRINCIPAL, ROLES.ORGANIZATION_OWNER)
   @ApiOperation({ summary: 'Update single attendance record' })
   async updateRecord(
     @Param('id') id: string,
@@ -81,7 +81,7 @@ export class AttendanceController {
   }
 
   @Get('attendance')
-  @Roles(ROLES.TEACHER, ROLES.PRINCIPAL)
+  @Roles(ROLES.TEACHER, ROLES.PRINCIPAL, ROLES.ORGANIZATION_OWNER)
   @ApiOperation({ summary: 'List attendance sessions' })
   async findByBranch(
     @CurrentUser() user: any,
