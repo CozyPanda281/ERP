@@ -44,7 +44,7 @@ export class ExamsController {
   }
 
   @Get('exams')
-  @Roles(ROLES.PRINCIPAL, ROLES.TEACHER)
+  @Roles(ROLES.PRINCIPAL, ROLES.TEACHER, ROLES.ORGANIZATION_OWNER)
   @ApiOperation({ summary: 'List exams' })
   async findExams(@CurrentUser() user: any, @Query() query: ExamQueryDto) {
     const data = await this.examsService.findExamsByBranch(
@@ -55,7 +55,7 @@ export class ExamsController {
   }
 
   @Get('exams/:id')
-  @Roles(ROLES.PRINCIPAL, ROLES.TEACHER, ROLES.STUDENT)
+  @Roles(ROLES.PRINCIPAL, ROLES.TEACHER, ROLES.STUDENT, ROLES.ORGANIZATION_OWNER)
   @ApiOperation({ summary: 'Get exam by ID' })
   async findExam(@Param('id') id: string) {
     const data = await this.examsService.findExamById(id);
@@ -92,7 +92,7 @@ export class ExamsController {
     resourceIdParam: 'id',
   })
   @Post('exams/:examId/schedules')
-  @Roles(ROLES.PRINCIPAL)
+  @Roles(ROLES.PRINCIPAL, ROLES.ORGANIZATION_OWNER)
   @ApiOperation({ summary: 'Create exam schedule' })
   async createSchedule(
     @Param('examId') examId: string,
@@ -103,7 +103,7 @@ export class ExamsController {
   }
 
   @Get('exams/:examId/schedules')
-  @Roles(ROLES.PRINCIPAL, ROLES.TEACHER)
+  @Roles(ROLES.PRINCIPAL, ROLES.TEACHER, ROLES.ORGANIZATION_OWNER)
   @ApiOperation({ summary: 'List schedules for exam' })
   async findSchedules(@Param('examId') examId: string) {
     const data = await this.examsService.findSchedulesByExam(examId);
@@ -116,7 +116,7 @@ export class ExamsController {
     resourceIdParam: 'id',
   })
   @Put('exam-schedules/:id')
-  @Roles(ROLES.PRINCIPAL)
+  @Roles(ROLES.PRINCIPAL, ROLES.ORGANIZATION_OWNER)
   @ApiOperation({ summary: 'Update exam schedule' })
   async updateSchedule(
     @Param('id') id: string,
@@ -132,7 +132,7 @@ export class ExamsController {
     resourceIdParam: 'id',
   })
   @Delete('exam-schedules/:id')
-  @Roles(ROLES.PRINCIPAL)
+  @Roles(ROLES.PRINCIPAL, ROLES.ORGANIZATION_OWNER)
   @ApiOperation({ summary: 'Delete exam schedule' })
   async deleteSchedule(@Param('id') id: string) {
     await this.examsService.deleteSchedule(id);
@@ -143,7 +143,7 @@ export class ExamsController {
 
   @AuditLog({ action: 'post_exam_marks_bulk', module: 'exams' })
   @Post('exam-marks/bulk')
-  @Roles(ROLES.TEACHER, ROLES.PRINCIPAL)
+  @Roles(ROLES.TEACHER, ROLES.PRINCIPAL, ROLES.ORGANIZATION_OWNER)
   @ApiOperation({ summary: 'Bulk enter marks for a schedule' })
   async bulkEnterMarks(@CurrentUser() user: any, @Body() dto: BulkMarksDto) {
     const data = await this.examsService.bulkEnterMarks({
@@ -157,7 +157,7 @@ export class ExamsController {
   }
 
   @Get('exam-marks/schedule/:scheduleId')
-  @Roles(ROLES.TEACHER, ROLES.PRINCIPAL)
+  @Roles(ROLES.TEACHER, ROLES.PRINCIPAL, ROLES.ORGANIZATION_OWNER)
   @ApiOperation({ summary: 'Get marks for a schedule' })
   async findMarksBySchedule(
     @Param('scheduleId') scheduleId: string,
@@ -168,7 +168,7 @@ export class ExamsController {
   }
 
   @Get('exam-marks/student/:studentId')
-  @Roles(ROLES.TEACHER, ROLES.PRINCIPAL, ROLES.STUDENT)
+  @Roles(ROLES.TEACHER, ROLES.PRINCIPAL, ROLES.STUDENT, ROLES.ORGANIZATION_OWNER)
   @ApiOperation({ summary: 'Get marks for a student' })
   async findMarksByStudent(
     @Param('studentId') studentId: string,
@@ -189,7 +189,7 @@ export class ExamsController {
     resourceIdParam: 'id',
   })
   @Put('exam-marks/:id')
-  @Roles(ROLES.TEACHER, ROLES.PRINCIPAL)
+  @Roles(ROLES.TEACHER, ROLES.PRINCIPAL, ROLES.ORGANIZATION_OWNER)
   @ApiOperation({ summary: 'Update a mark entry' })
   async updateMark(
     @Param('id') id: string,
@@ -208,7 +208,7 @@ export class ExamsController {
     resourceIdParam: 'id',
   })
   @Post('exams/:examId/generate-results')
-  @Roles(ROLES.PRINCIPAL)
+  @Roles(ROLES.PRINCIPAL, ROLES.ORGANIZATION_OWNER)
   @ApiOperation({ summary: 'Generate exam results' })
   async generateResults(@Param('examId') examId: string) {
     const data = await this.examsService.generateResults(examId);
@@ -216,7 +216,7 @@ export class ExamsController {
   }
 
   @Get('exams/:examId/results')
-  @Roles(ROLES.PRINCIPAL, ROLES.TEACHER)
+  @Roles(ROLES.PRINCIPAL, ROLES.TEACHER, ROLES.ORGANIZATION_OWNER)
   @ApiOperation({ summary: 'Get exam results with rankings' })
   async findResultsByExam(@Param('examId') examId: string) {
     const data = await this.examsService.findResultsByExam(examId);
@@ -224,7 +224,7 @@ export class ExamsController {
   }
 
   @Get('exams/:examId/results/:studentId')
-  @Roles(ROLES.PRINCIPAL, ROLES.TEACHER, ROLES.STUDENT)
+  @Roles(ROLES.PRINCIPAL, ROLES.TEACHER, ROLES.STUDENT, ROLES.ORGANIZATION_OWNER)
   @ApiOperation({
     summary: 'Get student result for exam with subject breakdown',
   })
@@ -237,7 +237,7 @@ export class ExamsController {
   }
 
   @Get('student-results/:studentId')
-  @Roles(ROLES.PRINCIPAL, ROLES.TEACHER, ROLES.STUDENT)
+  @Roles(ROLES.PRINCIPAL, ROLES.TEACHER, ROLES.STUDENT, ROLES.ORGANIZATION_OWNER)
   @ApiOperation({ summary: 'Get all results for a student across exams' })
   async findResultsByStudent(
     @Param('studentId') studentId: string,
@@ -253,7 +253,7 @@ export class ExamsController {
   }
 
   @Get('exams/:examId/subject-marks/:studentId')
-  @Roles(ROLES.PRINCIPAL, ROLES.TEACHER, ROLES.STUDENT)
+  @Roles(ROLES.PRINCIPAL, ROLES.TEACHER, ROLES.STUDENT, ROLES.ORGANIZATION_OWNER)
   @ApiOperation({ summary: 'Get subject-wise marks for a student in an exam' })
   async getSubjectMarks(
     @Param('examId') examId: string,

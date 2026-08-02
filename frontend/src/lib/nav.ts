@@ -74,6 +74,8 @@ const TENANT_NAV: Record<string, NavItem[]> = {
     { to: '/classes', label: 'Classes & Subjects', icon: BookOpen },
     { to: '/branches', label: 'Branches', icon: Building2 },
     { to: '/attendance', label: 'Attendance', icon: CalendarDays },
+    { to: '/exams', label: 'Exams & Results', icon: ClipboardList },
+    { to: '/homework', label: 'Homework', icon: FileText },
     { to: '/notices', label: 'Notices', icon: Megaphone },
     { to: '/integrations', label: 'API & Webhooks', icon: Webhook },
     { to: '/settings', label: 'Settings', icon: Settings },

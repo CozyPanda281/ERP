@@ -21,6 +21,8 @@ import Notices from './pages/Notices'
 import Staff from './pages/Staff'
 import Branches from './pages/Branches'
 import Settings from './pages/Settings'
+import Exams from './pages/Exams'
+import Homework from './pages/Homework'
 import ComingSoon from './pages/ComingSoon'
 
 function RequireAuth({ children }: { children: React.ReactNode }) {
@@ -73,8 +75,6 @@ function ScrollToTop() {
 }
 
 const MODULE_PLACEHOLDERS = [
-  '/exams',
-  '/homework',
   '/tenants',
   '/subscriptions',
   '/audit',
@@ -270,6 +270,22 @@ export default function App() {
             element={
               <RequireRole roles={['organization-owner']}>
                 <Settings />
+              </RequireRole>
+            }
+          />
+          <Route
+            path="/exams"
+            element={
+              <RequireRole roles={['organization-owner', 'principal', 'teacher']}>
+                <Exams />
+              </RequireRole>
+            }
+          />
+          <Route
+            path="/homework"
+            element={
+              <RequireRole roles={['organization-owner', 'principal', 'teacher']}>
+                <Homework />
               </RequireRole>
             }
           />

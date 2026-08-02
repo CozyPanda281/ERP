@@ -20,7 +20,7 @@ export class HomeworkController {
 
   @AuditLog({ action: 'post_root', module: 'homework' })
   @Post()
-  @Roles(ROLES.SUPER_ADMIN, ROLES.PRINCIPAL, ROLES.ORGANIZATION_OWNER)
+  @Roles(ROLES.SUPER_ADMIN, ROLES.PRINCIPAL, ROLES.ORGANIZATION_OWNER, ROLES.TEACHER)
   @ApiOperation({ summary: 'Create homework' })
   async createHomework(
     @Body() body: CreateHomeworkDto,
@@ -35,7 +35,7 @@ export class HomeworkController {
   }
 
   @Get()
-  @Roles(ROLES.SUPER_ADMIN, ROLES.PRINCIPAL, ROLES.ORGANIZATION_OWNER)
+  @Roles(ROLES.SUPER_ADMIN, ROLES.PRINCIPAL, ROLES.ORGANIZATION_OWNER, ROLES.TEACHER)
   @ApiOperation({ summary: 'List homework' })
   async getHomework(
     @CurrentUser() user: any,
@@ -51,7 +51,7 @@ export class HomeworkController {
     resourceIdParam: 'id',
   })
   @Post(':homeworkId/submissions')
-  @Roles(ROLES.SUPER_ADMIN, ROLES.PRINCIPAL, ROLES.ORGANIZATION_OWNER)
+  @Roles(ROLES.SUPER_ADMIN, ROLES.PRINCIPAL, ROLES.ORGANIZATION_OWNER, ROLES.TEACHER)
   @ApiOperation({ summary: 'Submit homework' })
   async submitHomework(
     @Param('homeworkId') homeworkId: string,
@@ -67,7 +67,7 @@ export class HomeworkController {
   }
 
   @Get(':homeworkId/submissions')
-  @Roles(ROLES.SUPER_ADMIN, ROLES.PRINCIPAL, ROLES.ORGANIZATION_OWNER)
+  @Roles(ROLES.SUPER_ADMIN, ROLES.PRINCIPAL, ROLES.ORGANIZATION_OWNER, ROLES.TEACHER)
   @ApiOperation({ summary: 'List submissions' })
   async getSubmissions(@Param('homeworkId') homeworkId: string) {
     const data = await this.service.findSubmissionsByHomework(homeworkId);
@@ -80,7 +80,7 @@ export class HomeworkController {
     resourceIdParam: 'id',
   })
   @Put('submissions/:id/grade')
-  @Roles(ROLES.SUPER_ADMIN, ROLES.PRINCIPAL, ROLES.ORGANIZATION_OWNER)
+  @Roles(ROLES.SUPER_ADMIN, ROLES.PRINCIPAL, ROLES.ORGANIZATION_OWNER, ROLES.TEACHER)
   @ApiOperation({ summary: 'Grade submission' })
   async gradeSubmission(
     @Param('id') id: string,
@@ -98,7 +98,7 @@ export class HomeworkController {
 
   @AuditLog({ action: 'post_assignments', module: 'homework' })
   @Post('assignments')
-  @Roles(ROLES.SUPER_ADMIN, ROLES.PRINCIPAL, ROLES.ORGANIZATION_OWNER)
+  @Roles(ROLES.SUPER_ADMIN, ROLES.PRINCIPAL, ROLES.ORGANIZATION_OWNER, ROLES.TEACHER)
   @RequiresFeature('assignments')
   @ApiOperation({ summary: 'Create assignment' })
   async createAssignment(
@@ -114,7 +114,7 @@ export class HomeworkController {
   }
 
   @Get('assignments')
-  @Roles(ROLES.SUPER_ADMIN, ROLES.PRINCIPAL, ROLES.ORGANIZATION_OWNER)
+  @Roles(ROLES.SUPER_ADMIN, ROLES.PRINCIPAL, ROLES.ORGANIZATION_OWNER, ROLES.TEACHER)
   @RequiresFeature('assignments')
   @ApiOperation({ summary: 'List assignments' })
   async getAssignments(
@@ -134,7 +134,7 @@ export class HomeworkController {
     resourceIdParam: 'id',
   })
   @Post('assignments/:assignmentId/submissions')
-  @Roles(ROLES.SUPER_ADMIN, ROLES.PRINCIPAL, ROLES.ORGANIZATION_OWNER)
+  @Roles(ROLES.SUPER_ADMIN, ROLES.PRINCIPAL, ROLES.ORGANIZATION_OWNER, ROLES.TEACHER)
   @RequiresFeature('assignments')
   @ApiOperation({ summary: 'Submit assignment' })
   async submitAssignment(
@@ -151,7 +151,7 @@ export class HomeworkController {
   }
 
   @Get('assignments/:assignmentId/submissions')
-  @Roles(ROLES.SUPER_ADMIN, ROLES.PRINCIPAL, ROLES.ORGANIZATION_OWNER)
+  @Roles(ROLES.SUPER_ADMIN, ROLES.PRINCIPAL, ROLES.ORGANIZATION_OWNER, ROLES.TEACHER)
   @RequiresFeature('assignments')
   @ApiOperation({ summary: 'List assignment submissions' })
   async getAssignmentSubmissions(@Param('assignmentId') assignmentId: string) {
@@ -165,7 +165,7 @@ export class HomeworkController {
     resourceIdParam: 'id',
   })
   @Put('assignments/submissions/:id/grade')
-  @Roles(ROLES.SUPER_ADMIN, ROLES.PRINCIPAL, ROLES.ORGANIZATION_OWNER)
+  @Roles(ROLES.SUPER_ADMIN, ROLES.PRINCIPAL, ROLES.ORGANIZATION_OWNER, ROLES.TEACHER)
   @RequiresFeature('assignments')
   @ApiOperation({ summary: 'Grade assignment submission' })
   async gradeAssignmentSubmission(
@@ -183,7 +183,7 @@ export class HomeworkController {
   }
 
   @Get(':id')
-  @Roles(ROLES.SUPER_ADMIN, ROLES.PRINCIPAL, ROLES.ORGANIZATION_OWNER)
+  @Roles(ROLES.SUPER_ADMIN, ROLES.PRINCIPAL, ROLES.ORGANIZATION_OWNER, ROLES.TEACHER)
   @ApiOperation({ summary: 'Get homework by ID' })
   async getHomeworkById(@Param('id') id: string) {
     const data = await this.service.findHomeworkById(id);
