@@ -55,7 +55,8 @@ export class UsersController {
     @Query('page') page = 1,
     @Query('limit') limit = 20,
   ) {
-    return this.usersService.findByTenant(user.tenantId, page, limit);
+    const data = await this.usersService.findByTenant(user.tenantId, page, limit);
+    return { success: true, ...data };
   }
 
   @Get(':id')

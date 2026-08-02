@@ -45,7 +45,8 @@ export class BranchesController {
     @Query('page') page = 1,
     @Query('limit') limit = 20,
   ) {
-    return this.branchesService.findByTenant(user.tenantId, page, limit);
+    const data = await this.branchesService.findByTenant(user.tenantId, page, limit);
+    return { success: true, ...data };
   }
 
   @Get(':id')

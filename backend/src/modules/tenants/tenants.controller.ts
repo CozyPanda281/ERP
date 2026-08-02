@@ -42,7 +42,8 @@ export class TenantsController {
   @Roles(ROLES.SUPER_ADMIN)
   @ApiOperation({ summary: 'List all tenants (SuperAdmin)' })
   async findAll(@Query() query: TenantQueryDto) {
-    return this.tenantsService.findAll(query);
+    const data = await this.tenantsService.findAll(query);
+    return { success: true, ...data };
   }
 
   @Get('stats')

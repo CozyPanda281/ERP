@@ -196,16 +196,18 @@ export class CommunicationController {
     ROLES.TEACHER,
     ROLES.STUDENT,
     ROLES.PARENT,
+    ROLES.ORGANIZATION_OWNER,
   )
   @ApiOperation({ summary: 'List announcements by branch' })
   async getAnnouncements(
     @CurrentUser() user: any,
     @Query() query: AnnouncementQueryDto,
   ) {
-    return {
-      success: true,
-      data: await this.service.findAnnouncementsByBranch(user.branchId, query),
-    };
+    const result = await this.service.findAnnouncementsByBranch(
+      user.branchId,
+      query,
+    );
+    return { success: true, ...result };
   }
 
   @AuditLog({

@@ -87,7 +87,8 @@ export class AttendanceController {
     @CurrentUser() user: any,
     @Query() query: AttendanceQueryDto,
   ) {
-    return this.attendanceService.findByBranch(user.branchId, query);
+    const data = await this.attendanceService.findByBranch(user.branchId, query);
+    return { success: true, ...data };
   }
 
   @Get('attendance/student/:studentId')

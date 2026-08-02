@@ -17,6 +17,7 @@ import Classes from './pages/Classes'
 import Students from './pages/Students'
 import Fees from './pages/Fees'
 import Attendance from './pages/Attendance'
+import Notices from './pages/Notices'
 import ComingSoon from './pages/ComingSoon'
 
 function RequireAuth({ children }: { children: React.ReactNode }) {
@@ -242,6 +243,14 @@ export default function App() {
             element={
               <RequireRole roles={['organization-owner', 'principal', 'teacher']}>
                 <Attendance />
+              </RequireRole>
+            }
+          />
+          <Route
+            path="/notices"
+            element={
+              <RequireRole roles={['organization-owner', 'principal', 'teacher', 'student', 'parent']}>
+                <Notices />
               </RequireRole>
             }
           />

@@ -73,13 +73,14 @@ export class ImportController {
     @CurrentUser() user: any,
     @Query() query: ListBatchesQueryDto,
   ) {
-    return this.importService.listBatches(
+    const data = await this.importService.listBatches(
       user.tenantId,
       query.entityType,
       query.status,
       query.page,
       query.limit,
     );
+    return { success: true, ...data };
   }
 
   @Get('batches/:id')

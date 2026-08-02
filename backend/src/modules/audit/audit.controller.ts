@@ -27,7 +27,7 @@ export class AuditController {
     @Query('page') page: number = 1,
     @Query('limit') limit: number = 20,
   ) {
-    return this.auditService.find({
+    const data = await this.auditService.find({
       tenantId,
       userId,
       action,
@@ -40,6 +40,7 @@ export class AuditController {
       page,
       limit,
     });
+    return { success: true, ...data };
   }
 
   @Get('tenant/:tenantId')
@@ -49,7 +50,8 @@ export class AuditController {
     @Query('page') page: number = 1,
     @Query('limit') limit: number = 20,
   ) {
-    return this.auditService.findByTenant(tenantId, page, limit);
+    const data = await this.auditService.findByTenant(tenantId, page, limit);
+    return { success: true, ...data };
   }
 
   @Get('user/:userId')
@@ -60,7 +62,8 @@ export class AuditController {
     @Query('page') page: number = 1,
     @Query('limit') limit: number = 20,
   ) {
-    return this.auditService.findByUser(userId, tenantId, page, limit);
+    const data = await this.auditService.findByUser(userId, tenantId, page, limit);
+    return { success: true, ...data };
   }
 
   @Get('resource/:resourceType/:resourceId')
@@ -71,12 +74,13 @@ export class AuditController {
     @Query('page') page: number = 1,
     @Query('limit') limit: number = 20,
   ) {
-    return this.auditService.findByResource(
+    const data = await this.auditService.findByResource(
       resourceType,
       resourceId,
       page,
       limit,
     );
+    return { success: true, ...data };
   }
 
   @Get('stats/modules')

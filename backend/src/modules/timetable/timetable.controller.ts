@@ -47,7 +47,8 @@ export class TimetableController {
     @Param('branchId') branchId: string,
     @Query() query: ListTimetablesQueryDto,
   ) {
-    return this.timetableService.findByBranch(branchId, query);
+    const data = await this.timetableService.findByBranch(branchId, query);
+    return { success: true, ...data };
   }
 
   @Get('timetables/:id')
