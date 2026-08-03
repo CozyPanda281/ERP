@@ -1,7 +1,7 @@
 import { useEffect } from 'react'
 import { Navigate, Route, Routes, useLocation } from 'react-router-dom'
 import { useAuth } from './lib/auth'
-import { homeFor } from './lib/nav'
+import { homeFor, primaryRole, ROLE_LABELS } from './lib/nav'
 import Shell from './components/Shell'
 import Login from './pages/Login'
 import ForgotPassword from './pages/ForgotPassword'
@@ -34,7 +34,6 @@ import Accounting from './pages/Accounting'
 import Tenants from './pages/Tenants'
 import Subscriptions from './pages/Subscriptions'
 import Audit from './pages/Audit'
-import ComingSoon from './pages/ComingSoon'
 
 function RequireAuth({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, initializing } = useAuth()
@@ -71,10 +70,11 @@ function RedirectIfAuthed() {
   return <Login />
 }
 
-function RolePortal({ role }: { role: string }) {
+function RolePortal({ role }: { role?: string }) {
   const { user } = useAuth()
   if (!user) return <Navigate to="/login" replace />
-  return <PortalDashboard role={role} user={user} />
+  const roleName = role ?? primaryRole(user)
+  return <PortalDashboard role={ROLE_LABELS[roleName] ? roleName : 'reception'} user={user} />
 }
 
 function ScrollToTop() {
@@ -84,10 +84,6 @@ function ScrollToTop() {
   }, [pathname])
   return null
 }
-
-const MODULE_PLACEHOLDERS = [
-  '/portal',
-]
 
 export default function App() {
   return (
@@ -361,9 +357,10 @@ export default function App() {
               </RequireRole>
             }
           />
-          {MODULE_PLACEHOLDERS.map((path) => (
-            <Route key={path} path={path} element={<ComingSoon />} />
-          ))}
+          <Route
+            path="/portal"
+            element={<RolePortal />}
+          />
         </Route>
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
