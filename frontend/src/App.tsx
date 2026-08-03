@@ -30,6 +30,7 @@ import Library from './pages/Library'
 import Transport from './pages/Transport'
 import Hostel from './pages/Hostel'
 import Visitors from './pages/Visitors'
+import Accounting from './pages/Accounting'
 import ComingSoon from './pages/ComingSoon'
 
 function RequireAuth({ children }: { children: React.ReactNode }) {
@@ -85,7 +86,6 @@ const MODULE_PLACEHOLDERS = [
   '/tenants',
   '/subscriptions',
   '/audit',
-  '/accounting',
   '/portal',
 ]
 
@@ -326,6 +326,14 @@ export default function App() {
             element={
               <RequireRole roles={['organization-owner', 'principal', 'reception']}>
                 <Visitors />
+              </RequireRole>
+            }
+          />
+          <Route
+            path="/accounting"
+            element={
+              <RequireRole roles={['organization-owner', 'accountant', 'principal']}>
+                <Accounting />
               </RequireRole>
             }
           />
