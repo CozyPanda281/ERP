@@ -31,6 +31,9 @@ import Transport from './pages/Transport'
 import Hostel from './pages/Hostel'
 import Visitors from './pages/Visitors'
 import Accounting from './pages/Accounting'
+import Tenants from './pages/Tenants'
+import Subscriptions from './pages/Subscriptions'
+import Audit from './pages/Audit'
 import ComingSoon from './pages/ComingSoon'
 
 function RequireAuth({ children }: { children: React.ReactNode }) {
@@ -83,9 +86,6 @@ function ScrollToTop() {
 }
 
 const MODULE_PLACEHOLDERS = [
-  '/tenants',
-  '/subscriptions',
-  '/audit',
   '/portal',
 ]
 
@@ -334,6 +334,30 @@ export default function App() {
             element={
               <RequireRole roles={['organization-owner', 'accountant', 'principal']}>
                 <Accounting />
+              </RequireRole>
+            }
+          />
+          <Route
+            path="/tenants"
+            element={
+              <RequireRole roles={['erp-superadmin']}>
+                <Tenants />
+              </RequireRole>
+            }
+          />
+          <Route
+            path="/subscriptions"
+            element={
+              <RequireRole roles={['erp-superadmin']}>
+                <Subscriptions />
+              </RequireRole>
+            }
+          />
+          <Route
+            path="/audit"
+            element={
+              <RequireRole roles={['erp-superadmin']}>
+                <Audit />
               </RequireRole>
             }
           />
