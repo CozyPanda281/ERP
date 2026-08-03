@@ -11,6 +11,7 @@ import {
   index,
   uniqueIndex,
 } from 'drizzle-orm/pg-core';
+import { sql } from 'drizzle-orm';
 import { tenants } from './tenants';
 
 export const branches = pgTable(
@@ -37,10 +38,9 @@ export const branches = pgTable(
     deletedAt: timestamp('deleted_at', { withTimezone: true }),
   },
   (table) => ({
-    tenantCodeUnique: uniqueIndex('branches_tenant_id_code_key').on(
-      table.tenantId,
-      table.code,
-    ),
+    tenantCodeUnique: uniqueIndex('branches_tenant_id_code_key')
+      .on(table.tenantId, table.code)
+      .where(sql`deleted_at IS NULL`),
     tenantIdx: index('idx_branches_tenant').on(table.tenantId),
     principalIdx: index('idx_branches_principal').on(table.principalId),
   }),

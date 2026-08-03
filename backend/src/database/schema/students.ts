@@ -159,7 +159,7 @@ export const students = pgTable(
   (table) => ({
     tenantBranchAdmNoUnique: uniqueIndex(
       'students_tenant_id_branch_id_admission_number_key',
-    ).on(table.tenantId, table.branchId, table.admissionNumber),
+    ).on(table.tenantId, table.branchId, table.admissionNumber).where(sql`deleted_at IS NULL`),
     branchIdx: index('idx_students_branch').on(table.branchId),
     activeIdx: index('idx_students_active')
       .on(table.branchId)

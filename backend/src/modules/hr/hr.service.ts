@@ -6,7 +6,7 @@ import {
 } from '@nestjs/common';
 import { DatabaseProvider } from '../../database/database.provider';
 import * as schema from '../../database/schema';
-import { eq, and, desc, count, or, ilike, sql } from 'drizzle-orm';
+import { eq, and, desc, count, or, ilike, sql, isNull } from 'drizzle-orm';
 
 @Injectable()
 export class HrService {
@@ -45,6 +45,7 @@ export class HrService {
           eq(schema.staff.tenantId, params.tenantId),
           eq(schema.staff.branchId, params.branchId),
           eq(schema.staff.employeeCode, params.employeeCode),
+          isNull(schema.staff.deletedAt),
         ),
       )
       .limit(1);

@@ -121,6 +121,7 @@ export class AcademicService {
           eq(schema.departments.tenantId, params.tenantId),
           eq(schema.departments.branchId, params.branchId),
           eq(schema.departments.name, params.name),
+          isNull(schema.departments.deletedAt),
         ),
       )
       .limit(1);
@@ -220,6 +221,7 @@ export class AcademicService {
           eq(schema.classes.tenantId, params.tenantId),
           eq(schema.classes.branchId, params.branchId),
           eq(schema.classes.name, params.name),
+          isNull(schema.classes.deletedAt),
         ),
       )
       .limit(1);
@@ -312,6 +314,22 @@ export class AcademicService {
     capacity?: number;
     roomNumber?: string;
   }) {
+    const existing = await this.db.db
+      .select({ id: schema.sections.id })
+      .from(schema.sections)
+      .where(
+        and(
+          eq(schema.sections.tenantId, params.tenantId),
+          eq(schema.sections.branchId, params.branchId),
+          eq(schema.sections.classId, params.classId),
+          eq(schema.sections.name, params.name),
+          isNull(schema.sections.deletedAt),
+        ),
+      )
+      .limit(1);
+    if (existing.length)
+      throw new ConflictException('Section with this name already exists in this class');
+
     const id = uuidv4();
     await this.db.db.insert(schema.sections).values({
       id,
@@ -370,6 +388,7 @@ export class AcademicService {
     const conditions: any[] = [
       eq(schema.subjects.tenantId, params.tenantId),
       eq(schema.subjects.branchId, params.branchId),
+      isNull(schema.subjects.deletedAt),
     ];
     if (params.code !== undefined) {
       conditions.push(eq(schema.subjects.code, params.code));
