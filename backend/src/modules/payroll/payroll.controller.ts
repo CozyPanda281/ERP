@@ -19,7 +19,7 @@ export class PayrollController {
 
   @AuditLog({ action: 'post_salary_components', module: 'payroll' })
   @Post('salary-components')
-  @Roles(ROLES.SUPER_ADMIN, ROLES.ORGANIZATION_OWNER, ROLES.ACCOUNTANT)
+  @Roles(ROLES.SUPER_ADMIN, ROLES.ORGANIZATION_OWNER, ROLES.ACCOUNTANT, ROLES.HR)
   @ApiOperation({ summary: 'Create salary component' })
   async createSalaryComponent(
     @Body() body: CreateSalaryComponentDto,
@@ -34,7 +34,7 @@ export class PayrollController {
   }
 
   @Get('salary-components')
-  @Roles(ROLES.SUPER_ADMIN, ROLES.ORGANIZATION_OWNER, ROLES.ACCOUNTANT)
+  @Roles(ROLES.SUPER_ADMIN, ROLES.ORGANIZATION_OWNER, ROLES.ACCOUNTANT, ROLES.HR)
   @ApiOperation({ summary: 'List salary components' })
   async getSalaryComponents(@CurrentUser() user: any) {
     const data = await this.service.findSalaryComponentsByBranch(user.branchId);
@@ -43,7 +43,7 @@ export class PayrollController {
 
   @AuditLog({ action: 'post_process', module: 'payroll' })
   @Post('process')
-  @Roles(ROLES.SUPER_ADMIN, ROLES.ORGANIZATION_OWNER, ROLES.ACCOUNTANT)
+  @Roles(ROLES.SUPER_ADMIN, ROLES.ORGANIZATION_OWNER, ROLES.ACCOUNTANT, ROLES.HR)
   @ApiOperation({ summary: 'Process payroll' })
   async processPayroll(
     @Body() body: ProcessPayrollDto,
@@ -64,6 +64,7 @@ export class PayrollController {
     ROLES.ORGANIZATION_OWNER,
     ROLES.ACCOUNTANT,
     ROLES.PRINCIPAL,
+    ROLES.HR,
   )
   @ApiOperation({ summary: 'List payroll records' })
   async getPayroll(@CurrentUser() user: any, @Query() query: PayrollQueryDto) {
@@ -72,7 +73,7 @@ export class PayrollController {
   }
 
   @Get(':id')
-  @Roles(ROLES.SUPER_ADMIN, ROLES.ORGANIZATION_OWNER, ROLES.ACCOUNTANT)
+  @Roles(ROLES.SUPER_ADMIN, ROLES.ORGANIZATION_OWNER, ROLES.ACCOUNTANT, ROLES.HR)
   @ApiOperation({ summary: 'Get payroll by ID' })
   async getPayrollById(@Param('id') id: string) {
     const data = await this.service.findPayrollById(id);
@@ -85,7 +86,7 @@ export class PayrollController {
     resourceIdParam: 'id',
   })
   @Put(':id/status')
-  @Roles(ROLES.SUPER_ADMIN, ROLES.ORGANIZATION_OWNER, ROLES.ACCOUNTANT)
+  @Roles(ROLES.SUPER_ADMIN, ROLES.ORGANIZATION_OWNER, ROLES.ACCOUNTANT, ROLES.HR)
   @ApiOperation({ summary: 'Update payroll status' })
   async updateStatus(@Param('id') id: string, @Body('status') status: string) {
     const data = await this.service.updatePayrollStatus(id, status);

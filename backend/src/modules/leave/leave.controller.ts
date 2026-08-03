@@ -17,7 +17,7 @@ export class LeaveController {
 
   @AuditLog({ action: 'post_types', module: 'leave' })
   @Post('types')
-  @Roles(ROLES.SUPER_ADMIN, ROLES.PRINCIPAL, ROLES.ORGANIZATION_OWNER)
+  @Roles(ROLES.SUPER_ADMIN, ROLES.PRINCIPAL, ROLES.ORGANIZATION_OWNER, ROLES.HR)
   @ApiOperation({ summary: 'Create leave type' })
   async createLeaveType(
     @Body() body: CreateLeaveTypeDto,
@@ -31,7 +31,7 @@ export class LeaveController {
   }
 
   @Get('types')
-  @Roles(ROLES.SUPER_ADMIN, ROLES.PRINCIPAL, ROLES.ORGANIZATION_OWNER)
+  @Roles(ROLES.SUPER_ADMIN, ROLES.PRINCIPAL, ROLES.ORGANIZATION_OWNER, ROLES.HR)
   @ApiOperation({ summary: 'List leave types' })
   async getLeaveTypes(@CurrentUser() user: any) {
     const data = await this.service.findLeaveTypesByTenant(user.tenantId);
@@ -40,7 +40,7 @@ export class LeaveController {
 
   @AuditLog({ action: 'post_requests', module: 'leave' })
   @Post('requests')
-  @Roles(ROLES.SUPER_ADMIN, ROLES.PRINCIPAL, ROLES.ORGANIZATION_OWNER)
+  @Roles(ROLES.SUPER_ADMIN, ROLES.PRINCIPAL, ROLES.ORGANIZATION_OWNER, ROLES.HR)
   @ApiOperation({ summary: 'Request leave' })
   async requestLeave(@Body() body: RequestLeaveDto, @CurrentUser() user: any) {
     const data = await this.service.requestLeave({
@@ -52,7 +52,7 @@ export class LeaveController {
   }
 
   @Get('requests')
-  @Roles(ROLES.SUPER_ADMIN, ROLES.PRINCIPAL, ROLES.ORGANIZATION_OWNER)
+  @Roles(ROLES.SUPER_ADMIN, ROLES.PRINCIPAL, ROLES.ORGANIZATION_OWNER, ROLES.HR)
   @ApiOperation({ summary: 'List leave requests' })
   async getRequests(@CurrentUser() user: any, @Query() query: LeaveQueryDto) {
     const data = await this.service.findRequestsByBranch(user.branchId, query);
@@ -60,7 +60,7 @@ export class LeaveController {
   }
 
   @Get('requests/:id')
-  @Roles(ROLES.SUPER_ADMIN, ROLES.PRINCIPAL, ROLES.ORGANIZATION_OWNER)
+  @Roles(ROLES.SUPER_ADMIN, ROLES.PRINCIPAL, ROLES.ORGANIZATION_OWNER, ROLES.HR)
   @ApiOperation({ summary: 'Get leave request' })
   async getRequestById(@Param('id') id: string) {
     const data = await this.service.findRequestById(id);
@@ -73,7 +73,7 @@ export class LeaveController {
     resourceIdParam: 'id',
   })
   @Put('requests/:id/approve')
-  @Roles(ROLES.SUPER_ADMIN, ROLES.PRINCIPAL, ROLES.ORGANIZATION_OWNER)
+  @Roles(ROLES.SUPER_ADMIN, ROLES.PRINCIPAL, ROLES.ORGANIZATION_OWNER, ROLES.HR)
   @ApiOperation({ summary: 'Approve leave request' })
   async approveRequest(@Param('id') id: string, @CurrentUser() user: any) {
     const data = await this.service.approveRequest(id, user.id);
@@ -86,7 +86,7 @@ export class LeaveController {
     resourceIdParam: 'id',
   })
   @Put('requests/:id/reject')
-  @Roles(ROLES.SUPER_ADMIN, ROLES.PRINCIPAL, ROLES.ORGANIZATION_OWNER)
+  @Roles(ROLES.SUPER_ADMIN, ROLES.PRINCIPAL, ROLES.ORGANIZATION_OWNER, ROLES.HR)
   @ApiOperation({ summary: 'Reject leave request' })
   async rejectRequest(
     @Param('id') id: string,

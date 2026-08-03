@@ -23,6 +23,9 @@ import Branches from './pages/Branches'
 import Settings from './pages/Settings'
 import Exams from './pages/Exams'
 import Homework from './pages/Homework'
+import Expenses from './pages/Expenses'
+import Leave from './pages/Leave'
+import Payroll from './pages/Payroll'
 import ComingSoon from './pages/ComingSoon'
 
 function RequireAuth({ children }: { children: React.ReactNode }) {
@@ -79,13 +82,8 @@ const MODULE_PLACEHOLDERS = [
   '/subscriptions',
   '/audit',
   '/visitors',
-  '/expenses',
   '/accounting',
-  '/payroll',
-  '/leave',
   '/library',
-  '/transport',
-  '/hostel',
   '/portal',
 ]
 
@@ -286,6 +284,30 @@ export default function App() {
             element={
               <RequireRole roles={['organization-owner', 'principal', 'teacher']}>
                 <Homework />
+              </RequireRole>
+            }
+          />
+          <Route
+            path="/expenses"
+            element={
+              <RequireRole roles={['organization-owner', 'accountant', 'principal']}>
+                <Expenses />
+              </RequireRole>
+            }
+          />
+          <Route
+            path="/leave"
+            element={
+              <RequireRole roles={['organization-owner', 'principal', 'hr']}>
+                <Leave />
+              </RequireRole>
+            }
+          />
+          <Route
+            path="/payroll"
+            element={
+              <RequireRole roles={['organization-owner', 'accountant', 'principal', 'hr']}>
+                <Payroll />
               </RequireRole>
             }
           />
