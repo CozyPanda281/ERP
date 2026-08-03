@@ -591,3 +591,46 @@ Tenant-scoped API keys, a read-only public API, and signed webhook delivery with
 - Public API results endpoint uses `e.start_date` (exams has no exam_date column)
 
 **Backend:** 33 suites / 268 tests green (+31 new: api-keys 10, webhooks 12, guard 8, +1 baseline) A? **Frontend:** 36 tests green A? builds clean both sides A? live-verified end-to-end
+
+---
+
+## [2026-08-03] Phase 8d - Operations & Platform Admin Pages
+
+**Status:** `completed`
+
+**Description:**
+Replaced every remaining ComingSoon placeholder with a working page: expenses, leave, payroll, library, transport, hostel, visitors, accounting, tenants, subscriptions, audit, and the role portal fallback. Fixed backend role gaps discovered while wiring each page.
+
+### 1. HR modules (Expenses, Leave, Payroll)
+
+- `/expenses` page (owner/accountant/principal): categories + expenses CRUD with amount/branch/payment method
+- `/leave` page (owner/principal/hr): leave types + requests with approve/reject
+- `/payroll` page (owner/accountant/principal/hr): salary components + payroll records with draft-to-paid status flow
+- Backend: added `ROLES.HR` to 7 leave endpoints and 6 payroll endpoints (list + create + status)
+
+### 2. Operations modules (Library, Transport, Hostel, Visitors)
+
+- `/library` (owner/principal/librarian): books, members (student/staff), issue/return
+- `/transport` (owner/principal/transport-manager): vehicles, routes, student assignments
+- `/hostel` (owner/principal/hostel-manager): hostels, rooms, bed allocations (room list cascades by hostel; allocations live in `hostel_bed_allocations`)
+- `/visitors` (owner/principal/reception): check-in form + check-out
+- Backend: added `ROLES.LIBRARIAN` (10), `ROLES.TRANSPORT_MANAGER` (13), `ROLES.HOSTEL_MANAGER` (13), `ROLES.RECEPTION` (4) to their module endpoints
+- Fixed hostel controller 500: `@Get('allocations')` now declared before `@Get(':id')` (route-order bug swallowed the route)
+
+### 3. Accounting
+
+- `/accounting` (owner/accountant/principal): chart of accounts, double-entry journal entries (dynamic line items), trial balance, income statement, balance sheet
+- No backend changes needed - controller roles were already correct (owner/accountant create; owner/accountant/principal lists + reports)
+
+### 4. Platform admin (superadmin only)
+
+- `/tenants`: stats cards (total/active/trial), tenant table with detail modal, create-tenant wizard (name/slug/plan + owner account). Fixed create payload to include required `planId` + owner fields; stats keys map to API (total/active/trial)
+- `/subscriptions`: plan CRUD + all-tenant subscription table
+- `/audit`: searchable log table (action/module/outcome filters, pagination) + top-module activity cards
+- Superadmin access verified live as `admin@erp.com`
+
+### 5. Portal fallback
+
+- `/portal` now renders the user's role portal dashboard (falls back to reception view for unknown roles); deleted `ComingSoon.tsx` - no placeholders remain
+
+**Backend:** 33 suites / 268 tests green **Frontend:** 36 tests green, tsc + oxlint + vite build clean **live-verified:** all endpoints round-tripped (create/read/update/delete) and cleaned up from dev DB; module-manager role access confirmed per module
