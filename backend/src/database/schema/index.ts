@@ -27,3 +27,4 @@ export * from './feature-flags';
 export * from './import';
 export * from './accounting';
 export * from './integrations';
+export * from './appointments';

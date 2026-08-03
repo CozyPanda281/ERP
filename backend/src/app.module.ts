@@ -42,6 +42,7 @@ import { SharedModule } from './shared/shared.module';
 import { ApiKeysModule } from './modules/api-keys/api-keys.module';
 import { WebhooksModule } from './modules/webhooks/webhooks.module';
 import { PublicApiModule } from './modules/public-api/public-api.module';
+import { AppointmentsModule } from './modules/appointments/appointments.module';
 import { TenantMiddleware } from './common/middleware/tenant.middleware';
 import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
 import { TenantGuard } from './common/guards/tenant.guard';
@@ -109,6 +110,7 @@ import encryptionConfig from './config/encryption.config';
     ApiKeysModule,
     WebhooksModule,
     PublicApiModule,
+    AppointmentsModule,
   ],
   providers: [
     {

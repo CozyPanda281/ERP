@@ -7,6 +7,7 @@ import {
   FileText,
   ClipboardList,
   Megaphone,
+  CalendarClock,
   Building2,
   Settings,
   Landmark,
@@ -77,6 +78,7 @@ const TENANT_NAV: Record<string, NavItem[]> = {
     { to: '/exams', label: 'Exams & Results', icon: ClipboardList },
     { to: '/homework', label: 'Homework', icon: FileText },
     { to: '/notices', label: 'Notices', icon: Megaphone },
+    { to: '/appointments', label: 'Appointments', icon: CalendarClock },
     { to: '/integrations', label: 'API & Webhooks', icon: Webhook },
     { to: '/settings', label: 'Settings', icon: Settings },
   ],
@@ -89,6 +91,7 @@ const TENANT_NAV: Record<string, NavItem[]> = {
     { to: '/fees', label: 'Fees & Billing', icon: Landmark },
     { to: '/homework', label: 'Homework', icon: FileText },
     { to: '/notices', label: 'Notices', icon: Megaphone },
+    { to: '/appointments', label: 'Appointments', icon: CalendarClock },
     { to: '/integrations', label: 'API & Webhooks', icon: Webhook },
   ],
   reception: [
@@ -96,6 +99,7 @@ const TENANT_NAV: Record<string, NavItem[]> = {
     { to: '/students', label: 'Admissions', icon: GraduationCap },
     { to: '/visitors', label: 'Visitors', icon: Users },
     { to: '/notices', label: 'Notices', icon: Megaphone },
+    { to: '/appointments', label: 'Appointments', icon: CalendarClock },
   ],
   teacher: [
     { to: '/teacher', label: 'Dashboard', icon: LayoutDashboard },
@@ -103,30 +107,36 @@ const TENANT_NAV: Record<string, NavItem[]> = {
     { to: '/homework', label: 'Homework', icon: FileText },
     { to: '/exams', label: 'Exams & Results', icon: ClipboardList },
     { to: '/notices', label: 'Notices', icon: Megaphone },
+    { to: '/appointments', label: 'Appointments', icon: CalendarClock },
   ],
   accountant: [
     { to: '/accountant', label: 'Dashboard', icon: LayoutDashboard },
     { to: '/fees', label: 'Fees & Billing', icon: Landmark },
     { to: '/expenses', label: 'Expenses', icon: CreditCard },
     { to: '/accounting', label: 'Accounting', icon: ScrollText },
+    { to: '/appointments', label: 'Appointments', icon: CalendarClock },
   ],
   hr: [
     { to: '/hr', label: 'Dashboard', icon: LayoutDashboard },
     { to: '/staff', label: 'Staff', icon: Users },
     { to: '/payroll', label: 'Payroll', icon: Landmark },
     { to: '/leave', label: 'Leave', icon: CalendarDays },
+    { to: '/appointments', label: 'Appointments', icon: CalendarClock },
   ],
   librarian: [
     { to: '/librarian', label: 'Dashboard', icon: LayoutDashboard },
     { to: '/library', label: 'Library', icon: BookOpen },
+    { to: '/appointments', label: 'Appointments', icon: CalendarClock },
   ],
   'transport-manager': [
     { to: '/transport', label: 'Dashboard', icon: LayoutDashboard },
     { to: '/transport', label: 'Transport', icon: CalendarDays },
+    { to: '/appointments', label: 'Appointments', icon: CalendarClock },
   ],
   'hostel-manager': [
     { to: '/hostel', label: 'Dashboard', icon: LayoutDashboard },
     { to: '/hostel', label: 'Hostel', icon: Building2 },
+    { to: '/appointments', label: 'Appointments', icon: CalendarClock },
   ],
   student: [
     { to: '/student', label: 'Dashboard', icon: LayoutDashboard },
@@ -140,6 +150,7 @@ const TENANT_NAV: Record<string, NavItem[]> = {
     { to: '/attendance', label: 'Attendance', icon: CalendarDays },
     { to: '/fees', label: 'Fees', icon: Landmark },
     { to: '/notices', label: 'Notices', icon: Megaphone },
+    { to: '/appointments', label: 'Appointments', icon: CalendarClock },
   ],
 }
 

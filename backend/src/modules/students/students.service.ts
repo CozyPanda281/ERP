@@ -759,6 +759,15 @@ export class StudentsService {
     return this.findParentById(inserted.id, params.tenantId);
   }
 
+  async listParents(tenantId: string) {
+    const rows = await this.db.db
+      .select()
+      .from(schema.parents)
+      .where(eq(schema.parents.tenantId, tenantId))
+      .orderBy(asc(schema.parents.name));
+    return rows.map((r) => this.decryptRow(r, ['phone', 'email']));
+  }
+
   async findParentById(id: string, tenantId?: string) {
     const conditions: any[] = [eq(schema.parents.id, id)];
     if (tenantId) conditions.push(eq(schema.parents.tenantId, tenantId));

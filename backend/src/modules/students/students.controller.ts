@@ -291,6 +291,14 @@ export class StudentsController {
     return { success: true, data };
   }
 
+  @Get('parents')
+  @Roles(ROLES.PRINCIPAL, ROLES.TEACHER, ROLES.ORGANIZATION_OWNER)
+  @ApiOperation({ summary: 'List parents in the tenant' })
+  async listParents(@CurrentUser() user: any) {
+    const data = await this.studentsService.listParents(user.tenantId);
+    return { success: true, data };
+  }
+
   @Get('parents/:id')
   @Roles(ROLES.PRINCIPAL, ROLES.TEACHER)
   @ApiOperation({ summary: 'Get parent by ID' })

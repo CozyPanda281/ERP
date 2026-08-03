@@ -34,6 +34,7 @@ import Accounting from './pages/Accounting'
 import Tenants from './pages/Tenants'
 import Subscriptions from './pages/Subscriptions'
 import Audit from './pages/Audit'
+import Appointments from './pages/Appointments'
 
 function RequireAuth({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, initializing } = useAuth()
@@ -354,6 +355,27 @@ export default function App() {
             element={
               <RequireRole roles={['erp-superadmin']}>
                 <Audit />
+              </RequireRole>
+            }
+          />
+          <Route
+            path="/appointments"
+            element={
+              <RequireRole
+                roles={[
+                  'organization-owner',
+                  'principal',
+                  'reception',
+                  'teacher',
+                  'accountant',
+                  'hr',
+                  'librarian',
+                  'transport-manager',
+                  'hostel-manager',
+                  'parent',
+                ]}
+              >
+                <Appointments />
               </RequireRole>
             }
           />
