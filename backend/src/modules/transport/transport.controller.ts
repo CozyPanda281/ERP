@@ -31,7 +31,7 @@ export class TransportController {
 
   @AuditLog({ action: 'post_vehicles', module: 'transport' })
   @Post('vehicles')
-  @Roles(ROLES.SUPER_ADMIN, ROLES.PRINCIPAL, ROLES.ORGANIZATION_OWNER)
+  @Roles(ROLES.SUPER_ADMIN, ROLES.PRINCIPAL, ROLES.ORGANIZATION_OWNER, ROLES.TRANSPORT_MANAGER)
   @ApiOperation({ summary: 'Create a vehicle' })
   async createVehicle(
     @Body() body: CreateVehicleDto,
@@ -46,7 +46,7 @@ export class TransportController {
   }
 
   @Get('vehicles')
-  @Roles(ROLES.SUPER_ADMIN, ROLES.PRINCIPAL, ROLES.ORGANIZATION_OWNER)
+  @Roles(ROLES.SUPER_ADMIN, ROLES.PRINCIPAL, ROLES.ORGANIZATION_OWNER, ROLES.TRANSPORT_MANAGER)
   @ApiOperation({ summary: 'List vehicles' })
   async getVehicles(
     @CurrentUser() user: any,
@@ -57,7 +57,7 @@ export class TransportController {
   }
 
   @Get('vehicles/:id')
-  @Roles(ROLES.SUPER_ADMIN, ROLES.PRINCIPAL, ROLES.ORGANIZATION_OWNER)
+  @Roles(ROLES.SUPER_ADMIN, ROLES.PRINCIPAL, ROLES.ORGANIZATION_OWNER, ROLES.TRANSPORT_MANAGER)
   @ApiOperation({ summary: 'Get vehicle by ID' })
   async getVehicleById(@Param('id') id: string) {
     const data = await this.service.findVehicleById(id);
@@ -70,7 +70,7 @@ export class TransportController {
     resourceIdParam: 'id',
   })
   @Put('vehicles/:id')
-  @Roles(ROLES.SUPER_ADMIN, ROLES.PRINCIPAL, ROLES.ORGANIZATION_OWNER)
+  @Roles(ROLES.SUPER_ADMIN, ROLES.PRINCIPAL, ROLES.ORGANIZATION_OWNER, ROLES.TRANSPORT_MANAGER)
   @ApiOperation({ summary: 'Update vehicle' })
   async updateVehicle(@Param('id') id: string, @Body() body: UpdateVehicleDto) {
     const data = await this.service.updateVehicle(id, body);
@@ -83,7 +83,7 @@ export class TransportController {
     resourceIdParam: 'id',
   })
   @Delete('vehicles/:id')
-  @Roles(ROLES.SUPER_ADMIN, ROLES.PRINCIPAL, ROLES.ORGANIZATION_OWNER)
+  @Roles(ROLES.SUPER_ADMIN, ROLES.PRINCIPAL, ROLES.ORGANIZATION_OWNER, ROLES.TRANSPORT_MANAGER)
   @ApiOperation({ summary: 'Delete vehicle' })
   async deleteVehicle(@Param('id') id: string) {
     return { success: true, data: await this.service.deleteVehicle(id) };
@@ -91,7 +91,7 @@ export class TransportController {
 
   @AuditLog({ action: 'post_routes', module: 'transport' })
   @Post('routes')
-  @Roles(ROLES.SUPER_ADMIN, ROLES.PRINCIPAL, ROLES.ORGANIZATION_OWNER)
+  @Roles(ROLES.SUPER_ADMIN, ROLES.PRINCIPAL, ROLES.ORGANIZATION_OWNER, ROLES.TRANSPORT_MANAGER)
   @ApiOperation({ summary: 'Create a route' })
   async createRoute(@Body() body: CreateRouteDto, @CurrentUser() user: any) {
     const data = await this.service.createRoute({
@@ -103,7 +103,7 @@ export class TransportController {
   }
 
   @Get('routes')
-  @Roles(ROLES.SUPER_ADMIN, ROLES.PRINCIPAL, ROLES.ORGANIZATION_OWNER)
+  @Roles(ROLES.SUPER_ADMIN, ROLES.PRINCIPAL, ROLES.ORGANIZATION_OWNER, ROLES.TRANSPORT_MANAGER)
   @ApiOperation({ summary: 'List routes' })
   async getRoutes(@CurrentUser() user: any, @Query() query: TransportQueryDto) {
     const data = await this.service.findRoutesByBranch(user.branchId, query);
@@ -111,7 +111,7 @@ export class TransportController {
   }
 
   @Get('routes/:id')
-  @Roles(ROLES.SUPER_ADMIN, ROLES.PRINCIPAL, ROLES.ORGANIZATION_OWNER)
+  @Roles(ROLES.SUPER_ADMIN, ROLES.PRINCIPAL, ROLES.ORGANIZATION_OWNER, ROLES.TRANSPORT_MANAGER)
   @ApiOperation({ summary: 'Get route by ID' })
   async getRouteById(@Param('id') id: string) {
     const data = await this.service.findRouteById(id);
@@ -124,7 +124,7 @@ export class TransportController {
     resourceIdParam: 'id',
   })
   @Put('routes/:id')
-  @Roles(ROLES.SUPER_ADMIN, ROLES.PRINCIPAL, ROLES.ORGANIZATION_OWNER)
+  @Roles(ROLES.SUPER_ADMIN, ROLES.PRINCIPAL, ROLES.ORGANIZATION_OWNER, ROLES.TRANSPORT_MANAGER)
   @ApiOperation({ summary: 'Update route' })
   async updateRoute(@Param('id') id: string, @Body() body: UpdateRouteDto) {
     const data = await this.service.updateRoute(id, body);
@@ -137,7 +137,7 @@ export class TransportController {
     resourceIdParam: 'id',
   })
   @Delete('routes/:id')
-  @Roles(ROLES.SUPER_ADMIN, ROLES.PRINCIPAL, ROLES.ORGANIZATION_OWNER)
+  @Roles(ROLES.SUPER_ADMIN, ROLES.PRINCIPAL, ROLES.ORGANIZATION_OWNER, ROLES.TRANSPORT_MANAGER)
   @ApiOperation({ summary: 'Delete route' })
   async deleteRoute(@Param('id') id: string) {
     return { success: true, data: await this.service.deleteRoute(id) };
@@ -145,7 +145,7 @@ export class TransportController {
 
   @AuditLog({ action: 'post_assignments', module: 'transport' })
   @Post('assignments')
-  @Roles(ROLES.SUPER_ADMIN, ROLES.PRINCIPAL, ROLES.ORGANIZATION_OWNER)
+  @Roles(ROLES.SUPER_ADMIN, ROLES.PRINCIPAL, ROLES.ORGANIZATION_OWNER, ROLES.TRANSPORT_MANAGER)
   @ApiOperation({ summary: 'Assign student to route' })
   async assignStudent(
     @Body() body: AssignStudentDto,
@@ -160,7 +160,7 @@ export class TransportController {
   }
 
   @Get('assignments')
-  @Roles(ROLES.SUPER_ADMIN, ROLES.PRINCIPAL, ROLES.ORGANIZATION_OWNER)
+  @Roles(ROLES.SUPER_ADMIN, ROLES.PRINCIPAL, ROLES.ORGANIZATION_OWNER, ROLES.TRANSPORT_MANAGER)
   @ApiOperation({ summary: 'List assignments' })
   async getAssignments(
     @CurrentUser() user: any,
@@ -179,7 +179,7 @@ export class TransportController {
     resourceIdParam: 'id',
   })
   @Delete('assignments/:id')
-  @Roles(ROLES.SUPER_ADMIN, ROLES.PRINCIPAL, ROLES.ORGANIZATION_OWNER)
+  @Roles(ROLES.SUPER_ADMIN, ROLES.PRINCIPAL, ROLES.ORGANIZATION_OWNER, ROLES.TRANSPORT_MANAGER)
   @ApiOperation({ summary: 'Unassign student' })
   async unassignStudent(@Param('id') id: string) {
     return { success: true, data: await this.service.unassignStudent(id) };

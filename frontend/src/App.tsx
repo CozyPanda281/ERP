@@ -26,6 +26,10 @@ import Homework from './pages/Homework'
 import Expenses from './pages/Expenses'
 import Leave from './pages/Leave'
 import Payroll from './pages/Payroll'
+import Library from './pages/Library'
+import Transport from './pages/Transport'
+import Hostel from './pages/Hostel'
+import Visitors from './pages/Visitors'
 import ComingSoon from './pages/ComingSoon'
 
 function RequireAuth({ children }: { children: React.ReactNode }) {
@@ -81,9 +85,7 @@ const MODULE_PLACEHOLDERS = [
   '/tenants',
   '/subscriptions',
   '/audit',
-  '/visitors',
   '/accounting',
-  '/library',
   '/portal',
 ]
 
@@ -186,16 +188,16 @@ export default function App() {
           <Route
             path="/transport"
             element={
-              <RequireRole roles={['transport-manager']}>
-                <RolePortal role="transport" />
+              <RequireRole roles={['organization-owner', 'principal', 'transport-manager']}>
+                <Transport />
               </RequireRole>
             }
           />
           <Route
             path="/hostel"
             element={
-              <RequireRole roles={['hostel-manager']}>
-                <RolePortal role="hostel" />
+              <RequireRole roles={['organization-owner', 'principal', 'hostel-manager']}>
+                <Hostel />
               </RequireRole>
             }
           />
@@ -308,6 +310,22 @@ export default function App() {
             element={
               <RequireRole roles={['organization-owner', 'accountant', 'principal', 'hr']}>
                 <Payroll />
+              </RequireRole>
+            }
+          />
+          <Route
+            path="/library"
+            element={
+              <RequireRole roles={['organization-owner', 'principal', 'librarian']}>
+                <Library />
+              </RequireRole>
+            }
+          />
+          <Route
+            path="/visitors"
+            element={
+              <RequireRole roles={['organization-owner', 'principal', 'reception']}>
+                <Visitors />
               </RequireRole>
             }
           />

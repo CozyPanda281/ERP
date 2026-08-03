@@ -18,7 +18,7 @@ export class VisitorsController {
 
   @AuditLog({ action: 'post_check_in', module: 'visitors' })
   @Post('check-in')
-  @Roles(ROLES.SUPER_ADMIN, ROLES.PRINCIPAL, ROLES.ORGANIZATION_OWNER)
+  @Roles(ROLES.SUPER_ADMIN, ROLES.PRINCIPAL, ROLES.ORGANIZATION_OWNER, ROLES.RECEPTION)
   @ApiOperation({ summary: 'Check in a visitor' })
   async checkIn(@Body() body: CheckInDto, @CurrentUser() user: any) {
     const data = await this.service.checkIn({
@@ -30,7 +30,7 @@ export class VisitorsController {
   }
 
   @Get()
-  @Roles(ROLES.SUPER_ADMIN, ROLES.PRINCIPAL, ROLES.ORGANIZATION_OWNER)
+  @Roles(ROLES.SUPER_ADMIN, ROLES.PRINCIPAL, ROLES.ORGANIZATION_OWNER, ROLES.RECEPTION)
   @ApiOperation({ summary: 'List visitors' })
   async findAll(@CurrentUser() user: any, @Query() query: VisitorQueryDto) {
     const data = await this.service.findByBranch(user.branchId, query);
@@ -38,7 +38,7 @@ export class VisitorsController {
   }
 
   @Get(':id')
-  @Roles(ROLES.SUPER_ADMIN, ROLES.PRINCIPAL, ROLES.ORGANIZATION_OWNER)
+  @Roles(ROLES.SUPER_ADMIN, ROLES.PRINCIPAL, ROLES.ORGANIZATION_OWNER, ROLES.RECEPTION)
   @ApiOperation({ summary: 'Get visitor by ID' })
   async findById(@Param('id') id: string) {
     const data = await this.service.findById(id);
@@ -51,7 +51,7 @@ export class VisitorsController {
     resourceIdParam: 'id',
   })
   @Put(':id/check-out')
-  @Roles(ROLES.SUPER_ADMIN, ROLES.PRINCIPAL, ROLES.ORGANIZATION_OWNER)
+  @Roles(ROLES.SUPER_ADMIN, ROLES.PRINCIPAL, ROLES.ORGANIZATION_OWNER, ROLES.RECEPTION)
   @ApiOperation({ summary: 'Check out a visitor' })
   async checkOut(@Param('id') id: string) {
     const data = await this.service.checkOut(id);
