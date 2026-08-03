@@ -104,7 +104,7 @@ export default function Login() {
 
           <div>
             <label htmlFor="tenantId" className="mb-1 block text-sm font-medium text-slate-700">
-              Tenant ID <span className="font-normal text-slate-400">(optional)</span>
+              Tenant ID
             </label>
             <input
               id="tenantId"
@@ -115,6 +115,9 @@ export default function Login() {
               className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100"
               placeholder="Leave blank for SuperAdmin"
             />
+            <p className="mt-1.5 text-xs text-slate-400">
+              Required for school accounts — leave blank to sign in as SuperAdmin.
+            </p>
           </div>
 
           {error && (

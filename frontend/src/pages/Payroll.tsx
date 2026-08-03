@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Plus, Loader2, Wallet, BadgeCheck } from 'lucide-react'
-import { unwrap, api, errorMessage } from '../lib/api'
+import { unwrap, unwrapList, api, errorMessage } from '../lib/api'
 import { useAuth } from '../lib/auth'
 
 const inputCls =
@@ -134,8 +134,9 @@ export default function Payroll() {
   const staffQuery = useQuery({
     queryKey: ['staff', branchId],
     queryFn: () => api.get('/staff', { params: { page: 1, limit: 200 } }),
+    select: (res) => unwrapList<StaffMember>(res),
   })
-  const staff = (staffQuery.data?.data?.data ?? []) as StaffMember[]
+  const staff = staffQuery.data ?? []
 
   const recordsQuery = useQuery({
     queryKey: ['payroll', branchId, statusFilter, monthFilter, yearFilter],
@@ -149,15 +150,16 @@ export default function Payroll() {
           ...(yearFilter ? { year: Number(yearFilter) } : {}),
         },
       }),
+    select: (res) => unwrapList<PayrollRecord>(res),
   })
-  const recordsData = recordsQuery.data?.data?.data
-  const records = (recordsData?.data ?? []) as PayrollRecord[]
+  const records = recordsQuery.data ?? []
 
   const componentsQuery = useQuery({
     queryKey: ['salary-components', branchId],
     queryFn: () => api.get('/payroll/salary-components'),
+    select: (res) => unwrapList<SalaryComponent>(res),
   })
-  const components = (componentsQuery.data?.data?.data ?? []) as SalaryComponent[]
+  const components = componentsQuery.data ?? []
 
   const staffName = (id: string) => {
     const s = staff.find((st) => st.id === id)

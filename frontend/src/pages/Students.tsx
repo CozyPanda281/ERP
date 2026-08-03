@@ -108,8 +108,10 @@ export default function Students() {
         },
       }),
     select: (res) => {
-      const body = res.data as { data: Student[]; pagination: { page: number; limit: number; total: number } }
-      return { rows: body.data, pagination: body.pagination }
+      const body = res.data as { data?: Student[]; pagination?: { page: number; limit: number; total: number } } | Student[]
+      const rows = Array.isArray(body) ? body : (body.data ?? [])
+      const pagination = Array.isArray(body) ? undefined : body.pagination
+      return { rows, pagination }
     },
     enabled: !!branchId,
   })
@@ -243,7 +245,7 @@ export default function Students() {
     createStudent.mutate(body)
   }
 
-  const total = listQuery.data?.pagination.total ?? 0
+  const total = listQuery.data?.pagination?.total ?? 0
   const totalPages = Math.max(1, Math.ceil(total / 20))
 
   if (!branchId) {

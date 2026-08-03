@@ -98,6 +98,19 @@ export function unwrap<T>(promise: Promise<AxiosResponse>): Promise<T> {
   })
 }
 
+export function unwrapList<T>(res: AxiosResponse): T[] {
+  const body = res.data as { data?: T[] | { data?: T[] } } | T[] | undefined
+  if (Array.isArray(body)) return body as T[]
+  if (body && typeof body === 'object') {
+    const inner = (body as { data?: T[] | { data?: T[] } }).data
+    if (Array.isArray(inner)) return inner as T[]
+    if (inner && typeof inner === 'object' && Array.isArray((inner as { data?: T[] }).data)) {
+      return (inner as { data: T[] }).data
+    }
+  }
+  return []
+}
+
 export function errorMessage(err: unknown): string {
   if (axios.isAxiosError(err)) {
     const body = err.response?.data as { message?: string; errors?: unknown } | undefined

@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Plus, Loader2, CheckCircle2, XCircle, CalendarDays } from 'lucide-react'
-import { unwrap, api, errorMessage } from '../lib/api'
+import { unwrap, unwrapList, api, errorMessage } from '../lib/api'
 import { useAuth } from '../lib/auth'
 
 const inputCls =
@@ -126,14 +126,16 @@ export default function Leave() {
   const staffQuery = useQuery({
     queryKey: ['staff', branchId],
     queryFn: () => api.get('/staff', { params: { page: 1, limit: 200 } }),
+    select: (res) => unwrapList<StaffMember>(res),
   })
-  const staff = (staffQuery.data?.data?.data ?? []) as StaffMember[]
+  const staff = staffQuery.data ?? []
 
   const typesQuery = useQuery({
     queryKey: ['leave-types', branchId],
     queryFn: () => api.get('/leave/types'),
+    select: (res) => unwrapList<LeaveType>(res),
   })
-  const leaveTypes = (typesQuery.data?.data?.data ?? []) as LeaveType[]
+  const leaveTypes = typesQuery.data ?? []
 
   const requestsQuery = useQuery({
     queryKey: ['leave-requests', branchId, statusFilter],
@@ -141,9 +143,9 @@ export default function Leave() {
       api.get('/leave/requests', {
         params: { page: 1, limit: 100, ...(statusFilter ? { status: statusFilter } : {}) },
       }),
+    select: (res) => unwrapList<LeaveRequest>(res),
   })
-  const requestsData = requestsQuery.data?.data?.data
-  const requests = (requestsData?.data ?? []) as LeaveRequest[]
+  const requests = requestsQuery.data ?? []
 
   const staffName = (id: string) => {
     const s = staff.find((st) => st.id === id)

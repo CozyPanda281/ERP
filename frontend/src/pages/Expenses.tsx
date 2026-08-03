@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Plus, Loader2, CreditCard, Wallet, Tags, TrendingDown, TrendingUp } from 'lucide-react'
-import { unwrap, api, errorMessage } from '../lib/api'
+import { unwrap, unwrapList, api, errorMessage } from '../lib/api'
 import { useAuth } from '../lib/auth'
 
 const inputCls =
@@ -134,14 +134,14 @@ export default function Expenses() {
   const expensesQuery = useQuery({
     queryKey: ['expenses', branchId],
     queryFn: () => api.get('/expenses', { params: { page: 1, limit: 100 } }),
-    select: (res) => (res.data as { data: ExpenseRow[] }).data ?? [],
+    select: (res) => unwrapList<ExpenseRow>(res),
     enabled: !!branchId,
   })
 
   const incomeQuery = useQuery({
     queryKey: ['income', branchId],
     queryFn: () => api.get('/expenses/income', { params: { page: 1, limit: 100 } }),
-    select: (res) => (res.data as { data: IncomeRow[] }).data ?? [],
+    select: (res) => unwrapList<IncomeRow>(res),
     enabled: !!branchId,
   })
 

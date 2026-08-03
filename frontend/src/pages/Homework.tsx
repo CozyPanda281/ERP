@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Plus, Loader2, FileText, CalendarClock, CheckCircle2, Clock } from 'lucide-react'
-import { unwrap, api, errorMessage } from '../lib/api'
+import { unwrap, unwrapList, api, errorMessage } from '../lib/api'
 import { useAuth } from '../lib/auth'
 import type { ClassRecord, Subject } from '../lib/types'
 
@@ -150,7 +150,7 @@ export default function Homework() {
   const staffQuery = useQuery({
     queryKey: ['staff', branchId],
     queryFn: () => api.get('/staff', { params: { page: 1, limit: 100 } }),
-    select: (res) => ((res.data as { data: StaffMember[] }).data ?? []).filter((s) => s.isTeaching),
+    select: (res) => unwrapList<StaffMember>(res).filter((s) => s.isTeaching),
     enabled: !!branchId,
   })
 
@@ -167,7 +167,7 @@ export default function Homework() {
       api.get('/homework', {
         params: { page: 1, limit: 100, classId: classFilter || undefined, subjectId: subjectFilter || undefined },
       }),
-    select: (res) => (res.data as { data: Homework[] }).data ?? [],
+    select: (res) => unwrapList<Homework>(res),
     enabled: !!branchId,
   })
 
@@ -181,8 +181,8 @@ export default function Homework() {
   const studentsQuery = useQuery({
     queryKey: ['students-by-class', detail?.classId],
     queryFn: () =>
-      api.get('/students', { params: { page: 1, limit: 200, classId: detail!.classId } }),
-    select: (res) => ((res.data as { data: Student[] }).data ?? []) as Student[],
+      api.get(`/branches/${branchId}/students`, { params: { page: 1, limit: 200, classId: detail!.classId } }),
+    select: (res) => unwrapList<Student>(res),
     enabled: !!detail,
   })
 

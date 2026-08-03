@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Plus, Loader2, Trash2, Search, Briefcase, Phone, UserRound } from 'lucide-react'
-import { unwrap, api, errorMessage } from '../lib/api'
+import { unwrap, unwrapList, api, errorMessage } from '../lib/api'
 import { useAuth } from '../lib/auth'
 import type { Department } from '../lib/types'
 
@@ -136,10 +136,7 @@ export default function Staff() {
           isTeaching: teachingFilter || undefined,
         },
       }),
-    select: (res) => {
-      const body = res.data as { data: StaffMember[] }
-      return body.data
-    },
+    select: (res) => unwrapList<StaffMember>(res),
     enabled: !!branchId,
   })
 

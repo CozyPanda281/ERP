@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Plus, Loader2, Trash2, CalendarDays, ClipboardList, Clock, DoorOpen, Trophy, Save } from 'lucide-react'
-import { unwrap, api, errorMessage } from '../lib/api'
+import { unwrap, unwrapList, api, errorMessage } from '../lib/api'
 import { useAuth } from '../lib/auth'
 import type { AcademicYear, ClassRecord, Subject } from '../lib/types'
 
@@ -172,10 +172,7 @@ export default function Exams() {
       api.get('/exams', {
         params: { page: 1, limit: 100, search: search || undefined, examType: typeFilter || undefined },
       }),
-    select: (res) => {
-      const body = res.data as { data: Exam[] }
-      return body.data ?? []
-    },
+    select: (res) => unwrapList<Exam>(res),
     enabled: !!branchId,
   })
 
@@ -189,10 +186,7 @@ export default function Exams() {
   const marksQuery = useQuery({
     queryKey: ['exam-marks', marksScheduleId],
     queryFn: () => api.get(`/exam-marks/schedule/${marksScheduleId}`, { params: { page: 1, limit: 200 } }),
-    select: (res) => {
-      const body = res.data as { data: MarkRow[] }
-      return body.data ?? []
-    },
+    select: (res) => unwrapList<MarkRow>(res),
     enabled: !!marksScheduleId,
   })
 
