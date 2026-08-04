@@ -44,9 +44,9 @@ services:
           PGPASSWORD=\"$$DB_ROOT_PASSWORD\" psql -h \"$$DB_HOST\" -U \"$$DB_ROOT_USER\" -d \"$$DB_NAME\" -v ON_ERROR_STOP=1 -v erp_app_password=\"$$DB_PASSWORD\" -f \"$$f\" || exit 1;
         done;
       fi;
-      node dist/src/main.js"
+      node dist/main.js"
     healthcheck:
-      test: ["CMD-SHELL", "wget -qO- http://localhost:3000/api/v1/docs >/dev/null 2>&1 || exit 1"]
+      test: ["CMD-SHELL", "wget -qO- http://localhost:3000/api/v1/health >/dev/null 2>&1 || exit 1"]
       interval: 10s
       timeout: 5s
       retries: 12
