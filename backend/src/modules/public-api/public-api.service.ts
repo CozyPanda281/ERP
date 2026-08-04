@@ -1,4 +1,9 @@
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';import { DatabaseProvider } from '../../database/database.provider';
+import {
+  Injectable,
+  NotFoundException,
+  BadRequestException,
+} from '@nestjs/common';
+import { DatabaseProvider } from '../../database/database.provider';
 
 export interface PublicListOptions {
   limit?: number;
@@ -76,7 +81,11 @@ export class PublicApiService {
 
   async getStudent(tenantId: string, studentId: string) {
     const result = await this.db.query(
-      `SELECT s.*, c.name AS class_name, sec.name AS section_name,
+      `SELECT s.id, s.admission_number, s.roll_number, s.first_name,
+              s.middle_name, s.last_name, s.date_of_birth, s.gender,
+              s.blood_group, s.category, s.status, s.is_active,
+              s.admission_date, s.created_at,
+              c.name AS class_name, sec.name AS section_name,
               ay.name AS academic_year
        FROM students s
        LEFT JOIN student_academic_records r ON r.student_id = s.id
@@ -131,7 +140,11 @@ export class PublicApiService {
 
   async listInvoices(
     tenantId: string,
-    opts: PublicListOptions & { studentId?: string; from?: string; to?: string } = {},
+    opts: PublicListOptions & {
+      studentId?: string;
+      from?: string;
+      to?: string;
+    } = {},
   ) {
     const limit = this.pageLimit(opts.limit);
     const offset = this.pageOffset(opts.offset);
@@ -174,7 +187,11 @@ export class PublicApiService {
 
   async listPayments(
     tenantId: string,
-    opts: PublicListOptions & { studentId?: string; from?: string; to?: string } = {},
+    opts: PublicListOptions & {
+      studentId?: string;
+      from?: string;
+      to?: string;
+    } = {},
   ) {
     const limit = this.pageLimit(opts.limit);
     const offset = this.pageOffset(opts.offset);

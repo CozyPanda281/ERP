@@ -125,7 +125,10 @@ export class UsersService {
       throw new NotFoundException('User not found');
     }
 
-    return this.decryptPhone(user);
+    const safe = { ...user } as Record<string, unknown>;
+    delete safe.passwordHash;
+    delete safe.twoFactorSecret;
+    return this.decryptPhone(safe as any);
   }
 
   async findByTenant(tenantId: string, page = 1, limit = 20) {

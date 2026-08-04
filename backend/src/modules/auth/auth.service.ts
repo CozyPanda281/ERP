@@ -7,6 +7,7 @@ import {
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
+import * as crypto from 'crypto';
 import { v4 as uuidv4 } from 'uuid';
 import { DatabaseProvider } from '../../database/database.provider';
 import { eq, and, isNull, or, sql, inArray } from 'drizzle-orm';
@@ -157,13 +158,13 @@ export class AuthService {
       ),
     ]);
 
-    // Store session
+    // Store session (tokens hashed at rest; only the SHA-256 digests are kept)
     await this.db.db.insert(schema.userSessions).values({
       id: sessionId,
       userId: user.id,
       tenantId: user.tenantId,
-      accessToken,
-      refreshToken,
+      accessToken: this.hashToken(accessToken),
+      refreshToken: this.hashToken(refreshToken),
       isActive: true,
       expiresAt: new Date(Date.now() + accessExpires * 1000),
       refreshExpiresAt: new Date(Date.now() + refreshExpires * 1000),
@@ -201,7 +202,7 @@ export class AuthService {
         throw new UnauthorizedException('Invalid refresh token');
       }
 
-      // Verify session exists
+      // Verify session exists (lookup by the stored token hash)
       const [session] = await this.db.db
         .select({
           id: schema.userSessions.id,
@@ -210,7 +211,7 @@ export class AuthService {
         .from(schema.userSessions)
         .where(
           and(
-            eq(schema.userSessions.refreshToken, refreshToken),
+            eq(schema.userSessions.refreshToken, this.hashToken(refreshToken)),
             eq(schema.userSessions.isActive, true),
             sql`${schema.userSessions.refreshExpiresAt} > NOW()`,
           ),
@@ -276,8 +277,11 @@ export class AuthService {
     }
   }
 
-  async logout(sessionId: string, userId: string) {
-    await this.db.db
+  private hashToken(token: string): string {
+    return crypto.createHash('sha256').update(token).digest('hex');
+  }
+
+  async logout(sessionId: string, userId: string) {    await this.db.db
       .update(schema.userSessions)
       .set({ isActive: false })
       .where(

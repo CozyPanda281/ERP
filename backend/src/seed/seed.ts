@@ -1,25 +1,32 @@
 import { Pool } from 'pg';
 import * as bcrypt from 'bcrypt';
+import * as crypto from 'crypto';
 import { v4 as uuidv4 } from 'uuid';
 
 async function seed() {
   const pool = new Pool({
-    host: 'localhost',
-    port: 5432,
-    user: 'postgres',
-    password: 'postgres',
-    database: 'erp',
+    host: process.env.DB_HOST || 'localhost',
+    port: parseInt(process.env.DB_PORT || '5432', 10),
+    user: process.env.DB_USER || 'postgres',
+    password: process.env.DB_PASSWORD || 'postgres',
+    database: process.env.DB_NAME || 'erp',
   });
 
   try {
-    const passwordHash = await bcrypt.hash('Admin@123', 10);
+    let password = process.env.SEED_ADMIN_PASSWORD;
+    let generated = false;
+    if (!password) {
+      password = crypto.randomBytes(12).toString('base64url');
+      generated = true;
+    }
+    const passwordHash = await bcrypt.hash(password, 12);
     const userId = uuidv4();
     const now = new Date().toISOString();
 
     // Check if SuperAdmin already exists
     const existing = await pool.query(
       `SELECT id FROM users WHERE email = $1 AND is_superadmin = TRUE`,
-      ['admin@erp.com'],
+      [process.env.SEED_ADMIN_EMAIL || 'admin@erp.com'],
     );
 
     if (existing.rows.length > 0) {
@@ -31,7 +38,7 @@ async function seed() {
     await pool.query(
       `INSERT INTO users (id, email, password_hash, first_name, last_name, is_superadmin, is_active, status, created_at, updated_at)
        VALUES ($1, $2, $3, $4, $5, TRUE, TRUE, 'active', $6, $6)`,
-      [userId, 'admin@erp.com', passwordHash, 'Super', 'Admin', now],
+      [userId, process.env.SEED_ADMIN_EMAIL || 'admin@erp.com', passwordHash, 'Super', 'Admin', now],
     );
 
     // Assign super_admin role
@@ -47,7 +54,13 @@ async function seed() {
       console.log('SuperAdmin role assigned.');
     }
 
-    console.log('SuperAdmin user created: admin@erp.com / Admin@123');
+    const email = process.env.SEED_ADMIN_EMAIL || 'admin@erp.com';
+    if (generated) {
+      console.log(`SuperAdmin created: ${email}`);
+      console.log(`Generated password (save it now): ${password}`);
+    } else {
+      console.log(`SuperAdmin created: ${email} (password from SEED_ADMIN_PASSWORD)`);
+    }
   } catch (err) {
     console.error('Seed failed:', err);
     process.exit(1);

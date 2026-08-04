@@ -5,6 +5,8 @@ import {
   BadRequestException,
 } from '@nestjs/common';
 import * as crypto from 'crypto';
+import * as net from 'net';
+import * as dns from 'dns/promises';
 import { DatabaseProvider } from '../../database/database.provider';
 
 export const WEBHOOK_EVENTS = [
@@ -66,6 +68,7 @@ export class WebhooksService {
     if (!url || !/^https?:\/\//i.test(url)) {
       throw new BadRequestException('Webhook URL must be a valid http(s) URL');
     }
+    await this.assertSafeUrl(url);
     if (!secret || secret.length < 16) {
       throw new BadRequestException(
         'Webhook secret must be at least 16 characters',
@@ -112,6 +115,7 @@ export class WebhooksService {
     if (!/^https?:\/\//i.test(url)) {
       throw new BadRequestException('Webhook URL must be a valid http(s) URL');
     }
+    await this.assertSafeUrl(url);
     const secret = patch.secret?.trim() || existing.secret;
     if (secret.length < 16) {
       throw new BadRequestException(
@@ -295,7 +299,9 @@ export class WebhooksService {
       payload: row.payload,
       maxAttempts: row.max_attempts,
     }).catch((err) =>
-      this.logger.error(`Manual retry ${deliveryId} failed: ${(err as Error).message}`),
+      this.logger.error(
+        `Manual retry ${deliveryId} failed: ${(err as Error).message}`,
+      ),
     );
   }
 
@@ -347,10 +353,18 @@ export class WebhooksService {
            SET status = $2, attempts = $3, response_status = $4,
                response_body = $5, error = NULL, sent_at = now(), next_retry_at = NULL
            WHERE id = $1`,
-          [deliveryId, response.ok ? 'success' : 'failed', attempt, response.status, responseBody],
+          [
+            deliveryId,
+            response.ok ? 'success' : 'failed',
+            attempt,
+            response.status,
+            responseBody,
+          ],
         );
         if (response.ok) {
-          this.logger.log(`Delivery ${deliveryId} succeeded (attempt ${attempt})`);
+          this.logger.log(
+            `Delivery ${deliveryId} succeeded (attempt ${attempt})`,
+          );
           return;
         }
         this.logger.warn(
@@ -361,11 +375,7 @@ export class WebhooksService {
           `UPDATE webhook_deliveries
            SET status = 'failed', attempts = $2, error = $3, next_retry_at = NULL
            WHERE id = $1`,
-          [
-            deliveryId,
-            attempt,
-            (err as Error).message.slice(0, 500),
-          ],
+          [deliveryId, attempt, (err as Error).message.slice(0, 500)],
         );
         this.logger.warn(
           `Delivery ${deliveryId} attempt ${attempt} error: ${(err as Error).message}`,
@@ -395,6 +405,78 @@ export class WebhooksService {
       .createHmac('sha256', secret)
       .update(`${timestamp}.${payload}`)
       .digest('hex');
+  }
+
+  /**
+   * SSRF guard: rejects private / loopback / link-local / reserved targets
+   * (both literal IPs and hostnames resolved via DNS).
+   */
+  private async assertSafeUrl(rawUrl: string): Promise<void> {
+    let hostname: string;
+    try {
+      hostname = new URL(rawUrl).hostname;
+    } catch {
+      throw new BadRequestException('Webhook URL is invalid');
+    }
+    if (!hostname) throw new BadRequestException('Webhook URL is invalid');
+
+    const addresses = new Set<string>();
+    const ip = net.isIP(hostname);
+    if (ip) {
+      addresses.add(hostname);
+    } else {
+      try {
+        const resolved = await dns.lookup(hostname, { all: true });
+        for (const { address } of resolved) addresses.add(address);
+      } catch {
+        throw new BadRequestException('Webhook URL host could not be resolved');
+      }
+    }
+    if (addresses.size === 0) {
+      throw new BadRequestException('Webhook URL host could not be resolved');
+    }
+    for (const address of addresses) {
+      if (this.isBlockedAddress(address)) {
+        throw new BadRequestException(
+          'Webhook URL must not point to private or local addresses',
+        );
+      }
+    }
+  }
+
+  private isBlockedAddress(address: string): boolean {
+    const v4 = net.isIPv4(address);
+    if (v4) {
+      const parts = address.split('.').map((p) => parseInt(p, 10));
+      const octet = (i: number) => parts[i] ?? 0;
+      const first = octet(0);
+      if (first === 0) return true; // 0.0.0.0/8
+      if (first === 10) return true; // 10.0.0.0/8
+      if (first === 127) return true; // loopback
+      if (first === 169 && octet(1) === 254) return true; // link-local
+      if (first === 172 && octet(1) >= 16 && octet(1) <= 31) return true; // 172.16/12
+      if (first === 192 && octet(1) === 168) return true; // 192.168/16
+      if (first === 100 && octet(1) >= 64 && octet(1) <= 127) return true; // CGNAT
+      if (first === 192 && octet(1) === 0 && octet(2) === 0) return true; // 192.0.0/24
+      if (first === 192 && octet(1) === 0 && octet(2) === 2) return true; // TEST-NET-1
+      if (first === 198 && octet(1) === 18) return true; // benchmarking
+      if (first === 198 && octet(1) === 51 && octet(2) === 100) return true; // TEST-NET-2
+      if (first === 203 && octet(1) === 0 && octet(2) === 113) return true; // TEST-NET-3
+      if (first >= 224) return true; // multicast + reserved
+      return false;
+    }
+    const v6 = address.toLowerCase();
+    if (v6 === '::' || v6 === '::1') return true;
+    if (v6.startsWith('fc') || v6.startsWith('fd')) return true; // fc00::/7 ULA
+    if (
+      v6.startsWith('fe8') ||
+      v6.startsWith('fe9') ||
+      v6.startsWith('fea') ||
+      v6.startsWith('feb')
+    )
+      return true; // fe80::/10
+    if (v6.startsWith('ff')) return true; // multicast
+    return false;
   }
 
   private normalizeEvents(events?: string): string {

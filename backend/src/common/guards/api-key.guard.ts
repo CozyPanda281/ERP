@@ -9,7 +9,7 @@ import {
 } from '@nestjs/common';
 import * as crypto from 'crypto';
 import { Request } from 'express';
-import { DatabaseProvider } from '../../database/database.provider';
+import { DatabaseProvider, tenantAls } from '../../database/database.provider';
 
 export interface ApiKeyContext {
   keyId: string;
@@ -51,6 +51,9 @@ export class ApiKeyGuard implements CanActivate {
     }
 
     const hash = crypto.createHash('sha256').update(secret).digest('hex');
+    // The lookup runs before the tenant interceptor, so temporarily allow the
+    // api_keys lookup via the request's RLS context.
+    tenantAls.getStore()?.set('app.allow_api_key_lookup', 'true');
     const result = await this.db.query(
       `SELECT id, tenant_id, name, key_hash, scopes, rate_limit_per_minute,
               expires_at, is_active
@@ -65,6 +68,15 @@ export class ApiKeyGuard implements CanActivate {
     }
 
     const key = result.rows[0] as KeyRow;
+
+    // Pin this request's RLS context to the key's tenant, then drop the
+    // lookup bypass so the rest of the request is tenant-scoped again.
+    const gucs = tenantAls.getStore();
+    gucs?.delete('app.allow_api_key_lookup');
+    if (gucs) {
+      gucs.set('app.tenant_id', key.tenant_id);
+      gucs.set('app.current_tenant_id', key.tenant_id);
+    }
 
     if (!key.is_active) {
       throw new UnauthorizedException('API key is revoked');

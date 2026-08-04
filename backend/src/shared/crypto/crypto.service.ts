@@ -5,16 +5,22 @@ import * as crypto from 'crypto';
 const ALGORITHM = 'aes-256-gcm';
 const IV_LENGTH = 16;
 const AUTH_TAG_LENGTH = 16;
+const DEV_DEFAULT = 'change-me-in-production-32bytes!';
+const DEV_LEGACY = 'default-dev-key-change-in-production';
 
 @Injectable()
 export class CryptoService {
   private readonly key: Buffer;
 
   constructor(configService: ConfigService) {
-    const raw =
-      configService.get<string>('encryption.key') ||
-      'default-dev-key-change-in-production';
-    this.key = crypto.scryptSync(raw, 'erp-salt', 32);
+    const raw = configService.get<string>('encryption.key');
+    const isProd = process.env.NODE_ENV === 'production';
+    if (isProd && (!raw || raw === DEV_DEFAULT || raw === DEV_LEGACY)) {
+      throw new Error(
+        'ENCRYPTION_KEY must be set to a strong, random value in production',
+      );
+    }
+    this.key = crypto.scryptSync(raw || DEV_LEGACY, 'erp-salt', 32);
   }
 
   encrypt(text: string): string {

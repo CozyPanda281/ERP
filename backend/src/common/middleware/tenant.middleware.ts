@@ -7,6 +7,7 @@ import {
 } from '@nestjs/common';
 import { Request, Response, NextFunction } from 'express';
 import { DatabaseProvider } from '../../database/database.provider';
+import { tenantAls } from '../../database/database.provider';
 import { TENANT_CONTEXT_KEY } from '../constants';
 
 @Injectable()
@@ -15,7 +16,17 @@ export class TenantMiddleware implements NestMiddleware {
 
   constructor(private readonly db: DatabaseProvider) {}
 
-  async use(req: Request, _res: Response, next: NextFunction) {
+  async use(req: Request, res: Response, next: NextFunction) {
+    // Create the request's RLS GUC context. Everything downstream (guards,
+    // interceptors, handler, audit writes) inherits it; it dies with the
+    // request, so pooled connections can never leak another request's tenant.
+    const gucs = new Map<string, string>();
+    tenantAls.run(gucs, () => {
+      this.resolveTenant(req, res, next).catch(next);
+    });
+  }
+
+  private async resolveTenant(req: Request, _res: Response, next: NextFunction) {
     const tenantId = req.headers['x-tenant-id'] as string;
 
     // Public routes or SuperAdmin auth routes don't require a tenant header
@@ -54,6 +65,11 @@ export class TenantMiddleware implements NestMiddleware {
       tenantSlug: tenantData.slug,
       tenantStatus: tenantData.status,
     };
+
+    // Expose the validated tenant to the request's RLS context.
+    const gucs = tenantAls.getStore();
+    gucs?.set('app.tenant_id', tenantData.id);
+    gucs?.set('app.current_tenant_id', tenantData.id);
 
     next();
   }

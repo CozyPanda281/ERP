@@ -134,8 +134,9 @@ export default function Login() {
           </button>
         </form>
 
+        {import.meta.env.DEV && (
         <details className="mt-4 rounded-xl border border-slate-200 bg-white/60 p-4 text-xs text-slate-500">
-          <summary className="cursor-pointer font-medium text-slate-600">Demo accounts</summary>
+          <summary className="cursor-pointer font-medium text-slate-600">Demo accounts (dev only)</summary>
           <ul className="mt-2 space-y-1">
             <li>
               Owner — <code className="text-indigo-700">owner3@school.com</code> /{' '}
@@ -192,6 +193,7 @@ export default function Login() {
             after 5 failed tries — double-check the tenant ID before submitting.
           </p>
         </details>
+        )}
       </div>
     </div>
   )

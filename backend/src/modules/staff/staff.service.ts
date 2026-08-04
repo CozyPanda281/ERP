@@ -65,7 +65,7 @@ export class StaffService {
         bankAccountNo: params.bankAccountNo,
         ifscCode: params.ifscCode,
         panNumber: params.panNumber,
-        aadharNumber: params.aadharNumber,
+        aadharNumber: this.maskAadhaar(params.aadharNumber),
         profilePhotoUrl: params.profilePhotoUrl,
         userId: params.userId,
       })
@@ -155,6 +155,9 @@ export class StaffService {
   ) {
     await this.findById(id);
     const values: any = { ...params, updatedAt: new Date() };
+    if (params.aadharNumber !== undefined) {
+      values.aadharNumber = this.maskAadhaar(params.aadharNumber);
+    }
     Object.keys(params).forEach((k) => {
       if (params[k as keyof typeof params] === undefined) delete values[k];
     });
@@ -164,6 +167,13 @@ export class StaffService {
         .set(values)
         .where(eq(schema.staff.id, id));
     return this.findById(id);
+  }
+
+  private maskAadhaar(value?: string): string | undefined {
+    if (!value) return value;
+    const digits = value.replace(/\D/g, '');
+    if (digits.length !== 12) return value;
+    return `XXXX-XXXX-${digits.slice(-4)}`;
   }
 
   async delete(id: string) {

@@ -4,6 +4,8 @@ const KNOWN_WEAK_SECRETS = [
   'super-secret-change-in-production',
   'refresh-secret-change-in-production',
   'fallback-secret',
+  'erp-jwt-secret-change-in-production',
+  'erp-refresh-secret-change-in-production',
   'secret',
   'changeme',
 ];

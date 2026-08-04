@@ -25,11 +25,12 @@ export class UploadsService {
 
     // Use only the basename and strip path separators from the original
     // filename so crafted names ("../../x") cannot escape destDir.
-    const safeBase = path
-      .basename(file.originalname)
-      .replace(/[\\/]/g, '-')
-      .replace(/^\.+/, '')
-      .slice(0, 120) || 'file';
+    const safeBase =
+      path
+        .basename(file.originalname)
+        .replace(/[\\/]/g, '-')
+        .replace(/^\.+/, '')
+        .slice(0, 120) || 'file';
 
     const uniqueName = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}-${safeBase}`;
     const filePath = path.join(destDir, uniqueName);
@@ -40,7 +41,15 @@ export class UploadsService {
   }
 
   async deleteFile(url: string): Promise<void> {
-    const filePath = path.join(this.storagePath, url.replace('/uploads/', ''));
+    if (!url || !url.startsWith('/uploads/')) return;
+    const relative = url.slice('/uploads/'.length);
+    const parts = relative.split('/');
+    if (parts.length !== 2 || !/^[a-z0-9_-]+$/i.test(parts[0])) return;
+    if (parts[1].includes('/') || parts[1].includes('\\') || parts[1] === '..')
+      return;
+    const resolvedRoot = path.resolve(this.storagePath);
+    const filePath = path.resolve(this.storagePath, parts[0], parts[1]);
+    if (!filePath.startsWith(resolvedRoot + path.sep)) return;
     await fs.unlink(filePath).catch(() => {});
   }
 }
