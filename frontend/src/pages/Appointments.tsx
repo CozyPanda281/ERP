@@ -150,7 +150,7 @@ export default function Appointments() {
 
   const isManager = user?.roles?.includes('principal') || user?.roles?.includes('organization-owner') || !!user?.isSuperAdmin
 
-  const role = primaryRole(user)
+  const role = user ? primaryRole(user) : ''
 
   const listQuery = useQuery({
     queryKey: ['appointments', branchId],
@@ -639,7 +639,7 @@ export default function Appointments() {
               </button>
             )}
             {(detail.status === 'pending' || detail.status === 'confirmed') &&
-              (isManager || detail.requestedBy === user?.id || detail.requestedBy === user?.sub) && (
+              (isManager || detail.requestedBy === user?.id) && (
                 <div className="space-y-2">
                   <input
                     className={inputCls}
