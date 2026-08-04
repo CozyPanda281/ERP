@@ -107,7 +107,7 @@
 |---|---|---|
 | 1.1 | 🔒 Deployment runbook (VPS India + Docker Compose + Caddy or nginx TLS): written, walked through on a real server once | [ ] |
 | 1.2 | `GET /health` + `GET /health/db` endpoints (liveness + DB ping + Redis status) | [x] 🧪 live-verified 200/200 on :3000; 271/271 unit, 2/2 e2e |
-| 1.3 | Structured request logging (request id, tenant id, user id, latency, status) — no PII in logs | [ ] 🔒 |
+| 1.3 | Structured request logging (request id, tenant id, user id, latency, status) — no PII in logs | [x] 🔒 live-verified: 200/404/401 all logged w/ requestId + x-request-id header echo; middleware on `res finish` covers unmatched routes; `requestId` in error responses |
 | 1.4 | Error tracking (Sentry or equivalent) + alerting channel (email/Slack) | [ ] |
 | 1.5 | Metrics endpoint (Prometheus format: HTTP, DB pool, queue, email) + basic Grafana dashboard | [ ] |
 | 1.6 | 🔒 Log rotation + retention (30d) + no secrets/PII in logs (audit via grep in CI) | [ ] |
@@ -430,6 +430,7 @@
 
 - **2026-08-04 — v1.0 released.** Initial master phase list created from the full audit: 18 phases (0–18) covering every gap in the 34-module master list, all security findings, orphan tables, routing bugs, dead config, compliance (DPDP/UIDAI), and production readiness. Sections A (original phases) and B (v1.0 plan) are immutable from this point.
 - **2026-08-04 — v1.1 (Phase 1 work).** Item **1.2 shipped**: `GET /api/v1/health` (liveness: status/service/version/uptime/timestamp) + `GET /api/v1/health/db` (SELECT 1 with 2s timeout → `database.latencyMs`, `redis.configured/enabled`; 503 `ServiceUnavailableException` when DB down). Public (no tenant header, no auth). Unit tests added (3, suite now 271/271); e2e still 2/2; live-verified on :3000 (health 200, health/db 200 @ 18ms, login 200). Also fixed docker-compose bugs found while wiring health: api `command` ran `node dist/src/main.js` (crash — dist is `dist/main.js`), and healthcheck hit `/api/v1/docs` which is 404 in production; now `node dist/main.js` + `/api/v1/health`. Commit `33e1c51` (health module, compose fixes, phase list v1.1). Remaining Phase 1 items: 1.1, 1.3–1.12 (see Section B).
+- **2026-08-04 — v1.2 (Phase 1 work).** Item **1.3 shipped**: structured request logging. `RequestIdMiddleware` (honors sanitized `x-request-id`, echoes response header; else UUID) + `RequestLoggingMiddleware` hooked on `res finish` — one JSON line per request: `{type, requestId, method, path, status, latencyMs, tenantId, userId, ip}`; no bodies/headers/PII. Covers 200s, 404 unmatched routes, guard rejections, and errors (final status read at finish, so no early-capture). `requestId` added to `AllExceptionsFilter` error responses and 500 log lines. First attempt used a tap-based interceptor — discarded because unmatched routes never reach interceptors and error status is captured before the exception filter runs (live-verified 404/401 gap). Live-verified: health 200, nonexistent 404, bad login 401 all logged with requestId. Tests: 274/274 unit (3 middleware specs), 2/2 e2e. Deferred as part of 1.3: JSON-format file sink (dev console today) and log rotation are 1.6.
 - *(future entries appended below)*
 
 ---

@@ -45,6 +45,8 @@ import { PublicApiModule } from './modules/public-api/public-api.module';
 import { AppointmentsModule } from './modules/appointments/appointments.module';
 import { HealthModule } from './modules/health/health.module';
 import { TenantMiddleware } from './common/middleware/tenant.middleware';
+import { RequestIdMiddleware } from './common/middleware/request-id.middleware';
+import { RequestLoggingMiddleware } from './common/middleware/request-logging.middleware';
 import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
 import { TenantGuard } from './common/guards/tenant.guard';
 import { RolesGuard } from './common/guards/roles.guard';
@@ -151,6 +153,8 @@ import encryptionConfig from './config/encryption.config';
 })
 export class AppModule implements NestModule {
   configure(consumer: MiddlewareConsumer) {
-    consumer.apply(TenantMiddleware).forRoutes('*');
+    consumer
+      .apply(RequestIdMiddleware, TenantMiddleware, RequestLoggingMiddleware)
+      .forRoutes('*');
   }
 }
