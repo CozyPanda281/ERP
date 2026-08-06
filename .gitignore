@@ -6,3 +6,6 @@ dist/
 coverage/
 *.log
 .DS_Store
+# Runtime uploads (STORAGE_PATH) — written by the uploads module
+backend/uploads/
+frontend/uploads/

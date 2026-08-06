@@ -36,4 +36,9 @@ export class ListStudentsQueryDto {
   @IsOptional()
   @IsString()
   gender?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsUUID()
+  branchId?: string;
 }

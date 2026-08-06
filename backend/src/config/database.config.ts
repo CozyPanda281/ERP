@@ -8,4 +8,9 @@ export default registerAs('database', () => ({
   database: process.env.DB_NAME || 'erp',
   ssl: process.env.DB_SSL === 'true',
   maxConnections: parseInt(process.env.DB_MAX_CONNECTIONS || '20', 10),
+  connectionTimeoutMillis: parseInt(
+    process.env.DB_CONNECTION_TIMEOUT || '10000',
+    10,
+  ),
+  idleTimeoutMillis: parseInt(process.env.DB_IDLE_TIMEOUT || '30000', 10),
 }));

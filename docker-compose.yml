@@ -13,6 +13,10 @@ services:
       POSTGRES_PASSWORD: ${DB_ROOT_PASSWORD:?Set DB_ROOT_PASSWORD in .env}
     volumes:
       - pgdata:/var/lib/postgresql/data
+      # Bootstrap: the base schema runs once on first init of a fresh data
+      # volume (docker-entrypoint-initdb.d executes *.sql alphabetically on
+      # empty databases). Phase migrations then run from the api service.
+      - ./database:/docker-entrypoint-initdb.d:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${DB_ROOT_USER:-postgres} -d ${DB_NAME:-erp}"]
       interval: 5s
@@ -37,6 +41,10 @@ services:
       DB_USER: ${DB_USER:-erp_app}
       DB_PASSWORD: ${DB_PASSWORD:?Set DB_PASSWORD in .env}
       DB_NAME: ${DB_NAME:-erp}
+      # Credentials for the migration loop below; DB_ROOT_PASSWORD is already
+      # required by the db service at compose-parse time.
+      DB_ROOT_USER: ${DB_ROOT_USER:-postgres}
+      DB_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:?Set DB_ROOT_PASSWORD in .env}
       NODE_ENV: production
       REDIS_HOST: ${REDIS_HOST:-}
       STORAGE_PATH: /app/uploads
@@ -56,7 +64,8 @@ services:
       fi;
       node dist/main.js"
     healthcheck:
-      test: ["CMD-SHELL", "wget -qO- http://localhost:3000/api/v1/health >/dev/null 2>&1 || exit 1"]
+      # node:22-slim has no wget/curl; global fetch keeps the check dependency-free
+      test: ["CMD-SHELL", "node -e \"fetch('http://localhost:3000/api/v1/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))\""]
       interval: 10s
       timeout: 5s
       retries: 12

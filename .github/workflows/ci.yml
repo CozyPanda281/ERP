@@ -34,6 +34,12 @@ jobs:
       - run: npm ci
       - run: npm run build
       - run: npm test
+      - name: Apply schema for e2e
+        run: |
+          PGPASSWORD=postgres psql -h localhost -U postgres -d erp -v ON_ERROR_STOP=1 -f ../database/001_schema.sql
+          for f in db/migrations/*.sql; do
+            PGPASSWORD=postgres psql -h localhost -U postgres -d erp -v ON_ERROR_STOP=1 -v erp_app_password=erp_app_ci_pw -f "$f"
+          done
       - run: npm run test:e2e
         env:
           DB_HOST: localhost
@@ -41,6 +47,12 @@ jobs:
           DB_USER: postgres
           DB_PASSWORD: postgres
           DB_NAME: erp
+          # jwt.config.ts's assertStrongSecret rejects weak/absent secrets at
+          # module load — the e2e suite boots the whole AppModule. All values
+          # below are >= 32 characters.
+          JWT_SECRET: ci-e2e-secret-4f9c2b8a1d7e6f30ab00ff11ee
+          JWT_REFRESH_SECRET: ci-e2e-refresh-secret-8a3d5f2c7b1e9d04
+          ENCRYPTION_KEY: ci-e2e-encryption-key-0123456789abcdef
 
   frontend:
     runs-on: ubuntu-latest

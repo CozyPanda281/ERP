@@ -715,3 +715,43 @@ Time-based one-time passwords (RFC 6238, zero new dependencies - pure `node:cryp
 - Challenge throttling verified (5/min, 429) - the earlier "expired" failures were throttle responses, not bugs
 
 **Backend:** 37 suites / 291/291 unit, 2/2 e2e · **Frontend:** tsc + vite build clean · committed with Phase 1 observability wrap
+
+---
+
+## [2026-08-06] Full-Project Audit - Fixes (Phase 12 + deploy/CI hardening)
+
+**Status:** `completed`
+
+**Description:**
+Follow-up to the full-project audit (missing/broken code review). All findings with live evidence were fixed; nothing in this entry is speculative.
+
+### 1. Critical runtime fixes
+
+- **GET /students 404 (broken pages):** Hostel, Library and Transport pages called `GET /students` which never existed (backend only had `/branches/:branchId/students`) - live-verified 404 vs 200. Added tenant-scoped `GET /students` (`students.controller.ts`, roles: principal/teacher/organization-owner/hostel-manager/librarian/transport-manager/superadmin) with optional `branchId` filter (`ListStudentsQueryDto`); `findStudentsForTenant()` in `students.service.ts`. Also fixed the list endpoints to decrypt `phone`/`email` like every other read (`findStudentsByBranch` previously returned ciphertext). Live: 200, total=1, branch filter works.
+- **appointments had NO row-level security** (`relrowsecurity=f, relforcerowsecurity=f, 0 policies` - phase9 created it without a policy and phase10's FORCE loop only touches tables that already have one). New `backend/db/migrations/phase12-appointments-rls.sql`: enable RLS + `tenant_isolation` policy + FORCE. Live-verified: `t|t|1`; as `erp_app` without tenant GUC -> 0 rows, with GUC -> 3 rows.
+- **Uploads were write-only:** files were saved to `STORAGE_PATH` but never served (`/uploads/...` URLs fell through to the SPA `index.html`). `main.ts` now bootstraps a `NestExpressApplication` with `useStaticAssets(storagePath, { prefix: '/uploads/' })`; `frontend/nginx.conf` gained a `/uploads/` proxy location + `client_max_body_size 10m` (matches the API's Multer limit; nginx default is 1MB). Also fixed `/assets/` dropping inherited security headers (`add_header` resets inheritance). Live: upload -> `/uploads/general/<file>` -> GET 200 with the real content.
+
+### 2. Fresh-deploy bootstrap (compose could never build a working DB)
+
+- `database/001_schema.sql` was never applied by anything (migration loop only ran `backend/db/migrations/*.sql`; the image doesn't contain the base schema). `docker-compose.yml` now mounts `./database` into `docker-entrypoint-initdb.d` (runs once on a fresh volume), and `scripts/migrate.sh` applies it first when the `tenants` table is absent (guard because 001 is not idempotent).
+- **API healthcheck always "unhealthy":** `wget` doesn't exist in `node:22-slim` (verified via `docker run`). Replaced with a dependency-free `node -e fetch()` healthcheck.
+- **Migration loop credentials:** `DB_ROOT_USER`/`DB_ROOT_PASSWORD` were referenced in the api service env without defaults; added `DB_ROOT_USER: ` and explicit `DB_ROOT_PASSWORD`.
+
+### 3. CI fixes (`.github/workflows/ci.yml`)
+
+- e2e job had no `JWT_SECRET`/`JWT_REFRESH_SECRET` and no schema in the postgres service - `assertStrongSecret` (`jwt.config.ts`) throws at module load, so the e2e suite could never boot. Now: schema bootstrap step (001 + migrations) then e2e with >=32-char secrets (`ci-e2e-secret-4f9c2b8a1d7e6f30ab00ff11ee` etc.) - length matters: a 30-char value reproduces the exact failure locally.
+- `security-audit` job ran `./scripts/log-audit.sh` but the scripts had no exec bit (`100644` in git) - `git update-index --chmod=+x` on `log-audit.sh`/`migrate.sh`/`backup.sh`.
+
+### 4. Hygiene fixes
+
+- `scripts/log-audit.sh`: Part B used a lookbehind `(?<![0-9])` in `grep -E` - POSIX ERE has no lookbehind, grep errored and the PII scan always "passed". Replaced with lookbehind-free patterns (verified: flags a log line with a phone number). Also self-excluded from Part A (its own SECRET_PATTERNS line literally contains `-----BEGIN CERTIFICATE`).
+- `backend/scripts/rotate-encryption.js`: only covered `users.phone` + `parents` - now covers `users.two_factor_secret`, `students.phone/email`, `enquiries.parent_phone/parent_email`, `applications.phone/email/father_phone/father_email/mother_phone/mother_email/guardian_phone` (kept in sync with the encrypt() call sites). The current key must now be passed explicitly (`--current-key`/`--from-default`); an implicit default guess double-encrypts ciphertext and destroys the column. Refuses to rotate TO a dev default key.
+- `database.config.ts`: `connectionTimeoutMillis`/`idleTimeoutMillis` were read by `database.provider.ts` but never defined - now defined with `DB_CONNECTION_TIMEOUT`/`DB_IDLE_TIMEOUT` env keys.
+- `seed.ts`: logs a warning when the `erp-superadmin` role row is missing (it doesn't exist in the DB; superadmin auth is unaffected - RolesGuard short-circuits on `users.is_superadmin`). Wired as `npm run seed`.
+- `.env.example`: removed dead `TWILIO_*` (zero code references) and `STORAGE_PROVIDER` (only `STORAGE_PATH` is read); added `SEED_ADMIN_EMAIL`/`SEED_ADMIN_PASSWORD`.
+- `frontend/Dockerfile` had `COPY . .` with no ignore file - host `node_modules` would overwrite `npm ci` output. Added `frontend/.dockerignore`.
+- `.gitignore`: runtime `backend/uploads/` now ignored.
+
+### 5. Verification
+
+**Backend:** 37 suites / 291/291 unit, 2/2 e2e (with and without CI-style env), builds clean. **Frontend:** tsc + vite build clean, 36/36. **Live:** health 200; login -> `GET /students` 200 (total=1, branch-filtered); appointments `t|t|1` + 0-row no-GUC / 3-row with-GUC; upload -> GET 200 real content; `docker compose config` parses (with a root .env); `log-audit.sh` flags phone PII, passes on clean tree.

@@ -220,6 +220,28 @@ export class StudentsController {
     return { success: true, ...data };
   }
 
+  @Get('students')
+  @Roles(
+    ROLES.SUPER_ADMIN,
+    ROLES.PRINCIPAL,
+    ROLES.TEACHER,
+    ROLES.ORGANIZATION_OWNER,
+    ROLES.HOSTEL_MANAGER,
+    ROLES.LIBRARIAN,
+    ROLES.TRANSPORT_MANAGER,
+  )
+  @ApiOperation({ summary: 'List students for the current tenant' })
+  async findStudentsForTenant(
+    @CurrentUser() user: any,
+    @Query() query: ListStudentsQueryDto,
+  ) {
+    const data = await this.studentsService.findStudentsForTenant(
+      user.tenantId,
+      query,
+    );
+    return { success: true, ...data };
+  }
+
   @Get('students/:id')
   @Roles(ROLES.PRINCIPAL, ROLES.TEACHER, ROLES.ORGANIZATION_OWNER)
   @ApiOperation({ summary: 'Get student by ID' })

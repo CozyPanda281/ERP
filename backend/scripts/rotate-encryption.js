@@ -6,13 +6,15 @@
  * encrypted. Rows decryptable with the current key are re-encrypted.
  *
  * Usage:
- *   node scripts/rotate-encryption.js                    # uses ENCRYPTION_KEY from .env as the new key
- *   node scripts/rotate-encryption.js --new-key <hex>    # explicit new key
- *   node scripts/rotate-encryption.js --from-default     # decrypt rows encrypted with the dev default key
+ *   node scripts/rotate-encryption.js --current-key <hex> # explicit current key
+ *   node scripts/rotate-encryption.js --from-default     # rows were encrypted with the dev default key
  *
- * The current key defaults to the dev default; pass --current-key to override.
- * Never run against production with a lossy "--from-default" unless you know
- * the rows were written under the dev default key.
+ * The current key MUST be stated explicitly. There is no implicit default:
+ * guessing wrong silently "plaintext-encrypts" ciphertext (double encryption)
+ * and corrupts the column irrecoverably. --from-default only exists because
+ * the dev default key has been baked into every dev environment.
+ *
+ * Refuses to rotate TO either dev default key.
  */
 'use strict';
 
@@ -83,11 +85,24 @@ async function main() {
   const env = loadEnv();
   const newRaw = flag('new-key') || env.ENCRYPTION_KEY;
   if (!newRaw) {
-    console.error('ENCRYPTION_KEY is not set. Refusing to rotate to the dev default.');
+    console.error('ENCRYPTION_KEY is not set. Refusing to rotate.');
+    process.exit(1);
+  }
+  if (newRaw === DEV_DEFAULT || newRaw === DEV_LEGACY) {
+    console.error('Refusing to rotate TO a known dev default key.');
     process.exit(1);
   }
 
-  const currentRaw = flag('current-key') || (flag('from-default') ? DEV_DEFAULT : DEV_LEGACY);
+  const fromDefault = flag('from-default') !== undefined;
+  const currentRaw = flag('current-key') || (fromDefault ? DEV_DEFAULT : undefined);
+  if (!currentRaw) {
+    console.error(
+      'Current key unknown. Pass --current-key <key> or --from-default ' +
+        '(dev-default key). Refusing to guess — a wrong guess double-encrypts ' +
+        'ciphertext and destroys the column.',
+    );
+    process.exit(1);
+  }
   const currentKey = deriveKey(currentRaw);
   const newKey = deriveKey(newRaw);
 
@@ -99,10 +114,25 @@ async function main() {
     database: env.DB_NAME || 'erp',
   });
 
+  // Every column written through CryptoService (aes-256-gcm, iv:tag:data).
+  // Keep in sync with src/shared/crypto/crypto.service.ts and the encrypt()
+  // call sites in auth/users/students services.
   const targets = [
     { table: 'users', column: 'phone' },
+    { table: 'users', column: 'two_factor_secret' },
     { table: 'parents', column: 'phone' },
     { table: 'parents', column: 'email' },
+    { table: 'students', column: 'phone' },
+    { table: 'students', column: 'email' },
+    { table: 'enquiries', column: 'parent_phone' },
+    { table: 'enquiries', column: 'parent_email' },
+    { table: 'applications', column: 'phone' },
+    { table: 'applications', column: 'email' },
+    { table: 'applications', column: 'father_phone' },
+    { table: 'applications', column: 'father_email' },
+    { table: 'applications', column: 'mother_phone' },
+    { table: 'applications', column: 'mother_email' },
+    { table: 'applications', column: 'guardian_phone' },
   ];
 
   let total = 0;

@@ -18,7 +18,8 @@ MATCHES="$(grep -rInE "$SECRET_PATTERNS" "$ROOT" \
   --exclude-dir=node_modules --exclude-dir=dist --exclude-dir=.git \
   --exclude-dir=.next --exclude-dir=build \
   --exclude='*.map' --exclude='*.lock' --exclude='*package-lock.json' \
-  --exclude-dir=coverage 2>/dev/null || true)"
+  --exclude-dir=coverage --exclude='log-audit.sh' \
+  2>/dev/null || true)"
 if [ -n "$MATCHES" ]; then
   echo "FOUND secret-like material:"
   echo "$MATCHES"
@@ -31,7 +32,9 @@ fi
 LOG_FILE="${1:-}"
 if [ -n "$LOG_FILE" ] && [ -f "$LOG_FILE" ]; then
   echo "== Part B: scanning log file for PII =="
-  PII_PATTERNS='[0-9]{4}[- ]?[0-9]{4}[- ]?[0-9]{4}|[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}|(?<![0-9])[6-9][0-9]{9}(?![0-9])'
+  # NOTE: no lookbehind/word boundaries — POSIX ERE (grep -E) doesn't support
+  # them, and a bare lookbehind made grep error out so Part B always "passed".
+  PII_PATTERNS='[0-9]{4}[- ]?[0-9]{4}[- ]?[0-9]{4}|[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}|[6-9][0-9]{9}'
   HITS="$(grep -E "$PII_PATTERNS" "$LOG_FILE" | grep -v '"type":.*http.request' || true)"
   if [ -n "$HITS" ]; then
     echo "FOUND PII in log:"

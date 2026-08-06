@@ -653,7 +653,60 @@ export class StudentsService {
       .select({ count: count() })
       .from(schema.students)
       .where(and(...conditions));
-    return { data, pagination: { page, limit, total: Number(total.count) } };
+    return {
+      data: data.map((r) => this.decryptRow(r, ['phone', 'email'])),
+      pagination: { page, limit, total: Number(total.count) },
+    };
+  }
+
+  async findStudentsForTenant(
+    tenantId: string,
+    query: {
+      page?: number;
+      limit?: number;
+      search?: string;
+      classId?: string;
+      sectionId?: string;
+      status?: string;
+      gender?: string;
+      branchId?: string;
+    },
+  ) {
+    const page = query.page || 1;
+    const limit = Math.min(query.limit || 20, 100);
+    const offset = (page - 1) * limit;
+    const conditions: any[] = [
+      eq(schema.students.tenantId, tenantId),
+      isNull(schema.students.deletedAt),
+    ];
+    if (query.branchId)
+      conditions.push(eq(schema.students.branchId, query.branchId));
+    if (query.search)
+      conditions.push(
+        or(
+          ilike(schema.students.firstName, `%${query.search}%`),
+          ilike(schema.students.lastName, `%${query.search}%`),
+          ilike(schema.students.admissionNumber, `%${query.search}%`),
+        ),
+      );
+    if (query.status) conditions.push(eq(schema.students.status, query.status));
+    if (query.gender) conditions.push(eq(schema.students.gender, query.gender));
+
+    const data = await this.db.db
+      .select()
+      .from(schema.students)
+      .where(and(...conditions))
+      .orderBy(desc(schema.students.createdAt))
+      .limit(limit)
+      .offset(offset);
+    const [total] = await this.db.db
+      .select({ count: count() })
+      .from(schema.students)
+      .where(and(...conditions));
+    return {
+      data: data.map((r) => this.decryptRow(r, ['phone', 'email'])),
+      pagination: { page, limit, total: Number(total.count) },
+    };
   }
 
   async updateStudent(id: string, params: any) {

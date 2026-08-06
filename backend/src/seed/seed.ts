@@ -41,7 +41,9 @@ async function seed() {
       [userId, process.env.SEED_ADMIN_EMAIL || 'admin@erp.com', passwordHash, 'Super', 'Admin', now],
     );
 
-    // Assign super_admin role
+    // Assign super_admin role. Superadmin authorization does NOT depend on
+    // this row (RolesGuard short-circuits on users.is_superadmin), but the
+    // assignment is still written for role-driven UI/display code.
     const roleResult = await pool.query(
       `SELECT id FROM roles WHERE slug = 'erp-superadmin' LIMIT 1`,
     );
@@ -52,6 +54,13 @@ async function seed() {
         [userId, roleResult.rows[0].id, now],
       );
       console.log('SuperAdmin role assigned.');
+    } else {
+      console.warn(
+        "WARNING: role 'erp-superadmin' does not exist in the roles table — " +
+          'user_roles assignment skipped. Superadmin still works via ' +
+          'users.is_superadmin, but role-driven UI checks will show no role. ' +
+          'Insert a platform-level role (tenant_id NULL) to restore it.',
+      );
     }
 
     const email = process.env.SEED_ADMIN_EMAIL || 'admin@erp.com';

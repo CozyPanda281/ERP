@@ -1,14 +1,16 @@
 import { NestFactory } from '@nestjs/core';
+import { NestExpressApplication } from '@nestjs/platform-express';
 import { ValidationPipe } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import helmet from 'helmet';
 import cookieParser from 'cookie-parser';
+import * as path from 'path';
 import { AppModule } from './app.module';
 import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule);
+  const app = await NestFactory.create<NestExpressApplication>(AppModule);
 
   const configService = app.get(ConfigService);
   const apiPrefix = configService.get('app.apiPrefix');
@@ -21,6 +23,14 @@ async function bootstrap() {
 
   app.use(helmet());
   app.use(cookieParser());
+
+  // Serve files written by the uploads module. The prefix (/uploads/) and the
+  // sanitized filenames produced by UploadsService make path traversal
+  // impossible; the physical directory is resolved to an absolute path.
+  const storagePath = path.resolve(
+    configService.get('STORAGE_PATH', './uploads'),
+  );
+  app.useStaticAssets(storagePath, { prefix: '/uploads/' });
 
   app.enableCors({
     origin: corsOrigins,
