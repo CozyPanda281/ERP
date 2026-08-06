@@ -540,7 +540,7 @@ Security/architecture items outstanding from earlier phases.
 
 ---
 
-## [2026-08-02] Phase 7 — Public API & Webhooks
+## [2026-08-02] Phase 7 ï¿½ Public API & Webhooks
 
 **Status:** `completed`
 
@@ -549,15 +549,15 @@ Tenant-scoped API keys, a read-only public API, and signed webhook delivery with
 
 ### 1. Schema + migration (`db/migrations/phase7-api-keys-webhooks.sql`)
 
-- `api_keys` — tenant-scoped; stores `key_prefix` + `key_hash` (SHA-256) only, never the secret; scopes, per-minute rate limit, expires_at, last_used_at, soft delete
-- `webhook_endpoints` — tenant-scoped; URL, signing secret, subscribed events (`*` or comma list), soft delete
-- `webhook_deliveries` — per-attempt log: status, attempts/max, response_status/body, error, sent_at, next_retry_at
+- `api_keys` ï¿½ tenant-scoped; stores `key_prefix` + `key_hash` (SHA-256) only, never the secret; scopes, per-minute rate limit, expires_at, last_used_at, soft delete
+- `webhook_endpoints` ï¿½ tenant-scoped; URL, signing secret, subscribed events (`*` or comma list), soft delete
+- `webhook_deliveries` ï¿½ per-attempt log: status, attempts/max, response_status/body, error, sent_at, next_retry_at
 - RLS `tenant_isolation` policies applied to all three tables; migration idempotent (verified by double-apply)
 
 ### 2. API keys (`/api/v1/api-keys`, owner + principal)
 
 - POST creates `erp_live_<base64url>` (secret returned once), GET lists (masked), PATCH updates, POST :id/revoke, DELETE soft-deletes
-- `ApiKeyGuard` (`common/guards/api-key.guard.ts`) — reads `Authorization: Bearer <key>` or `X-Api-Key`; hash lookup; rejects revoked/expired; per-key in-memory fixed-window rate limiter (429); stamps `last_used_at`
+- `ApiKeyGuard` (`common/guards/api-key.guard.ts`) ï¿½ reads `Authorization: Bearer <key>` or `X-Api-Key`; hash lookup; rejects revoked/expired; per-key in-memory fixed-window rate limiter (429); stamps `last_used_at`
 - Scopes validated: `read` / `read,write`
 
 ### 3. Public API (`/api/v1/public/*`, API-key auth)
@@ -572,13 +572,13 @@ Tenant-scoped API keys, a read-only public API, and signed webhook delivery with
 
 - CRUD for endpoints (URL must be http(s), secret >= 16 chars, unknown events rejected)
 - `POST :id/test` ? `test.ping`; `GET /events` ? event catalog
-- `GET /deliveries` (limit/status/endpointId filters), `POST /deliveries/:id/retry` — resets attempt budget and re-delivers
-- Delivery: HMAC-SHA256 over `timestamp.payload` sent as `X-ERP-Signature` (+ X-ERP-Event/Timestamp/Delivery-Id headers); up to 3 attempts with exponential backoff (2s, 4s, …); every attempt logged
+- `GET /deliveries` (limit/status/endpointId filters), `POST /deliveries/:id/retry` ï¿½ resets attempt budget and re-delivers
+- Delivery: HMAC-SHA256 over `timestamp.payload` sent as `X-ERP-Signature` (+ X-ERP-Event/Timestamp/Delivery-Id headers); up to 3 attempts with exponential backoff (2s, 4s, ï¿½); every attempt logged
 - Verified live end-to-end: capture listener received signed POST (signature recomputed and matched); `fee.payment.recorded` fired automatically after a real payment; failed delivery retried 3x then manually retried to success
 
 ### 5. Event emission hooks
 
-- `fee.payment.recorded`, `fee.invoice.generated` (fee.service), `student.created` (students.service), `attendance.marked` (attendance.service) — fire-and-forget after DB commit; `WebhooksModule` imported by fee/students/attendance modules (no circular deps)
+- `fee.payment.recorded`, `fee.invoice.generated` (fee.service), `student.created` (students.service), `attendance.marked` (attendance.service) ï¿½ fire-and-forget after DB commit; `WebhooksModule` imported by fee/students/attendance modules (no circular deps)
 
 ### 6. Frontend
 
@@ -587,7 +587,7 @@ Tenant-scoped API keys, a read-only public API, and signed webhook delivery with
 
 ### 7. Housekeeping
 
-- `TenantContextInterceptor` now also sets `app.tenant_id` (alias policies read) alongside `app.current_tenant_id` — policies work if the app ever connects as a non-owner role
+- `TenantContextInterceptor` now also sets `app.tenant_id` (alias policies read) alongside `app.current_tenant_id` ï¿½ policies work if the app ever connects as a non-owner role
 - Public API results endpoint uses `e.start_date` (exams has no exam_date column)
 
 **Backend:** 33 suites / 268 tests green (+31 new: api-keys 10, webhooks 12, guard 8, +1 baseline) A? **Frontend:** 36 tests green A? builds clean both sides A? live-verified end-to-end
@@ -634,3 +634,84 @@ Replaced every remaining ComingSoon placeholder with a working page: expenses, l
 - `/portal` now renders the user's role portal dashboard (falls back to reception view for unknown roles); deleted `ComingSoon.tsx` - no placeholders remain
 
 **Backend:** 33 suites / 268 tests green **Frontend:** 36 tests green, tsc + oxlint + vite build clean **live-verified:** all endpoints round-tripped (create/read/update/delete) and cleaned up from dev DB; module-manager role access confirmed per module
+
+---
+
+## [2026-08-04] Phase 1 - Observability & Operations (items 1.2, 1.3, 1.5, 1.6 partial)
+
+**Status:** `completed` (1.2, 1.3, 1.5) / `partial` (1.6)
+
+**Description:**
+Health endpoints, structured request logging, Prometheus metrics, and log hygiene - the first observability slice for public deployment.
+
+### 1. Health endpoints (1.2) - `backend/src/modules/health/`
+
+- `GET /api/v1/health` - liveness: `status / service / version / uptime / timestamp`
+- `GET /api/v1/health/db` - SELECT 1 with 2s timeout; `database.latencyMs`, `redis.configured/enabled`; 503 `ServiceUnavailableException` when DB is down
+- Both public (no tenant header, no auth); live-verified 200/200 on :3000
+- Also fixed docker-compose bugs: api `command` ran `node dist/src/main.js` (crash - dist is `dist/main.js`), healthcheck hit `/api/v1/docs` (404 in prod); now `node dist/main.js` + `/api/v1/health`
+
+### 2. Structured request logging (1.3) - `backend/src/common/middleware/`
+
+- `RequestIdMiddleware` - honors sanitized `x-request-id` (regex `[A-Za-z0-9._:-]{1,64}`), echoes it as a response header, else generates a UUID
+- `RequestLoggingMiddleware` - hooked on `res finish` (covers unmatched 404 routes and reads the final status, which a tap/interceptor cannot): one JSON line per request `{type, requestId, method, path, status, latencyMs, tenantId, userId, ip}`; never logs bodies, headers, or PII
+- `requestId` added to `AllExceptionsFilter` error responses and 500 log lines
+- First attempt used an interceptor - discarded after live-verifying the gaps (404s never reach interceptors; status captured before the exception filter runs)
+- Live-verified: health 200, nonexistent 404, bad login 401 all logged with requestId
+
+### 3. Metrics endpoint (1.5) - `backend/src/modules/metrics/`
+
+- `GET /api/v1/metrics` (public, `text/plain; version=0.0.4`): `erp_api_uptime_seconds`, `erp_api_time_seconds`, Node heap/rss/external/arraybuffers bytes, event-loop lag samples (setImmediate delta), DB pool total/idle/waiting (new `DatabaseProvider.getPoolStats()`), `erp_queue_enabled`, `erp_http_requests_total{method,status}` incremented per request by the logging middleware
+- Live-verified 200; Grafana dashboard config deferred (item 1.5 note)
+
+### 4. Log rotation + audit (1.6 partial)
+
+- `docker-compose.yml`: json-file log driver with `max-size 10m`, `max-file 3` on db/api/web services
+- `scripts/log-audit.sh`: static secret scan (private keys, AWS keys, Slack/GitHub tokens, `sk-` secrets) + optional log-file PII scan (Aadhaar/email/phone regex); exit 1 on findings
+- CI: new `security-audit` job in `.github/workflows/ci.yml` runs the script
+- Remaining for 1.6: 30-day retention policy decision at deployment time (compose rotation covers size; retention by days needs the chosen VPS setup)
+
+**Backend:** 276/276 unit after metrics (271 after 1.2, 274 after 1.3) Â· 2/2 e2e Â· builds clean
+
+---
+
+## [2026-08-06] Phase 2.1 - MFA / 2FA (TOTP + recovery codes)
+
+**Status:** `completed`
+
+**Description:**
+Time-based one-time passwords (RFC 6238, zero new dependencies - pure `node:crypto`), login-challenge flow, recovery codes, and full UI. Also fixed a pre-existing RLS regression discovered while wiring it: the frontend never sent `X-Tenant-Id`, so every authenticated request from the SPA failed the subscription guard under RLS FORCE.
+
+### 1. Backend - `backend/src/modules/auth/`
+
+- `totp.util.ts`: base32 encode/decode, `generateTotpSecret()` (20 random bytes), `totpToken()` (SHA-1 HMAC, 8-byte big-endian counter, dynamic truncation), `verifyTotp()` (window +-1), `otpauthUrl()`; spec runs the official RFC 6238 test vectors
+- `dto/two-factor.dto.ts`: `TwoFactorCodeDto` (6-digit or `XXXX-XXXX-XXXX` recovery format), `TwoFactorLoginDto`
+- `auth.service.ts`: `startTwoFactorSetup` (secret generated + AES-256-GCM encrypted via global `CryptoService`; 409 if already enabled), `enableTwoFactor` (verifies TOTP, generates 10 bcrypt-hashed recovery codes, sets `twoFactorEnabled`), `disableTwoFactor` (verifies current code, clears flag + secret, deletes recovery codes), `issueTwoFactorChallenge` (JWT `{sub, type: 'mfa'}`, 5 min), `completeTwoFactorLogin` (verifies challenge token, then TOTP or a fresh recovery code; recovery codes are single-use with `used_at` stamping)
+- `auth.controller.ts`: login returns `{requiresTwoFactor, mfaToken, user}` when 2FA is on; new `POST /auth/2fa/login` (public, throttled 5/60s), `POST /auth/2fa/setup`, `POST /auth/2fa/verify`, `POST /auth/2fa/disable`
+- `jwt.strategy.ts`: rejects any token whose `type` claim is not `access` (mfa/refresh/reset tokens cannot be used as bearer)
+- `tenant-context.interceptor.ts`: `app.allow_auth_lookup` GUC now also set for `/auth/2fa/login`
+- Login + 2FA-login responses now include `tenantId` and `twoFactorEnabled` on the user object (needed by the frontend for the header fix and Settings state)
+
+### 2. Migration - `backend/db/migrations/phase11-2fa.sql`
+
+- `two_factor_recovery_codes` (id, tenant_id FK, user_id FK, code_hash, used_at, created_at) + 3 indexes
+- RLS `tenant_isolation` + pre-auth `auth_lookup` policies, **FORCE RLS**, GRANTs to `erp_app`; idempotent
+- `users.two_factor_enabled` / `two_factor_secret` columns existed schema-only from day one - now activated; secret is stored AES-256-GCM encrypted
+- Applied to dev DB (table exists, `relforcerowsecurity = t`)
+
+### 3. Frontend
+
+- **Critical fix** `lib/api.ts`: request interceptor now sends `X-Tenant-Id` from stored auth for every request - under RLS FORCE the subscription guard returned "No active subscription found" for ALL authenticated SPA calls without it (reproduced live; header workaround unblocked the whole matrix)
+- `Login.tsx`: two-step sign-in - credentials first; when the API answers with a challenge, a 6-digit code screen appears (accepts TOTP or recovery code, "back" to credentials)
+- `Settings.tsx`: two-factor card - setup (shows base32 secret + otpauth URL for manual entry, verify with current code), one-time recovery-code display with copy buttons, and disable (verify current code)
+- `lib/auth.tsx`: `login()` returns the challenge object when 2FA is required, new `completeTwoFactorLogin()`, `patchUser()` keeps stored auth in sync
+- `lib/types.ts`: `TwoFactorChallenge`, `AuthUser.twoFactorEnabled`
+
+### 4. Live verification (full matrix on dev, owner3@school.com)
+
+- setup -> secret + otpauth URL; verify -> 10 recovery codes; login -> `requiresTwoFactor: true` + mfaToken
+- 2fa/login with TOTP -> tokens; 2fa/login with recovery code -> tokens; wrong code -> 401; reused recovery code -> 401 (single-use)
+- DB checks: 10 bcrypt hashes stored, exactly 1 marked used after consumption, secret encrypted (not the raw base32), secret cleared + codes purged after disable
+- Challenge throttling verified (5/min, 429) - the earlier "expired" failures were throttle responses, not bugs
+
+**Backend:** 37 suites / 291/291 unit, 2/2 e2e Â· **Frontend:** tsc + vite build clean Â· committed with Phase 1 observability wrap

@@ -35,7 +35,7 @@ export class TenantContextInterceptor implements NestInterceptor {
       // them ONLY on the public auth routes.
       if (
         !user &&
-        /\/auth\/(login|refresh|forgot-password|reset-password)(\/|\?|$)/.test(
+        /\/auth\/(login|refresh|forgot-password|reset-password|2fa\/login)(\/|\?|$)/.test(
           request.path || '',
         )
       ) {

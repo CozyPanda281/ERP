@@ -44,6 +44,7 @@ import { WebhooksModule } from './modules/webhooks/webhooks.module';
 import { PublicApiModule } from './modules/public-api/public-api.module';
 import { AppointmentsModule } from './modules/appointments/appointments.module';
 import { HealthModule } from './modules/health/health.module';
+import { MetricsModule } from './modules/metrics/metrics.module';
 import { TenantMiddleware } from './common/middleware/tenant.middleware';
 import { RequestIdMiddleware } from './common/middleware/request-id.middleware';
 import { RequestLoggingMiddleware } from './common/middleware/request-logging.middleware';
@@ -115,6 +116,7 @@ import encryptionConfig from './config/encryption.config';
     PublicApiModule,
     AppointmentsModule,
     HealthModule,
+    MetricsModule,
   ],
   providers: [
     {

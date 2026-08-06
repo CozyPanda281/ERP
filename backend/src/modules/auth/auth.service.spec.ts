@@ -5,6 +5,7 @@ import { ConfigService } from '@nestjs/config';
 import { AuthService } from './auth.service';
 import { DatabaseProvider } from '../../database/database.provider';
 import { EmailService } from '../../shared/email/email.service';
+import { CryptoService } from '../../shared/crypto/crypto.service';
 import {
   MockDatabaseProvider,
   mockJwtService,
@@ -19,6 +20,11 @@ describe('AuthService', () => {
     send: jest.fn().mockResolvedValue(true),
   };
 
+  const mockCryptoService = {
+    encrypt: jest.fn((t: string) => `enc:${t}`),
+    decrypt: jest.fn((t: string) => t.replace(/^enc:/, '')),
+  };
+
   beforeEach(async () => {
     mockDb = new MockDatabaseProvider();
 
@@ -29,6 +35,7 @@ describe('AuthService', () => {
         { provide: JwtService, useValue: mockJwtService },
         { provide: ConfigService, useValue: mockConfigService },
         { provide: EmailService, useValue: mockEmailService },
+        { provide: CryptoService, useValue: mockCryptoService },
       ],
     }).compile();
 

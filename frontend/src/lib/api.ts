@@ -53,7 +53,10 @@ export const api = axios.create({
 
 api.interceptors.request.use((config) => {
   const auth = loadAuth()
-  if (auth) config.headers.Authorization = `Bearer ${auth.accessToken}`
+  if (auth) {
+    config.headers.Authorization = `Bearer ${auth.accessToken}`
+    if (auth.user.tenantId) config.headers['X-Tenant-Id'] = auth.user.tenantId
+  }
   return config
 })
 

@@ -13,6 +13,7 @@ interface JwtPayload {
   permissions: string[];
   branchId?: string;
   sessionId: string;
+  type?: string;
 }
 
 @Injectable()
@@ -30,6 +31,12 @@ export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
   }
 
   async validate(payload: JwtPayload) {
+    // Only plain access tokens are usable as bearer tokens. Refresh, mfa and
+    // password-reset tokens must never authenticate an API request.
+    if (payload.type && payload.type !== 'access') {
+      throw new UnauthorizedException('Invalid token type');
+    }
+
     // Verify user still exists and is active
     const result = await this.db.query(
       `SELECT id, is_active, status FROM users WHERE id = $1 AND deleted_at IS NULL`,

@@ -2,7 +2,7 @@
 
 > **This file is the single source of truth for ALL project work.** Every task, feature, fix, and security requirement for the Educational ERP lives here. Nothing is done unless it is listed here, and nothing is listed as "Done" without evidence.
 >
-> Last updated: 2026-08-04
+> Last updated: 2026-08-06
 
 ---
 
@@ -109,8 +109,8 @@
 | 1.2 | `GET /health` + `GET /health/db` endpoints (liveness + DB ping + Redis status) | [x] 🧪 live-verified 200/200 on :3000; 271/271 unit, 2/2 e2e |
 | 1.3 | Structured request logging (request id, tenant id, user id, latency, status) — no PII in logs | [x] 🔒 live-verified: 200/404/401 all logged w/ requestId + x-request-id header echo; middleware on `res finish` covers unmatched routes; `requestId` in error responses |
 | 1.4 | Error tracking (Sentry or equivalent) + alerting channel (email/Slack) | [ ] |
-| 1.5 | Metrics endpoint (Prometheus format: HTTP, DB pool, queue, email) + basic Grafana dashboard | [ ] |
-| 1.6 | 🔒 Log rotation + retention (30d) + no secrets/PII in logs (audit via grep in CI) | [ ] |
+| 1.5 | Metrics endpoint (Prometheus format: HTTP, DB pool, queue, email) + basic Grafana dashboard | [x] 🧪 live-verified 200 on :3000 (`/api/v1/metrics`, Prometheus text format); HTTP counter, uptime, time, heap, event-loop lag, DB pool total/idle/waiting, queue flag; Grafana config deferred |
+| 1.6 | 🔒 Log rotation + retention (30d) + no secrets/PII in logs (audit via grep in CI) | [~] rotation done (compose json-file 10m x 3) + CI secret/PII grep (`scripts/log-audit.sh` → `security-audit` job); 30d retention decision at deploy |
 | 1.7 | Backup & restore DRILL executed once (pg_dump → restore into a scratch DB → verify data) | [ ] 🧪 |
 | 1.8 | Caddy/nginx TLS termination + auto-renew; HTTPS-only redirect; HSTS | [ ] 🔒 |
 | 1.9 | Staging environment (compose override + separate DB) with demo data | [ ] |
@@ -128,7 +128,7 @@
 
 | # | Item | Status |
 |---|---|---|
-| 2.1 | 🔒 MFA/2FA: TOTP setup + verify + login-challenge endpoints; QR provisioning; recovery codes; users.twoFactor* columns activated | [ ] 🧪 |
+| 2.1 | 🔒 MFA/2FA: TOTP setup + verify + login-challenge endpoints; QR provisioning; recovery codes; users.twoFactor* columns activated | [x] 🧪 live-verified end-to-end (setup/verify/disable + login challenge + TOTP + recovery, single-use, throttled; DB: bcrypt-hashed codes, AES-GCM secret); otpauth URL provided for manual entry — QR image rendering deferred |
 | 2.2 | 🔒 Password policy: min length 10, complexity, breach-list check (optional), force-change on first login; verify bcrypt cost 12 maintained | [ ] 🧪 |
 | 2.3 | 🔒 Session management UI: list active sessions per user, revoke remote session, revoke all | [ ] |
 | 2.4 | 🔒 Account-level protections: per-tenant email enumeration resistance on forgot-password (uniform response), rate limit per email+IP on reset | [ ] 🧪 |
@@ -431,6 +431,7 @@
 - **2026-08-04 — v1.0 released.** Initial master phase list created from the full audit: 18 phases (0–18) covering every gap in the 34-module master list, all security findings, orphan tables, routing bugs, dead config, compliance (DPDP/UIDAI), and production readiness. Sections A (original phases) and B (v1.0 plan) are immutable from this point.
 - **2026-08-04 — v1.1 (Phase 1 work).** Item **1.2 shipped**: `GET /api/v1/health` (liveness: status/service/version/uptime/timestamp) + `GET /api/v1/health/db` (SELECT 1 with 2s timeout → `database.latencyMs`, `redis.configured/enabled`; 503 `ServiceUnavailableException` when DB down). Public (no tenant header, no auth). Unit tests added (3, suite now 271/271); e2e still 2/2; live-verified on :3000 (health 200, health/db 200 @ 18ms, login 200). Also fixed docker-compose bugs found while wiring health: api `command` ran `node dist/src/main.js` (crash — dist is `dist/main.js`), and healthcheck hit `/api/v1/docs` which is 404 in production; now `node dist/main.js` + `/api/v1/health`. Commit `33e1c51` (health module, compose fixes, phase list v1.1). Remaining Phase 1 items: 1.1, 1.3–1.12 (see Section B).
 - **2026-08-04 — v1.2 (Phase 1 work).** Item **1.3 shipped**: structured request logging. `RequestIdMiddleware` (honors sanitized `x-request-id`, echoes response header; else UUID) + `RequestLoggingMiddleware` hooked on `res finish` — one JSON line per request: `{type, requestId, method, path, status, latencyMs, tenantId, userId, ip}`; no bodies/headers/PII. Covers 200s, 404 unmatched routes, guard rejections, and errors (final status read at finish, so no early-capture). `requestId` added to `AllExceptionsFilter` error responses and 500 log lines. First attempt used a tap-based interceptor — discarded because unmatched routes never reach interceptors and error status is captured before the exception filter runs (live-verified 404/401 gap). Live-verified: health 200, nonexistent 404, bad login 401 all logged with requestId. Tests: 274/274 unit (3 middleware specs), 2/2 e2e. Deferred as part of 1.3: JSON-format file sink (dev console today) and log rotation are 1.6.
+- **2026-08-06 — v1.3 (Phase 1 + Phase 2.1).** Items **1.5** and **1.6 (partial)** shipped + **Phase 2.1 MFA** complete. (a) `MetricsModule`: `GET /api/v1/metrics` (Prometheus text format: `erp_http_requests_total{method,status}` incremented per request, uptime, process time, heap/rss/external/arraybuffers, event-loop lag, DB pool total/idle/waiting via new `getPoolStats()`, `erp_queue_enabled`); live 200. (b) 1.6: json-file rotation (`max-size 10m`, `max-file 3`) on all compose services; `scripts/log-audit.sh` (secret + PII grep, exit 1 on findings) wired as CI `security-audit` job; 30d retention deferred to deployment. (c) **2.1 MFA**: RFC 6238 TOTP on `node:crypto` (zero deps), challenge JWT (`type: 'mfa'`, 5m) on login, `/auth/2fa/{login,setup,verify,disable}`, 10 bcrypt-hashed single-use recovery codes (stamped `used_at`), secret AES-256-GCM at rest, `jwt.strategy` rejects non-`access` tokens, migration `phase11-2fa.sql` (`two_factor_recovery_codes` + RLS FORCE + auth_lookup, applied). Frontend: login challenge step, Settings 2FA card, and **pre-existing regression fix** — `api.ts` now always sends `X-Tenant-Id` from stored auth (SPA was failing the subscription guard under RLS FORCE; reproduced live). Login payload now carries `tenantId` + `twoFactorEnabled`. Live matrix verified: setup→verify→challenge→TOTP login→recovery login→wrong code 401→reused code 401→disable→normal login; DB verified (hashes, encryption, purge). Tests: 37 suites / **291/291 unit**, 2/2 e2e; builds clean. QR image rendering deferred (otpauth URL provided).
 - *(future entries appended below)*
 
 ---

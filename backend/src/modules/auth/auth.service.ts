@@ -13,6 +13,16 @@ import { DatabaseProvider } from '../../database/database.provider';
 import { eq, and, isNull, or, sql, inArray } from 'drizzle-orm';
 import * as schema from '../../database/schema';
 import { EmailService } from '../../shared/email/email.service';
+import { CryptoService } from '../../shared/crypto/crypto.service';
+import {
+  generateTotpSecret,
+  verifyTotp,
+  otpauthUrl,
+} from './totp.util';
+
+const TWO_FACTOR_ISSUER = 'ERP Platform';
+const RECOVERY_CODE_COUNT = 10;
+const RECOVERY_CODE_COST = 10;
 
 @Injectable()
 export class AuthService {
@@ -21,6 +31,7 @@ export class AuthService {
     private readonly jwtService: JwtService,
     private readonly configService: ConfigService,
     private readonly emailService: EmailService,
+    private readonly cryptoService: CryptoService,
   ) {}
 
   private expiresInToSeconds(value: string | undefined): number {
@@ -188,6 +199,8 @@ export class AuthService {
         roles,
         permissions: permissions.map((p: any) => p.slug),
         branchId,
+        tenantId: user.tenantId,
+        twoFactorEnabled: user.twoFactorEnabled,
       },
     };
   }
@@ -406,6 +419,209 @@ export class AuthService {
     return {
       message: 'Password reset successfully. You can now sign in.',
     };
+  }
+
+  // ─── Two-Factor Authentication (TOTP) ────────────────────────────────────
+
+  async startTwoFactorSetup(userId: string) {
+    const [user] = await this.db.db
+      .select({
+        email: schema.users.email,
+        twoFactorEnabled: schema.users.twoFactorEnabled,
+        twoFactorSecret: schema.users.twoFactorSecret,
+      })
+      .from(schema.users)
+      .where(eq(schema.users.id, userId))
+      .limit(1);
+
+    if (!user) throw new BadRequestException('User not found');
+    if (user.twoFactorEnabled) {
+      throw new ConflictException('Two-factor authentication is already enabled');
+    }
+
+    let secret = user.twoFactorSecret
+      ? this.cryptoService.decrypt(user.twoFactorSecret)
+      : null;
+    if (!secret) {
+      secret = generateTotpSecret();
+      await this.db.db
+        .update(schema.users)
+        .set({ twoFactorSecret: this.cryptoService.encrypt(secret) })
+        .where(eq(schema.users.id, userId));
+    }
+
+    const account = user.email || userId;
+    return {
+      secret,
+      otpauthUrl: otpauthUrl(TWO_FACTOR_ISSUER, account, secret),
+    };
+  }
+
+  async enableTwoFactor(userId: string, code: string) {
+    const [user] = await this.db.db
+      .select({
+        tenantId: schema.users.tenantId,
+        twoFactorEnabled: schema.users.twoFactorEnabled,
+        twoFactorSecret: schema.users.twoFactorSecret,
+      })
+      .from(schema.users)
+      .where(eq(schema.users.id, userId))
+      .limit(1);
+
+    if (!user) throw new BadRequestException('User not found');
+    if (user.twoFactorEnabled) {
+      throw new ConflictException('Two-factor authentication is already enabled');
+    }
+    if (!user.twoFactorSecret) {
+      throw new BadRequestException('No pending 2FA setup; call setup first');
+    }
+
+    const secret = this.cryptoService.decrypt(user.twoFactorSecret);
+    if (!verifyTotp(secret, code)) {
+      throw new BadRequestException('Invalid code');
+    }
+
+    const recoveryCodes = this.generateRecoveryCodes(RECOVERY_CODE_COUNT);
+    const hashes = await Promise.all(
+      recoveryCodes.map((c) => bcrypt.hash(c, RECOVERY_CODE_COST)),
+    );
+    for (const hash of hashes) {
+      await this.db.query(
+        `INSERT INTO two_factor_recovery_codes (tenant_id, user_id, code_hash)
+         VALUES ($1, $2, $3)`,
+        [user.tenantId, userId, hash],
+      );
+    }
+
+    await this.db.db
+      .update(schema.users)
+      .set({ twoFactorEnabled: true })
+      .where(eq(schema.users.id, userId));
+
+    return {
+      recoveryCodes,
+      message:
+        'Two-factor authentication enabled. Store these recovery codes somewhere safe — they are shown only once.',
+    };
+  }
+
+  async disableTwoFactor(userId: string, code: string) {
+    const [user] = await this.db.db
+      .select({
+        twoFactorEnabled: schema.users.twoFactorEnabled,
+        twoFactorSecret: schema.users.twoFactorSecret,
+      })
+      .from(schema.users)
+      .where(eq(schema.users.id, userId))
+      .limit(1);
+
+    if (!user) throw new BadRequestException('User not found');
+    if (!user.twoFactorEnabled || !user.twoFactorSecret) {
+      throw new BadRequestException('Two-factor authentication is not enabled');
+    }
+
+    const secret = this.cryptoService.decrypt(user.twoFactorSecret);
+    if (!verifyTotp(secret, code)) {
+      throw new BadRequestException('Invalid code');
+    }
+
+    await this.db.db
+      .update(schema.users)
+      .set({ twoFactorEnabled: false, twoFactorSecret: null })
+      .where(eq(schema.users.id, userId));
+    await this.db.query(
+      `DELETE FROM two_factor_recovery_codes WHERE user_id = $1`,
+      [userId],
+    );
+
+    return { message: 'Two-factor authentication disabled' };
+  }
+
+  async issueTwoFactorChallenge(userId: string): Promise<string> {
+    return this.jwtService.signAsync(
+      { sub: userId, type: 'mfa' },
+      {
+        expiresIn: '5m',
+        issuer: this.configService.get('jwt.issuer'),
+      },
+    );
+  }
+
+  async completeTwoFactorLogin(mfaToken: string, code: string) {
+    let payload: any;
+    try {
+      payload = await this.jwtService.verifyAsync(mfaToken);
+    } catch {
+      throw new UnauthorizedException(
+        'Two-factor challenge expired — please log in again',
+      );
+    }
+
+    if (payload.type !== 'mfa' || !payload.sub) {
+      throw new UnauthorizedException('Invalid two-factor challenge');
+    }
+
+    const [user] = await this.db.db
+      .select()
+      .from(schema.users)
+      .where(and(eq(schema.users.id, payload.sub), isNull(schema.users.deletedAt)))
+      .limit(1);
+
+    if (!user) {
+      throw new UnauthorizedException('User not found');
+    }
+    if (!user.isActive || user.status !== 'active') {
+      throw new UnauthorizedException('User account is inactive');
+    }
+    if (!user.twoFactorEnabled) {
+      throw new UnauthorizedException('Two-factor authentication is not enabled');
+    }
+
+    const valid = await this.verifyTwoFactorEntry(user, code);
+    if (!valid) {
+      throw new UnauthorizedException('Invalid two-factor code');
+    }
+
+    return this.login(user);
+  }
+
+  private async verifyTwoFactorEntry(
+    user: { id: string; twoFactorSecret: string | null },
+    code: string,
+  ): Promise<boolean> {
+    const clean = code.replace(/\s+/g, '');
+
+    if (/^[0-9]{6}$/.test(clean)) {
+      if (!user.twoFactorSecret) return false;
+      const secret = this.cryptoService.decrypt(user.twoFactorSecret);
+      return verifyTotp(secret, clean);
+    }
+
+    // Recovery code format: XXXX-XXXX-XXXX
+    if (!/^[A-Z0-9]{4}-[A-Z0-9]{4}-[A-Z0-9]{4}$/.test(clean)) return false;
+    const rows = await this.db.query(
+      `SELECT id, code_hash FROM two_factor_recovery_codes
+       WHERE user_id = $1 AND used_at IS NULL
+       ORDER BY created_at ASC`,
+      [user.id],
+    );
+    for (const row of rows.rows as { id: string; code_hash: string }[]) {
+      if (await bcrypt.compare(clean, row.code_hash)) {
+        await this.db.query(
+          `UPDATE two_factor_recovery_codes SET used_at = NOW() WHERE id = $1`,
+          [row.id],
+        );
+        return true;
+      }
+    }
+    return false;
+  }
+
+  private generateRecoveryCodes(count: number): string[] {
+    return Array.from({ length: count }, () => {
+      const hex = crypto.randomBytes(6).toString('hex').toUpperCase();
+      return `${hex.slice(0, 4)}-${hex.slice(4, 8)}-${hex.slice(8, 12)}`;
+    });
   }
 
   private async getUserRoles(userId: string, tenantId: string | null) {

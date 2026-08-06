@@ -8,12 +8,19 @@ export interface AuthUser {
   permissions: string[]
   branchId: string | null
   tenantId?: string | null
+  twoFactorEnabled?: boolean
 }
 
 export interface LoginResponse {
   accessToken: string
   refreshToken: string
   user: AuthUser
+}
+
+export interface TwoFactorChallenge {
+  requiresTwoFactor: true
+  mfaToken: string
+  user: { id: string; email: string; firstName: string; lastName: string }
 }
 
 export interface AcademicYear {

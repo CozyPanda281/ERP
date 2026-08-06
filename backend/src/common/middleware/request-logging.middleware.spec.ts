@@ -7,13 +7,14 @@ import { TENANT_CONTEXT_KEY } from '../constants';
 describe('RequestLoggingMiddleware', () => {
   let middleware: RequestLoggingMiddleware;
   let logSpy: jest.SpyInstance;
+  const metricsService = { incrementHttpRequest: jest.fn() };
 
   beforeEach(() => {
     jest.clearAllMocks();
     logSpy = jest
       .spyOn(Logger.prototype, 'log')
       .mockImplementation(() => undefined);
-    middleware = new RequestLoggingMiddleware();
+    middleware = new RequestLoggingMiddleware(metricsService as any);
   });
 
   afterEach(() => {
@@ -45,7 +46,7 @@ describe('RequestLoggingMiddleware', () => {
     res.emit('finish');
   };
 
-  it('logs one structured line on response finish', () => {
+  it('logs one structured line on response finish and increments metrics', () => {
     const req = makeReq();
     const res = makeRes();
     const next = jest.fn();
@@ -53,6 +54,10 @@ describe('RequestLoggingMiddleware', () => {
     expect(next).toHaveBeenCalled();
     finish(res, 200);
 
+    expect(metricsService.incrementHttpRequest).toHaveBeenCalledWith(
+      'GET',
+      200,
+    );
     expect(logSpy).toHaveBeenCalledTimes(1);
     const entry = logSpy.mock.calls[0][0];
     expect(entry).toMatchObject({

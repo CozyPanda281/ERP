@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { Loader2, Building2, Save } from 'lucide-react'
+import { Loader2, Building2, Save, ShieldCheck, ShieldOff, Copy } from 'lucide-react'
 import { unwrap, api, errorMessage } from '../lib/api'
 import { useAuth } from '../lib/auth'
 
@@ -25,8 +25,217 @@ function StatCard({ label, value }: { label: string; value: string }) {
   )
 }
 
-interface TenantRecord {
-  id: string
+function TwoFactorCard() {
+  const { user, patchUser } = useAuth()
+  const enabled = !!user?.twoFactorEnabled
+  const [step, setStep] = useState<'idle' | 'setup' | 'done' | 'disable'>('idle')
+  const [secret, setSecret] = useState('')
+  const [otpauthUrl, setOtpauthUrl] = useState('')
+  const [recoveryCodes, setRecoveryCodes] = useState<string[]>([])
+  const [code, setCode] = useState('')
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [copied, setCopied] = useState<string | null>(null)
+
+  const copy = (text: string, key: string) => {
+    navigator.clipboard?.writeText(text).catch(() => undefined)
+    setCopied(key)
+    setTimeout(() => setCopied(null), 1500)
+  }
+
+  const startSetup = async () => {
+    setError(null)
+    setBusy(true)
+    try {
+      const res = await unwrap<{ secret: string; otpauthUrl: string }>(api.post('/auth/2fa/setup'))
+      setSecret(res.secret)
+      setOtpauthUrl(res.otpauthUrl)
+      setStep('setup')
+      setCode('')
+    } catch (e) {
+      setError(errorMessage(e))
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const verifySetup = async () => {
+    setError(null)
+    setBusy(true)
+    try {
+      const res = await unwrap<{ recoveryCodes: string[]; message: string }>(
+        api.post('/auth/2fa/verify', { code }),
+      )
+      setRecoveryCodes(res.recoveryCodes)
+      setStep('done')
+      setCode('')
+      patchUser({ twoFactorEnabled: true })
+    } catch (e) {
+      setError(errorMessage(e))
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const disable = async () => {
+    setError(null)
+    setBusy(true)
+    try {
+      await unwrap<{ message: string }>(api.post('/auth/2fa/disable', { code }))
+      setStep('idle')
+      setCode('')
+      patchUser({ twoFactorEnabled: false })
+    } catch (e) {
+      setError(errorMessage(e))
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return (
+    <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
+      <div className="mb-4 flex items-center gap-3">
+        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-100 text-emerald-700">
+          {enabled ? <ShieldCheck className="h-5 w-5" /> : <ShieldOff className="h-5 w-5" />}
+        </div>
+        <div>
+          <h3 className="text-sm font-semibold text-slate-900">Two-factor authentication</h3>
+          <p className="text-xs text-slate-500">
+            {enabled ? 'Enabled — TOTP app or recovery codes required at sign-in' : 'Not enabled — add a TOTP authenticator app'}
+          </p>
+        </div>
+        {enabled && (
+          <span className="ml-auto rounded-full bg-emerald-50 px-3 py-1 text-xs font-medium text-emerald-700 ring-1 ring-emerald-200">
+            On
+          </span>
+        )}
+      </div>
+
+      {step === 'idle' && (
+        <button
+          onClick={enabled ? () => { setStep('disable'); setCode('') } : startSetup}
+          disabled={busy}
+          className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm font-medium disabled:opacity-50 ${
+            enabled
+              ? 'border border-slate-200 text-slate-600 hover:bg-slate-50'
+              : 'bg-indigo-600 text-white hover:bg-indigo-700'
+          }`}
+        >
+          {busy && <Loader2 className="h-4 w-4 animate-spin" />}
+          {enabled ? 'Disable 2FA' : 'Set up two-factor authentication'}
+        </button>
+      )}
+
+      {step === 'setup' && (
+        <div className="space-y-3">
+          <ol className="list-inside list-decimal space-y-1 text-xs text-slate-600">
+            <li>Open your authenticator app (Google Authenticator, Aegis, 1Password, …)</li>
+            <li>
+              Add the account using the code below, or scan{' '}
+              <code className="rounded bg-slate-100 px-1">{otpauthUrl}</code> via 'Scan QR' if your
+              app supports manual entry of the URI.
+            </li>
+            <li>Enter the current 6-digit code to confirm.</li>
+          </ol>
+          <div className="flex items-center justify-between rounded-lg border border-dashed border-slate-300 bg-slate-50 px-3 py-2">
+            <code className="font-mono text-sm tracking-widest text-slate-800">{secret}</code>
+            <button
+              type="button"
+              onClick={() => copy(secret, 'secret')}
+              className="inline-flex items-center gap-1 text-xs font-medium text-indigo-600 hover:text-indigo-800"
+            >
+              <Copy className="h-3.5 w-3.5" /> {copied === 'secret' ? 'Copied' : 'Copy'}
+            </button>
+          </div>
+          <div className="flex gap-2">
+            <input
+              value={code}
+              onChange={(e) => setCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+              placeholder="000000"
+              inputMode="numeric"
+              maxLength={6}
+              className="w-32 rounded-lg border border-slate-300 px-3 py-2 text-center text-sm tracking-[0.3em] outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
+            />
+            <button
+              onClick={verifySetup}
+              disabled={busy || code.length !== 6}
+              className="inline-flex items-center gap-1.5 rounded-lg bg-indigo-600 px-3 py-2 text-sm font-medium text-white hover:bg-indigo-700 disabled:opacity-50"
+            >
+              {busy && <Loader2 className="h-4 w-4 animate-spin" />}
+              Verify &amp; enable
+            </button>
+          </div>
+        </div>
+      )}
+
+      {step === 'done' && (
+        <div className="space-y-3">
+          <div className="rounded-lg bg-amber-50 px-4 py-3 text-xs text-amber-800 ring-1 ring-amber-200">
+            Two-factor authentication is now enabled. Save these recovery codes somewhere safe —
+            they are shown only once and each can be used a single time.
+          </div>
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+            {recoveryCodes.map((rc) => (
+              <div
+                key={rc}
+                className="flex items-center justify-between rounded-lg border border-slate-200 bg-slate-50 px-2 py-1.5"
+              >
+                <code className="font-mono text-xs text-slate-700">{rc}</code>
+                <button
+                  type="button"
+                  onClick={() => copy(rc, rc)}
+                  className="text-slate-400 hover:text-indigo-600"
+                  aria-label="Copy code"
+                >
+                  <Copy className="h-3.5 w-3.5" />
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {step === 'disable' && (
+        <div className="space-y-3">
+          <p className="text-xs text-slate-600">
+            Enter a current code from your authenticator app (or a recovery code) to disable
+            two-factor authentication.
+          </p>
+          <div className="flex gap-2">
+            <input
+              value={code}
+              onChange={(e) => setCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+              placeholder="000000"
+              inputMode="numeric"
+              maxLength={6}
+              className="w-32 rounded-lg border border-slate-300 px-3 py-2 text-center text-sm tracking-[0.3em] outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
+            />
+            <button
+              onClick={disable}
+              disabled={busy || code.length !== 6}
+              className="inline-flex items-center gap-1.5 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm font-medium text-red-700 hover:bg-red-100 disabled:opacity-50"
+            >
+              {busy && <Loader2 className="h-4 w-4 animate-spin" />}
+              Disable
+            </button>
+            <button
+              onClick={() => { setStep('idle'); setCode('') }}
+              className="rounded-lg border border-slate-200 px-3 py-2 text-sm font-medium text-slate-600 hover:bg-slate-50"
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
+
+      {error && (
+        <p className="mt-3 rounded-lg bg-red-50 px-3 py-2 text-xs text-red-700">{error}</p>
+      )}
+    </div>
+  )
+}
+
+interface TenantRecord {  id: string
   name: string
   slug: string
   email: string | null
@@ -152,6 +361,8 @@ export default function Settings() {
           {error ?? info}
         </div>
       )}
+
+      <TwoFactorCard />
 
       <div className="grid gap-4 lg:grid-cols-3">
         <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm lg:col-span-2">

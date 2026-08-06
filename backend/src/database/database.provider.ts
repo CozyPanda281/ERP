@@ -83,4 +83,12 @@ export class DatabaseProvider implements OnModuleInit, OnModuleDestroy {
   ): Promise<QueryResult<T>> {
     return this.pool.query(sql, params) as Promise<QueryResult<T>>;
   }
+
+  getPoolStats() {
+    return {
+      total: this.pool.totalCount,
+      idle: this.pool.idleCount,
+      waiting: this.pool.waitingCount,
+    };
+  }
 }

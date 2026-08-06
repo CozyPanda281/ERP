@@ -57,3 +57,9 @@ jobs:
       - run: npm ci
       - run: npm run build
       - run: npm test
+
+  security-audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: ./scripts/log-audit.sh

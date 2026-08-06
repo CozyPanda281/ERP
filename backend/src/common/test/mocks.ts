@@ -106,6 +106,10 @@ export class MockDatabaseProvider {
     return this;
   }
 
+  getPoolStats() {
+    return { total: 5, idle: 3, waiting: 0 };
+  }
+
   getPool() {
     return this;
   }
