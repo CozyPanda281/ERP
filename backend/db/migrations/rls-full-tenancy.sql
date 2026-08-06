@@ -21,14 +21,13 @@
 --   app.is_superadmin -> 'true' | 'false'
 -- When unset the policies fail closed (no rows visible).
 --
--- NOTE ON SUPERUSER / FORCE
--- -------------------------
--- The application connects as a superuser, which bypasses RLS unless FORCE
--- ROW LEVEL SECURITY is enabled. Enabling FORCE requires the application to
--- set the GUCs per request (transaction-scoped set_config) FIRST. Until then
--- these policies protect any future low-privileged role (reports, analytics,
--- read replicas) and are a pre-requisite for turning FORCE on later.
--- To force, run the FORCE section at the end of this file (see below).
+-- NOTE ON FORCE
+-- -------------
+-- The application connects as the dedicated erp_app role and sets the GUCs
+-- per request (transaction-scoped set_config in TenantContextInterceptor), so
+-- FORCE ROW LEVEL SECURITY is applied to every table below (in the section-1
+-- loop and after the section-2 policies). Historical note: before phase10 the
+-- app connected as a superuser and FORCE had to stay off; that era is over.
 --
 -- KNOWN GAP
 -- ---------
@@ -83,6 +82,10 @@ BEGIN
          )$f$,
       t
     );
+    -- FORCE: the app connects as erp_app with per-request GUCs, so RLS must
+    -- be enforced (phase10-rls-force.sql may have run BEFORE this file in
+    -- alphabetical order and its force loop only sees pre-existing policies).
+    EXECUTE format('ALTER TABLE %I FORCE ROW LEVEL SECURITY', t);
   END LOOP;
 END $$;
 
@@ -135,23 +138,17 @@ CREATE POLICY tenant_isolation ON audit_logs
     OR (tenant_id IS NULL AND current_setting('app.is_superadmin', true) = 'true')
   );
 
+-- FORCE section-2 tables too (see note in section 1 loop).
+ALTER TABLE users FORCE ROW LEVEL SECURITY;
+ALTER TABLE roles FORCE ROW LEVEL SECURITY;
+ALTER TABLE notification_templates FORCE ROW LEVEL SECURITY;
+ALTER TABLE audit_logs FORCE ROW LEVEL SECURITY;
+
 -- ---------------------------------------------------------------------------
--- 3. FORCE ROW LEVEL SECURITY (OPT-IN — DO NOT ENABLE YET)
+-- 3. FORCE ROW LEVEL SECURITY (applied in sections 1-2 above)
 -- ---------------------------------------------------------------------------
--- The app connects as a superuser and does NOT yet set app.tenant_id /
--- app.is_superadmin per request, so forcing would lock the application out.
--- Once per-request GUC wiring lands (see header), enable with:
---   ALTER TABLE <t> FORCE ROW LEVEL SECURITY;  -- for every table above
--- Or run the dynamic equivalent:
---   DO $$
---   DECLARE t text;
---   BEGIN
---     FOR t IN
---       SELECT c.relname FROM pg_class c
---       JOIN pg_attribute a ON a.attrelid = c.oid AND a.attname = 'tenant_id'
---       WHERE c.relkind = 'r' AND c.relname NOT LIKE 'pg_%'
---     LOOP
---       EXECUTE format('ALTER TABLE %I FORCE ROW LEVEL SECURITY', t);
---     END LOOP;
---   END $$;
+-- Each table enabled/policied above is immediately FORCEd, so this file is
+-- self-sufficient regardless of when phase10-rls-force.sql runs. phase10
+-- additionally FORCEs any other policy-bearing table (future-proofing for
+-- tables created by later migrations).
 -- ============================================================================

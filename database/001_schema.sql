@@ -1,2189 +1,6331 @@
+﻿-- ============================================================================
+-- 001_schema.sql — CANONICAL BASE SCHEMA (AUTO-GENERATED — DO NOT HAND-EDIT)
 -- ============================================================================
--- EDUCATIONAL ERP SAAS PLATFORM — COMPLETE DATABASE SCHEMA
--- Version: 1.0
--- Description: Full PostgreSQL schema with multi-tenant isolation, RLS,
---              RBAC, audit logging, and all module tables.
--- ============================================================================
-
--- Enable UUID generation
-CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
-CREATE EXTENSION IF NOT EXISTS "pgcrypto";
-
--- ============================================================================
--- CORE ENUM TYPES
--- ============================================================================
-
-CREATE TYPE tenant_status AS ENUM ('active', 'suspended', 'trial', 'expired');
-CREATE TYPE subscription_status AS ENUM ('active', 'expired', 'cancelled', 'trial');
-CREATE TYPE user_status AS ENUM ('active', 'inactive', 'suspended', 'locked');
-CREATE TYPE gender_type AS ENUM ('male', 'female', 'other');
-CREATE TYPE attendance_status AS ENUM ('present', 'absent', 'late', 'half-day', 'holiday');
-CREATE TYPE payment_method AS ENUM ('cash', 'card', 'online', 'bank_transfer', 'cheque', 'upi');
-CREATE TYPE transaction_status AS ENUM ('pending', 'completed', 'failed', 'refunded', 'cancelled');
-CREATE TYPE exam_type AS ENUM ('unit_test', 'midterm', 'final', 'quiz', 'practical');
-CREATE TYPE employment_type AS ENUM ('permanent', 'contract', 'probation', 'intern', 'temporary');
-CREATE TYPE leave_status AS ENUM ('pending', 'approved', 'rejected', 'cancelled');
-CREATE TYPE notification_type AS ENUM ('sms', 'email', 'push', 'in_app');
-CREATE TYPE notification_priority AS ENUM ('low', 'medium', 'high', 'urgent');
-CREATE TYPE booking_status AS ENUM ('issued', 'returned', 'lost', 'damaged');
-CREATE TYPE transport_vehicle_type AS ENUM ('bus', 'van', 'auto', 'other');
-CREATE TYPE hostel_room_type AS ENUM ('single', 'shared', 'dormitory');
-CREATE TYPE inventory_transaction_type AS ENUM ('in', 'out');
-CREATE TYPE subject_type AS ENUM ('theory', 'practical', 'elective', 'co_curricular');
-
--- ============================================================================
--- PART 1: TENANT & SUBSCRIPTION CORE
+-- Provenance: regenerated from the application's source of truth,
+-- backend/src/database/schema/** (Drizzle ORM), via:
+--   1. npx drizzle-kit push --force  (to an EMPTY database)
+--   2. pg_dump --schema-only --no-owner --no-privileges
+-- The result is the exact physical schema the application expects (109
+-- tables), byte-for-byte equivalent to a drizzle-generated database.
+--
+-- REGENERATION RULES
+-- ------------------
+-- * When the Drizzle schema changes, regenerate this file the same way and
+--   verify: fresh-DB drill (001 + backend/db/migrations/*.sql in glob order,
+--   ON_ERROR_STOP=1) then RLS parity check against the reference database
+--   (dev): equal table set, equal relrowsecurity/relforcerowsecurity set.
+-- * NEVER hand-edit table DDL here — migrations in backend/db/migrations/
+--   are the only place schema evolution lives.
+-- * This file carries NO RLS: row-level security is applied exclusively by
+--   backend/db/migrations/rls-hardening.sql, rls-full-tenancy.sql and
+--   phase7/9/10/11/12 (enable + policy + FORCE, in any glob order).
+-- * PART 99 seed rows are the only data; tenant data comes from seed scripts.
+--
+-- Historical note: the previous hand-written 001_schema.sql (107 CREATE TABLE
+-- statements, old module names like books/vehicles/hostel_rooms, monthly
+-- audit_logs partitions, inline RLS section) had NEVER applied cleanly and no
+-- longer matched the application schema. It was replaced by this file on
+-- 2026-08-06.
 -- ============================================================================
 
-CREATE TABLE tenants (
-    id              UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    name            VARCHAR(255) NOT NULL,
-    slug            VARCHAR(100) UNIQUE NOT NULL,
-    email           VARCHAR(255),
-    phone           VARCHAR(20),
-    address         TEXT,
-    city            VARCHAR(100),
-    state           VARCHAR(100),
-    pincode         VARCHAR(10),
-    country         VARCHAR(100) DEFAULT 'India',
-    logo_url        TEXT,
-    status          tenant_status DEFAULT 'trial',
-    max_branches    INTEGER DEFAULT 1,
-    max_users       INTEGER DEFAULT 50,
-    max_students    INTEGER DEFAULT 500,
-    max_staff       INTEGER DEFAULT 50,
-    storage_limit_mb INTEGER DEFAULT 500,
-    is_active       BOOLEAN DEFAULT TRUE,
-    metadata        JSONB DEFAULT '{}',
-    created_at      TIMESTAMPTZ DEFAULT NOW(),
-    updated_at      TIMESTAMPTZ DEFAULT NOW(),
-    deleted_at      TIMESTAMPTZ
+--
+-- PostgreSQL database dump
+--
+
+
+-- Dumped from database version 16.14 (Debian 16.14-1.pgdg13+1)
+-- Dumped by pg_dump version 16.14 (Debian 16.14-1.pgdg13+1)
+
+SET statement_timeout = 0;
+SET lock_timeout = 0;
+SET idle_in_transaction_session_timeout = 0;
+SET client_encoding = 'UTF8';
+SET standard_conforming_strings = on;
+SELECT pg_catalog.set_config('search_path', '', false);
+SET check_function_bodies = false;
+SET xmloption = content;
+SET client_min_messages = warning;
+SET row_security = off;
+
+SET default_tablespace = '';
+
+SET default_table_access_method = heap;
+
+--
+-- Name: academic_years; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.academic_years (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    tenant_id uuid NOT NULL,
+    branch_id uuid NOT NULL,
+    name character varying(100) NOT NULL,
+    start_date date NOT NULL,
+    end_date date NOT NULL,
+    is_current boolean DEFAULT false,
+    is_active boolean DEFAULT true,
+    created_at timestamp with time zone DEFAULT now(),
+    updated_at timestamp with time zone DEFAULT now()
 );
 
-CREATE INDEX idx_tenants_slug ON tenants(slug) WHERE deleted_at IS NULL;
-CREATE INDEX idx_tenants_status ON tenants(status);
 
-CREATE TABLE plans (
-    id              UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    name            VARCHAR(100) NOT NULL,
-    code            VARCHAR(50) UNIQUE NOT NULL,
-    description     TEXT,
-    price_monthly   DECIMAL(10,2) NOT NULL DEFAULT 0,
-    price_yearly    DECIMAL(10,2) NOT NULL DEFAULT 0,
-    max_branches    INTEGER DEFAULT 1,
-    max_users       INTEGER DEFAULT 50,
-    max_students    INTEGER DEFAULT 500,
-    max_staff       INTEGER DEFAULT 50,
-    storage_limit_mb INTEGER DEFAULT 500,
-    features        JSONB DEFAULT '{}',
-    is_active       BOOLEAN DEFAULT TRUE,
-    sort_order      INTEGER DEFAULT 0,
-    created_at      TIMESTAMPTZ DEFAULT NOW(),
-    updated_at      TIMESTAMPTZ DEFAULT NOW()
+--
+-- Name: accounting_accounts; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.accounting_accounts (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    tenant_id uuid NOT NULL,
+    branch_id uuid NOT NULL,
+    account_code character varying(50) NOT NULL,
+    account_name character varying(200) NOT NULL,
+    account_type character varying(50) NOT NULL,
+    parent_id uuid,
+    description text,
+    opening_balance numeric(14,2) DEFAULT '0'::numeric,
+    is_active boolean DEFAULT true,
+    status character varying(20) DEFAULT 'active'::character varying,
+    created_at timestamp without time zone DEFAULT now(),
+    updated_at timestamp without time zone DEFAULT now(),
+    deleted_at timestamp without time zone
 );
 
-CREATE TABLE subscriptions (
-    id              UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    tenant_id       UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
-    plan_id         UUID NOT NULL REFERENCES plans(id),
-    start_date      DATE NOT NULL,
-    end_date        DATE NOT NULL,
-    billing_cycle   VARCHAR(20) DEFAULT 'monthly',
-    status          subscription_status DEFAULT 'trial',
-    auto_renew      BOOLEAN DEFAULT TRUE,
-    trial_ends_at   DATE,
-    cancelled_at    TIMESTAMPTZ,
-    metadata        JSONB DEFAULT '{}',
-    created_at      TIMESTAMPTZ DEFAULT NOW(),
-    updated_at      TIMESTAMPTZ DEFAULT NOW()
+
+--
+-- Name: accounting_budgets; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.accounting_budgets (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    tenant_id uuid NOT NULL,
+    branch_id uuid NOT NULL,
+    fiscal_year_id uuid,
+    account_id uuid NOT NULL,
+    budgeted_amount numeric(14,2) NOT NULL,
+    actual_amount numeric(14,2) DEFAULT '0'::numeric,
+    notes text,
+    created_at timestamp without time zone DEFAULT now(),
+    updated_at timestamp without time zone DEFAULT now()
 );
 
-CREATE INDEX idx_subscriptions_tenant ON subscriptions(tenant_id);
-CREATE INDEX idx_subscriptions_status ON subscriptions(status);
-CREATE INDEX idx_subscriptions_end_date ON subscriptions(end_date) WHERE status = 'active';
+
+--
+-- Name: accounting_journal_entries; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.accounting_journal_entries (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    tenant_id uuid NOT NULL,
+    branch_id uuid NOT NULL,
+    entry_number character varying(50) NOT NULL,
+    entry_date date NOT NULL,
+    reference character varying(100),
+    description text,
+    entry_type character varying(50),
+    status character varying(20) DEFAULT 'posted'::character varying,
+    created_by uuid,
+    created_at timestamp without time zone DEFAULT now(),
+    updated_at timestamp without time zone DEFAULT now()
+);
+
+
+--
+-- Name: accounting_journal_entry_items; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.accounting_journal_entry_items (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    journal_entry_id uuid NOT NULL,
+    account_id uuid NOT NULL,
+    debit numeric(14,2) DEFAULT '0'::numeric,
+    credit numeric(14,2) DEFAULT '0'::numeric,
+    description text,
+    created_at timestamp without time zone DEFAULT now()
+);
+
+
+--
+-- Name: announcements; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.announcements (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    tenant_id uuid NOT NULL,
+    branch_id uuid NOT NULL,
+    title character varying(255) NOT NULL,
+    content text NOT NULL,
+    target_roles jsonb DEFAULT '[]'::jsonb,
+    target_classes jsonb DEFAULT '[]'::jsonb,
+    attachment_urls jsonb DEFAULT '[]'::jsonb,
+    priority character varying(10) DEFAULT 'low'::character varying,
+    is_pinned boolean DEFAULT false,
+    published_at timestamp with time zone,
+    expires_at timestamp with time zone,
+    created_by uuid,
+    created_at timestamp with time zone DEFAULT now(),
+    updated_at timestamp with time zone DEFAULT now()
+);
+
+
+--
+-- Name: api_keys; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.api_keys (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    tenant_id uuid NOT NULL,
+    name character varying(100) NOT NULL,
+    key_prefix character varying(20) NOT NULL,
+    key_hash character varying(255) NOT NULL,
+    scopes text DEFAULT 'read'::text,
+    rate_limit_per_minute integer DEFAULT 60,
+    created_by uuid,
+    last_used_at timestamp with time zone,
+    expires_at timestamp with time zone,
+    is_active boolean DEFAULT true,
+    created_at timestamp with time zone DEFAULT now(),
+    updated_at timestamp with time zone DEFAULT now(),
+    deleted_at timestamp with time zone
+);
+
+
+--
+-- Name: applications; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.applications (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    tenant_id uuid NOT NULL,
+    branch_id uuid NOT NULL,
+    application_number character varying(50) NOT NULL,
+    enquiry_id uuid,
+    student_first_name character varying(100) NOT NULL,
+    student_last_name character varying(100) NOT NULL,
+    date_of_birth date,
+    gender character varying(10),
+    nationality character varying(100) DEFAULT 'Indian'::character varying,
+    religion character varying(100),
+    caste character varying(100),
+    category character varying(50),
+    address text,
+    city character varying(100),
+    state character varying(100),
+    pincode character varying(10),
+    phone character varying(20),
+    email character varying(255),
+    blood_group character varying(5),
+    father_name character varying(255),
+    father_phone character varying(20),
+    father_email character varying(255),
+    father_occupation character varying(100),
+    mother_name character varying(255),
+    mother_phone character varying(20),
+    mother_email character varying(255),
+    mother_occupation character varying(100),
+    guardian_name character varying(255),
+    guardian_relation character varying(50),
+    guardian_phone character varying(20),
+    previous_school character varying(255),
+    previous_class character varying(50),
+    class_id uuid,
+    academic_year_id uuid,
+    documents jsonb DEFAULT '{}'::jsonb,
+    status character varying(50) DEFAULT 'pending'::character varying,
+    review_remarks text,
+    reviewed_by uuid,
+    reviewed_at timestamp with time zone,
+    admitted boolean DEFAULT false,
+    metadata jsonb DEFAULT '{}'::jsonb,
+    created_at timestamp with time zone DEFAULT now(),
+    updated_at timestamp with time zone DEFAULT now()
+);
+
+
+--
+-- Name: appointments; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.appointments (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    tenant_id uuid NOT NULL,
+    branch_id uuid NOT NULL,
+    title character varying(200) NOT NULL,
+    description text,
+    scheduled_at timestamp with time zone NOT NULL,
+    duration_minutes integer DEFAULT 30,
+    location character varying(200),
+    mode character varying(20) DEFAULT 'in_person'::character varying,
+    requested_by uuid NOT NULL,
+    requested_by_role character varying(50) NOT NULL,
+    requested_by_name character varying(255) NOT NULL,
+    participants jsonb DEFAULT '[]'::jsonb,
+    status character varying(20) DEFAULT 'pending'::character varying,
+    cancelled_reason text,
+    created_by uuid,
+    created_at timestamp with time zone DEFAULT now(),
+    updated_at timestamp with time zone DEFAULT now(),
+    deleted_at timestamp with time zone
+);
+
+
+--
+-- Name: assets; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.assets (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    tenant_id uuid NOT NULL,
+    branch_id uuid NOT NULL,
+    name character varying(255) NOT NULL,
+    asset_type character varying(100) NOT NULL,
+    asset_code character varying(50),
+    description text,
+    purchase_date date,
+    purchase_price numeric(12,2),
+    current_value numeric(12,2),
+    depreciation_method character varying(50),
+    depreciation_rate numeric(5,2),
+    warranty_expiry date,
+    warranty_details text,
+    location character varying(255),
+    status character varying(50) DEFAULT 'active'::character varying,
+    assigned_to uuid,
+    condition_note text,
+    is_active boolean DEFAULT true,
+    created_at timestamp without time zone DEFAULT now(),
+    updated_at timestamp without time zone DEFAULT now(),
+    deleted_at timestamp without time zone
+);
+
+
+--
+-- Name: assignment_submissions; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.assignment_submissions (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    tenant_id uuid NOT NULL,
+    assignment_id uuid NOT NULL,
+    student_id uuid NOT NULL,
+    submission_text text,
+    attachment_urls jsonb DEFAULT '[]'::jsonb,
+    submitted_at timestamp with time zone DEFAULT now(),
+    is_late boolean DEFAULT false,
+    marks_obtained numeric(6,2),
+    feedback text,
+    status character varying(50) DEFAULT 'submitted'::character varying,
+    graded_by uuid,
+    graded_at timestamp with time zone,
+    created_at timestamp with time zone DEFAULT now(),
+    updated_at timestamp with time zone DEFAULT now()
+);
+
+
+--
+-- Name: assignments; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.assignments (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    tenant_id uuid NOT NULL,
+    branch_id uuid NOT NULL,
+    class_id uuid NOT NULL,
+    section_id uuid,
+    subject_id uuid NOT NULL,
+    teacher_id uuid NOT NULL,
+    title character varying(255) NOT NULL,
+    description text,
+    assignment_type character varying(50) DEFAULT 'written'::character varying,
+    attachment_urls jsonb DEFAULT '[]'::jsonb,
+    due_date timestamp with time zone NOT NULL,
+    max_marks integer,
+    status character varying(50) DEFAULT 'active'::character varying,
+    created_at timestamp with time zone DEFAULT now(),
+    updated_at timestamp with time zone DEFAULT now()
+);
+
+
+--
+-- Name: attendance; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.attendance (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    tenant_id uuid NOT NULL,
+    branch_id uuid NOT NULL,
+    class_id uuid,
+    section_id uuid,
+    subject_id uuid,
+    teacher_id uuid,
+    timetable_entry_id uuid,
+    date date NOT NULL,
+    start_time time without time zone,
+    end_time time without time zone,
+    total_present integer DEFAULT 0,
+    total_absent integer DEFAULT 0,
+    total_students integer DEFAULT 0,
+    remarks text,
+    created_by uuid,
+    created_at timestamp with time zone DEFAULT now(),
+    updated_at timestamp with time zone DEFAULT now()
+);
+
+
+--
+-- Name: attendance_records; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.attendance_records (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    tenant_id uuid NOT NULL,
+    branch_id uuid NOT NULL,
+    attendance_id uuid NOT NULL,
+    student_id uuid NOT NULL,
+    status character varying(20) DEFAULT 'present'::character varying NOT NULL,
+    check_in_time time without time zone,
+    check_out_time time without time zone,
+    remarks text,
+    marked_by uuid,
+    created_at timestamp with time zone DEFAULT now(),
+    updated_at timestamp with time zone DEFAULT now()
+);
+
+
+--
+-- Name: audit_logs; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.audit_logs (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    tenant_id uuid,
+    user_id uuid,
+    branch_id uuid,
+    action character varying(100) NOT NULL,
+    module character varying(100) NOT NULL,
+    resource_type character varying(100),
+    resource_id uuid,
+    description text,
+    changes jsonb DEFAULT '{}'::jsonb,
+    metadata jsonb DEFAULT '{}'::jsonb,
+    ip_address character varying(45),
+    user_agent text,
+    session_id uuid,
+    outcome character varying(20) DEFAULT 'success'::character varying,
+    created_at timestamp with time zone DEFAULT now() NOT NULL
+);
+
+
+--
+-- Name: book_categories; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.book_categories (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    tenant_id uuid NOT NULL,
+    name character varying(100) NOT NULL,
+    description text,
+    is_active boolean DEFAULT true,
+    created_at timestamp without time zone DEFAULT now(),
+    updated_at timestamp without time zone DEFAULT now()
+);
+
+
+--
+-- Name: branches; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.branches (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    tenant_id uuid NOT NULL,
+    name character varying(255) NOT NULL,
+    code character varying(50) NOT NULL,
+    email character varying(255),
+    phone character varying(20),
+    address text,
+    city character varying(100),
+    state character varying(100),
+    pincode character varying(10),
+    principal_id uuid,
+    status character varying(20) DEFAULT 'active'::character varying,
+    established_date date,
+    metadata jsonb DEFAULT '{}'::jsonb,
+    created_at timestamp with time zone DEFAULT now(),
+    updated_at timestamp with time zone DEFAULT now(),
+    deleted_at timestamp with time zone
+);
+
+
+--
+-- Name: branding_settings; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.branding_settings (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    tenant_id uuid NOT NULL,
+    primary_color character varying(7) DEFAULT '#2563eb'::character varying,
+    secondary_color character varying(7) DEFAULT '#1e40af'::character varying,
+    accent_color character varying(7) DEFAULT '#f59e0b'::character varying,
+    logo_url text,
+    favicon_url text,
+    login_bg_url text,
+    login_page_text character varying(255),
+    footer_text text,
+    custom_domain character varying(255),
+    custom_css text,
+    is_white_label boolean DEFAULT false,
+    created_at timestamp with time zone DEFAULT now(),
+    updated_at timestamp with time zone DEFAULT now()
+);
+
+
+--
+-- Name: certificate_templates; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.certificate_templates (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    tenant_id uuid NOT NULL,
+    branch_id uuid NOT NULL,
+    name character varying(255) NOT NULL,
+    certificate_type character varying(100) NOT NULL,
+    design_config jsonb DEFAULT '{}'::jsonb NOT NULL,
+    is_active boolean DEFAULT true,
+    created_at timestamp with time zone DEFAULT now(),
+    updated_at timestamp with time zone DEFAULT now()
+);
+
+
+--
+-- Name: certificates; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.certificates (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    tenant_id uuid NOT NULL,
+    branch_id uuid NOT NULL,
+    certificate_number character varying(50) NOT NULL,
+    template_id uuid,
+    recipient_type character varying(50) NOT NULL,
+    recipient_id uuid NOT NULL,
+    issued_date date NOT NULL,
+    issue_reason text,
+    certificate_url text,
+    signed_by uuid,
+    status character varying(50) DEFAULT 'draft'::character varying,
+    created_at timestamp with time zone DEFAULT now(),
+    updated_at timestamp with time zone DEFAULT now()
+);
+
+
+--
+-- Name: circulars; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.circulars (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    tenant_id uuid NOT NULL,
+    branch_id uuid NOT NULL,
+    circular_number character varying(50) NOT NULL,
+    title character varying(255) NOT NULL,
+    content text NOT NULL,
+    target_roles jsonb DEFAULT '[]'::jsonb,
+    attachment_urls jsonb DEFAULT '[]'::jsonb,
+    issue_date date NOT NULL,
+    created_by uuid,
+    created_at timestamp with time zone DEFAULT now(),
+    updated_at timestamp with time zone DEFAULT now()
+);
+
+
+--
+-- Name: class_subjects; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.class_subjects (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    tenant_id uuid NOT NULL,
+    branch_id uuid NOT NULL,
+    class_id uuid NOT NULL,
+    subject_id uuid NOT NULL,
+    is_compulsory boolean DEFAULT true,
+    max_marks integer DEFAULT 100,
+    pass_marks integer DEFAULT 33,
+    credit_hours numeric(4,1) DEFAULT '0'::numeric,
+    display_order integer DEFAULT 0,
+    created_at timestamp with time zone DEFAULT now()
+);
+
+
+--
+-- Name: classes; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.classes (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    tenant_id uuid NOT NULL,
+    branch_id uuid NOT NULL,
+    name character varying(100) NOT NULL,
+    code character varying(50),
+    description text,
+    display_order integer DEFAULT 0,
+    is_active boolean DEFAULT true,
+    created_at timestamp with time zone DEFAULT now(),
+    updated_at timestamp with time zone DEFAULT now(),
+    deleted_at timestamp with time zone
+);
+
+
+--
+-- Name: departments; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.departments (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    tenant_id uuid NOT NULL,
+    branch_id uuid NOT NULL,
+    name character varying(100) NOT NULL,
+    code character varying(50),
+    description text,
+    hod_id uuid,
+    is_active boolean DEFAULT true,
+    created_at timestamp with time zone DEFAULT now(),
+    updated_at timestamp with time zone DEFAULT now(),
+    deleted_at timestamp with time zone
+);
+
+
+--
+-- Name: enquiries; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.enquiries (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    tenant_id uuid NOT NULL,
+    branch_id uuid NOT NULL,
+    student_name character varying(255) NOT NULL,
+    date_of_birth date,
+    gender character varying(10),
+    parent_name character varying(255),
+    parent_phone character varying(20),
+    parent_email character varying(255),
+    address text,
+    class_id uuid,
+    academic_year_id uuid,
+    source character varying(100),
+    status character varying(50) DEFAULT 'new'::character varying,
+    remarks text,
+    follow_up_date date,
+    assigned_to uuid,
+    converted_to_application boolean DEFAULT false,
+    metadata jsonb DEFAULT '{}'::jsonb,
+    created_at timestamp with time zone DEFAULT now(),
+    updated_at timestamp with time zone DEFAULT now()
+);
+
+
+--
+-- Name: exam_results; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.exam_results (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    tenant_id uuid NOT NULL,
+    branch_id uuid NOT NULL,
+    exam_id uuid NOT NULL,
+    student_id uuid NOT NULL,
+    total_marks numeric(8,2) DEFAULT '0'::numeric,
+    percentage numeric(5,2),
+    grade character varying(5),
+    rank integer,
+    result_status character varying(20) DEFAULT 'pass'::character varying,
+    is_promoted boolean,
+    remarks text,
+    created_at timestamp with time zone DEFAULT now(),
+    updated_at timestamp with time zone DEFAULT now()
+);
+
+
+--
+-- Name: exam_schedules; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.exam_schedules (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    tenant_id uuid NOT NULL,
+    exam_id uuid NOT NULL,
+    subject_id uuid NOT NULL,
+    class_id uuid,
+    date date,
+    start_time time without time zone,
+    end_time time without time zone,
+    max_marks integer DEFAULT 100,
+    pass_marks integer DEFAULT 33,
+    room_number character varying(50),
+    invigilator_id uuid,
+    created_at timestamp with time zone DEFAULT now(),
+    updated_at timestamp with time zone DEFAULT now()
+);
+
+
+--
+-- Name: exams; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.exams (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    tenant_id uuid NOT NULL,
+    branch_id uuid NOT NULL,
+    name character varying(255) NOT NULL,
+    exam_type character varying(20) DEFAULT 'unit_test'::character varying,
+    class_id uuid,
+    academic_year_id uuid,
+    start_date date,
+    end_date date,
+    description text,
+    is_active boolean DEFAULT true,
+    created_at timestamp with time zone DEFAULT now(),
+    updated_at timestamp with time zone DEFAULT now()
+);
+
+
+--
+-- Name: expense_categories; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.expense_categories (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    tenant_id uuid NOT NULL,
+    name character varying(100) NOT NULL,
+    description text,
+    is_active boolean DEFAULT true,
+    created_at timestamp with time zone DEFAULT now(),
+    updated_at timestamp with time zone DEFAULT now()
+);
+
+
+--
+-- Name: expenses; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.expenses (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    tenant_id uuid NOT NULL,
+    branch_id uuid NOT NULL,
+    category_id uuid,
+    amount numeric(12,2) DEFAULT '0'::numeric NOT NULL,
+    description text NOT NULL,
+    expense_date date NOT NULL,
+    payment_method character varying(20),
+    reference_number character varying(100),
+    vendor_name character varying(255),
+    bill_number character varying(100),
+    bill_url text,
+    approved_by uuid,
+    approved_at timestamp with time zone,
+    created_by uuid,
+    created_at timestamp with time zone DEFAULT now(),
+    updated_at timestamp with time zone DEFAULT now()
+);
+
+
+--
+-- Name: feature_flags; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.feature_flags (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    code character varying(100) NOT NULL,
+    name character varying(255) NOT NULL,
+    description text,
+    module character varying(100) NOT NULL,
+    is_system boolean DEFAULT false,
+    default_value boolean DEFAULT false,
+    created_at timestamp with time zone DEFAULT now(),
+    updated_at timestamp with time zone DEFAULT now()
+);
+
+
+--
+-- Name: fee_concessions; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.fee_concessions (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    tenant_id uuid NOT NULL,
+    student_id uuid NOT NULL,
+    fee_structure_item_id uuid,
+    discount_id uuid,
+    amount numeric(10,2) DEFAULT '0'::numeric NOT NULL,
+    type character varying(20) NOT NULL,
+    approved_by uuid,
+    valid_from date,
+    valid_until date,
+    remarks text,
+    created_at timestamp with time zone DEFAULT now(),
+    updated_at timestamp with time zone DEFAULT now()
+);
+
+
+--
+-- Name: fee_discounts; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.fee_discounts (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    tenant_id uuid NOT NULL,
+    branch_id uuid NOT NULL,
+    name character varying(255) NOT NULL,
+    discount_type character varying(20) NOT NULL,
+    value numeric(10,2) DEFAULT '0'::numeric NOT NULL,
+    applicable_to character varying(50) DEFAULT 'all'::character varying,
+    applicable_ids jsonb DEFAULT '[]'::jsonb,
+    is_active boolean DEFAULT true,
+    valid_from date,
+    valid_until date,
+    created_at timestamp with time zone DEFAULT now(),
+    updated_at timestamp with time zone DEFAULT now()
+);
+
+
+--
+-- Name: fee_invoices; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.fee_invoices (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    tenant_id uuid NOT NULL,
+    branch_id uuid NOT NULL,
+    student_id uuid NOT NULL,
+    invoice_number character varying(50) NOT NULL,
+    invoice_date date NOT NULL,
+    due_date date NOT NULL,
+    items jsonb DEFAULT '[]'::jsonb NOT NULL,
+    subtotal numeric(12,2) DEFAULT '0'::numeric NOT NULL,
+    discount_total numeric(12,2) DEFAULT '0'::numeric,
+    total_amount numeric(12,2) DEFAULT '0'::numeric NOT NULL,
+    amount_paid numeric(12,2) DEFAULT '0'::numeric,
+    balance_due numeric(12,2) DEFAULT '0'::numeric,
+    status character varying(50) DEFAULT 'pending'::character varying,
+    created_at timestamp with time zone DEFAULT now(),
+    updated_at timestamp with time zone DEFAULT now()
+);
+
+
+--
+-- Name: fee_receipts; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.fee_receipts (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    tenant_id uuid NOT NULL,
+    transaction_id uuid NOT NULL,
+    receipt_number character varying(50) NOT NULL,
+    receipt_date date NOT NULL,
+    receipt_url text,
+    created_at timestamp with time zone DEFAULT now()
+);
+
+
+--
+-- Name: fee_structure_items; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.fee_structure_items (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    tenant_id uuid NOT NULL,
+    fee_structure_id uuid NOT NULL,
+    name character varying(255) NOT NULL,
+    amount numeric(10,2) DEFAULT '0'::numeric NOT NULL,
+    is_optional boolean DEFAULT false,
+    is_recurring boolean DEFAULT true,
+    frequency character varying(50) DEFAULT 'monthly'::character varying,
+    due_day integer,
+    sort_order integer DEFAULT 0,
+    created_at timestamp with time zone DEFAULT now(),
+    updated_at timestamp with time zone DEFAULT now()
+);
+
+
+--
+-- Name: fee_structures; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.fee_structures (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    tenant_id uuid NOT NULL,
+    branch_id uuid NOT NULL,
+    name character varying(255) NOT NULL,
+    class_id uuid,
+    academic_year_id uuid,
+    frequency character varying(50) DEFAULT 'monthly'::character varying,
+    is_active boolean DEFAULT true,
+    description text,
+    created_at timestamp with time zone DEFAULT now(),
+    updated_at timestamp with time zone DEFAULT now(),
+    deleted_at timestamp with time zone
+);
+
+
+--
+-- Name: fee_transactions; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.fee_transactions (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    tenant_id uuid NOT NULL,
+    branch_id uuid NOT NULL,
+    student_id uuid NOT NULL,
+    fee_account_id uuid,
+    transaction_no character varying(50) NOT NULL,
+    invoice_no character varying(50),
+    amount numeric(12,2) DEFAULT '0'::numeric NOT NULL,
+    payment_method character varying(20),
+    payment_date timestamp with time zone DEFAULT now(),
+    due_date date,
+    paid_date date,
+    reference_number character varying(100),
+    cheque_number character varying(50),
+    cheque_date date,
+    bank_name character varying(255),
+    upi_id character varying(100),
+    gateway_response jsonb DEFAULT '{}'::jsonb,
+    status character varying(20) DEFAULT 'completed'::character varying,
+    remarks text,
+    reconciled boolean DEFAULT false,
+    reconciled_at timestamp with time zone,
+    created_by uuid,
+    created_at timestamp with time zone DEFAULT now(),
+    updated_at timestamp with time zone DEFAULT now()
+);
+
+
+--
+-- Name: homework; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.homework (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    tenant_id uuid NOT NULL,
+    branch_id uuid NOT NULL,
+    class_id uuid NOT NULL,
+    section_id uuid,
+    subject_id uuid NOT NULL,
+    teacher_id uuid NOT NULL,
+    title character varying(255) NOT NULL,
+    description text,
+    attachment_urls jsonb DEFAULT '[]'::jsonb,
+    due_date timestamp with time zone NOT NULL,
+    max_marks integer,
+    is_mandatory boolean DEFAULT true,
+    status character varying(50) DEFAULT 'active'::character varying,
+    created_at timestamp with time zone DEFAULT now(),
+    updated_at timestamp with time zone DEFAULT now()
+);
+
+
+--
+-- Name: homework_submissions; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.homework_submissions (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    tenant_id uuid NOT NULL,
+    homework_id uuid NOT NULL,
+    student_id uuid NOT NULL,
+    submission_text text,
+    attachment_urls jsonb DEFAULT '[]'::jsonb,
+    submitted_at timestamp with time zone DEFAULT now(),
+    is_late boolean DEFAULT false,
+    marks_obtained numeric(6,2),
+    feedback text,
+    status character varying(50) DEFAULT 'submitted'::character varying,
+    graded_by uuid,
+    graded_at timestamp with time zone,
+    created_at timestamp with time zone DEFAULT now(),
+    updated_at timestamp with time zone DEFAULT now()
+);
+
+
+--
+-- Name: hostel_attendance; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.hostel_attendance (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    tenant_id uuid NOT NULL,
+    branch_id uuid NOT NULL,
+    hostel_id uuid NOT NULL,
+    student_id uuid NOT NULL,
+    date date NOT NULL,
+    check_in timestamp without time zone,
+    check_out timestamp without time zone,
+    status character varying(20) DEFAULT 'present'::character varying,
+    remarks text,
+    created_at timestamp without time zone DEFAULT now()
+);
+
+
+--
+-- Name: hostel_bed_allocations; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.hostel_bed_allocations (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    tenant_id uuid NOT NULL,
+    branch_id uuid NOT NULL,
+    room_id uuid NOT NULL,
+    student_id uuid NOT NULL,
+    bed_number character varying(20),
+    allocation_date date NOT NULL,
+    vacate_date date,
+    status character varying(20) DEFAULT 'active'::character varying,
+    remarks text,
+    created_at timestamp without time zone DEFAULT now(),
+    updated_at timestamp without time zone DEFAULT now(),
+    deleted_at timestamp without time zone
+);
+
+
+--
+-- Name: hostel_discipline; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.hostel_discipline (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    tenant_id uuid NOT NULL,
+    branch_id uuid NOT NULL,
+    student_id uuid NOT NULL,
+    incident_date date NOT NULL,
+    incident_type character varying(100) NOT NULL,
+    description text,
+    action_taken text,
+    reported_by uuid,
+    status character varying(20) DEFAULT 'resolved'::character varying,
+    created_at timestamp without time zone DEFAULT now(),
+    updated_at timestamp without time zone DEFAULT now()
+);
+
+
+--
+-- Name: hostel_rooms; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.hostel_rooms (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    hostel_id uuid NOT NULL,
+    room_number character varying(20) NOT NULL,
+    floor integer,
+    capacity integer DEFAULT 1,
+    bed_count integer DEFAULT 1,
+    room_type character varying(50),
+    rent_amount numeric(10,2),
+    is_active boolean DEFAULT true,
+    status character varying(20) DEFAULT 'available'::character varying,
+    notes text,
+    created_at timestamp without time zone DEFAULT now(),
+    updated_at timestamp without time zone DEFAULT now(),
+    deleted_at timestamp without time zone
+);
+
+
+--
+-- Name: hostel_visitors; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.hostel_visitors (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    tenant_id uuid NOT NULL,
+    branch_id uuid NOT NULL,
+    student_id uuid NOT NULL,
+    visitor_name character varying(255) NOT NULL,
+    relationship character varying(100),
+    phone character varying(20),
+    visit_date date NOT NULL,
+    check_in_time timestamp without time zone,
+    check_out_time timestamp without time zone,
+    purpose text,
+    id_proof character varying(100),
+    id_number character varying(100),
+    created_at timestamp without time zone DEFAULT now()
+);
+
+
+--
+-- Name: hostels; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.hostels (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    tenant_id uuid NOT NULL,
+    branch_id uuid NOT NULL,
+    name character varying(200) NOT NULL,
+    code character varying(50),
+    address text,
+    warden_id uuid,
+    total_rooms integer DEFAULT 0,
+    total_beds integer DEFAULT 0,
+    is_active boolean DEFAULT true,
+    status character varying(20) DEFAULT 'active'::character varying,
+    notes text,
+    created_at timestamp without time zone DEFAULT now(),
+    updated_at timestamp without time zone DEFAULT now(),
+    deleted_at timestamp without time zone
+);
+
+
+--
+-- Name: id_card_templates; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.id_card_templates (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    tenant_id uuid NOT NULL,
+    branch_id uuid NOT NULL,
+    name character varying(255) NOT NULL,
+    template_type character varying(50) NOT NULL,
+    design_config jsonb DEFAULT '{}'::jsonb NOT NULL,
+    is_active boolean DEFAULT true,
+    created_at timestamp with time zone DEFAULT now(),
+    updated_at timestamp with time zone DEFAULT now()
+);
+
+
+--
+-- Name: import_batches; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.import_batches (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    tenant_id uuid NOT NULL,
+    branch_id uuid,
+    entity_type character varying(100) NOT NULL,
+    file_name character varying(255) NOT NULL,
+    file_type character varying(50) NOT NULL,
+    original_file_name text,
+    file_size integer,
+    total_rows integer DEFAULT 0,
+    valid_rows integer DEFAULT 0,
+    error_rows integer DEFAULT 0,
+    status character varying(50) DEFAULT 'pending_review'::character varying,
+    preview_data jsonb DEFAULT '[]'::jsonb,
+    column_mapping jsonb DEFAULT '{}'::jsonb,
+    validation_errors jsonb DEFAULT '[]'::jsonb,
+    deployed_at timestamp with time zone,
+    deployed_by uuid,
+    reviewed_by uuid,
+    reviewed_at timestamp with time zone,
+    review_notes text,
+    rejection_reason text,
+    rollback_data jsonb DEFAULT '[]'::jsonb,
+    metadata jsonb DEFAULT '{}'::jsonb,
+    created_by uuid NOT NULL,
+    created_at timestamp with time zone DEFAULT now(),
+    updated_at timestamp with time zone DEFAULT now()
+);
+
+
+--
+-- Name: income; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.income (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    tenant_id uuid NOT NULL,
+    branch_id uuid NOT NULL,
+    category_id uuid,
+    amount numeric(12,2) DEFAULT '0'::numeric NOT NULL,
+    description text NOT NULL,
+    income_date date NOT NULL,
+    payment_method character varying(20),
+    reference_number character varying(100),
+    created_by uuid,
+    created_at timestamp with time zone DEFAULT now(),
+    updated_at timestamp with time zone DEFAULT now()
+);
+
+
+--
+-- Name: income_categories; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.income_categories (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    tenant_id uuid NOT NULL,
+    name character varying(100) NOT NULL,
+    description text,
+    is_active boolean DEFAULT true,
+    created_at timestamp with time zone DEFAULT now(),
+    updated_at timestamp with time zone DEFAULT now()
+);
+
+
+--
+-- Name: inventory_categories; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.inventory_categories (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    tenant_id uuid NOT NULL,
+    branch_id uuid NOT NULL,
+    name character varying(200) NOT NULL,
+    code character varying(50),
+    description text,
+    parent_id uuid,
+    is_active boolean DEFAULT true,
+    created_at timestamp without time zone DEFAULT now(),
+    updated_at timestamp without time zone DEFAULT now(),
+    deleted_at timestamp without time zone
+);
+
+
+--
+-- Name: inventory_goods_receipt_items; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.inventory_goods_receipt_items (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    grn_id uuid NOT NULL,
+    item_id uuid NOT NULL,
+    quantity integer NOT NULL,
+    unit_price numeric(10,2),
+    created_at timestamp without time zone DEFAULT now()
+);
+
+
+--
+-- Name: inventory_goods_receipts; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.inventory_goods_receipts (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    tenant_id uuid NOT NULL,
+    branch_id uuid NOT NULL,
+    po_id uuid,
+    receipt_number character varying(50) NOT NULL,
+    receipt_date date NOT NULL,
+    notes text,
+    status character varying(20) DEFAULT 'received'::character varying,
+    created_by uuid,
+    created_at timestamp without time zone DEFAULT now(),
+    updated_at timestamp without time zone DEFAULT now()
+);
+
+
+--
+-- Name: inventory_items; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.inventory_items (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    tenant_id uuid NOT NULL,
+    branch_id uuid NOT NULL,
+    category_id uuid,
+    name character varying(200) NOT NULL,
+    code character varying(50),
+    unit character varying(50),
+    reorder_level integer DEFAULT 0,
+    current_stock integer DEFAULT 0,
+    unit_price numeric(10,2),
+    tax_rate numeric(5,2) DEFAULT '0'::numeric,
+    is_active boolean DEFAULT true,
+    status character varying(20) DEFAULT 'active'::character varying,
+    description text,
+    created_at timestamp without time zone DEFAULT now(),
+    updated_at timestamp without time zone DEFAULT now(),
+    deleted_at timestamp without time zone
+);
+
+
+--
+-- Name: inventory_purchase_order_items; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.inventory_purchase_order_items (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    po_id uuid NOT NULL,
+    item_id uuid NOT NULL,
+    quantity integer NOT NULL,
+    unit_price numeric(10,2) NOT NULL,
+    total_price numeric(12,2),
+    created_at timestamp without time zone DEFAULT now()
+);
+
+
+--
+-- Name: inventory_purchase_orders; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.inventory_purchase_orders (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    tenant_id uuid NOT NULL,
+    branch_id uuid NOT NULL,
+    order_number character varying(50) NOT NULL,
+    supplier_id uuid NOT NULL,
+    order_date date NOT NULL,
+    expected_date date,
+    status character varying(20) DEFAULT 'draft'::character varying,
+    total_amount numeric(12,2),
+    notes text,
+    created_by uuid,
+    created_at timestamp without time zone DEFAULT now(),
+    updated_at timestamp without time zone DEFAULT now(),
+    deleted_at timestamp without time zone
+);
+
+
+--
+-- Name: inventory_stock_adjustments; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.inventory_stock_adjustments (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    tenant_id uuid NOT NULL,
+    branch_id uuid NOT NULL,
+    item_id uuid NOT NULL,
+    adjustment_type character varying(20) NOT NULL,
+    quantity integer NOT NULL,
+    reason character varying(200),
+    reference_number character varying(50),
+    adjusted_by uuid,
+    notes text,
+    created_at timestamp without time zone DEFAULT now()
+);
+
+
+--
+-- Name: inventory_suppliers; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.inventory_suppliers (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    tenant_id uuid NOT NULL,
+    branch_id uuid NOT NULL,
+    name character varying(200) NOT NULL,
+    code character varying(50),
+    contact_person character varying(100),
+    phone character varying(20),
+    email character varying(200),
+    address text,
+    is_active boolean DEFAULT true,
+    status character varying(20) DEFAULT 'active'::character varying,
+    created_at timestamp without time zone DEFAULT now(),
+    updated_at timestamp without time zone DEFAULT now(),
+    deleted_at timestamp without time zone
+);
+
+
+--
+-- Name: job_applications; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.job_applications (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    tenant_id uuid NOT NULL,
+    job_posting_id uuid NOT NULL,
+    applicant_name character varying(255) NOT NULL,
+    email character varying(255),
+    phone character varying(20),
+    resume_url text,
+    cover_letter text,
+    qualification text,
+    experience_years numeric(4,1),
+    current_company character varying(255),
+    current_ctc character varying(100),
+    expected_ctc character varying(100),
+    notice_period character varying(50),
+    status character varying(50) DEFAULT 'applied'::character varying,
+    review_notes text,
+    created_at timestamp with time zone DEFAULT now(),
+    updated_at timestamp with time zone DEFAULT now()
+);
+
+
+--
+-- Name: job_postings; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.job_postings (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    tenant_id uuid NOT NULL,
+    branch_id uuid NOT NULL,
+    title character varying(255) NOT NULL,
+    department_id uuid,
+    employment_type character varying(20) DEFAULT 'permanent'::character varying,
+    description text,
+    requirements text,
+    salary_range character varying(100),
+    location character varying(255),
+    vacancies integer DEFAULT 1,
+    posted_date date,
+    closing_date date,
+    status character varying(50) DEFAULT 'open'::character varying,
+    created_at timestamp with time zone DEFAULT now(),
+    updated_at timestamp with time zone DEFAULT now()
+);
+
+
+--
+-- Name: leave_requests; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.leave_requests (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    tenant_id uuid NOT NULL,
+    branch_id uuid NOT NULL,
+    staff_id uuid NOT NULL,
+    leave_type_id uuid NOT NULL,
+    start_date date NOT NULL,
+    end_date date NOT NULL,
+    total_days integer NOT NULL,
+    reason text,
+    status character varying(20) DEFAULT 'pending'::character varying,
+    approved_by uuid,
+    approved_at timestamp with time zone,
+    reject_reason text,
+    document_url text,
+    created_at timestamp with time zone DEFAULT now(),
+    updated_at timestamp with time zone DEFAULT now()
+);
+
+
+--
+-- Name: leave_types; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.leave_types (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    tenant_id uuid NOT NULL,
+    name character varying(100) NOT NULL,
+    code character varying(50) NOT NULL,
+    days_allowed integer NOT NULL,
+    is_paid boolean DEFAULT true,
+    carry_forward boolean DEFAULT false,
+    max_carry_forward integer DEFAULT 0,
+    is_active boolean DEFAULT true,
+    created_at timestamp with time zone DEFAULT now(),
+    updated_at timestamp with time zone DEFAULT now()
+);
+
+
+--
+-- Name: lesson_plans; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.lesson_plans (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    tenant_id uuid NOT NULL,
+    branch_id uuid NOT NULL,
+    teacher_id uuid NOT NULL,
+    subject_id uuid NOT NULL,
+    class_id uuid NOT NULL,
+    section_id uuid,
+    title character varying(255) NOT NULL,
+    objectives text,
+    content text,
+    teaching_method character varying(100),
+    resources text,
+    duration_minutes integer,
+    date date,
+    status character varying(50) DEFAULT 'draft'::character varying,
+    created_at timestamp with time zone DEFAULT now(),
+    updated_at timestamp with time zone DEFAULT now()
+);
+
+
+--
+-- Name: library_books; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.library_books (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    tenant_id uuid NOT NULL,
+    branch_id uuid NOT NULL,
+    title character varying(300) NOT NULL,
+    author character varying(200),
+    isbn character varying(50),
+    publisher character varying(200),
+    edition character varying(50),
+    category character varying(100),
+    language character varying(50) DEFAULT 'English'::character varying,
+    total_copies integer DEFAULT 1,
+    available_copies integer DEFAULT 1,
+    shelf_location character varying(50),
+    is_active boolean DEFAULT true,
+    status character varying(20) DEFAULT 'active'::character varying,
+    description text,
+    created_at timestamp without time zone DEFAULT now(),
+    updated_at timestamp without time zone DEFAULT now(),
+    deleted_at timestamp without time zone
+);
+
+
+--
+-- Name: library_issues; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.library_issues (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    tenant_id uuid NOT NULL,
+    branch_id uuid NOT NULL,
+    member_id uuid NOT NULL,
+    book_id uuid NOT NULL,
+    issue_date date NOT NULL,
+    due_date date NOT NULL,
+    return_date date,
+    status character varying(20) DEFAULT 'issued'::character varying,
+    fine_amount numeric(10,2) DEFAULT '0'::numeric,
+    remarks text,
+    issued_by uuid,
+    created_at timestamp without time zone DEFAULT now(),
+    updated_at timestamp without time zone DEFAULT now()
+);
+
+
+--
+-- Name: library_members; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.library_members (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    tenant_id uuid NOT NULL,
+    branch_id uuid NOT NULL,
+    member_id uuid NOT NULL,
+    member_type character varying(20) NOT NULL,
+    membership_date date NOT NULL,
+    expiry_date date,
+    status character varying(20) DEFAULT 'active'::character varying,
+    created_at timestamp without time zone DEFAULT now(),
+    updated_at timestamp without time zone DEFAULT now(),
+    deleted_at timestamp without time zone
+);
+
+
+--
+-- Name: marks; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.marks (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    tenant_id uuid NOT NULL,
+    branch_id uuid NOT NULL,
+    exam_schedule_id uuid NOT NULL,
+    student_id uuid NOT NULL,
+    marks_obtained numeric(6,2),
+    max_marks integer DEFAULT 100,
+    is_absent boolean DEFAULT false,
+    is_malpractice boolean DEFAULT false,
+    grade character varying(5),
+    grade_point numeric(3,1),
+    remarks text,
+    entered_by uuid,
+    entered_at timestamp with time zone,
+    created_at timestamp with time zone DEFAULT now(),
+    updated_at timestamp with time zone DEFAULT now()
+);
+
+
+--
+-- Name: notification_logs; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.notification_logs (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    tenant_id uuid NOT NULL,
+    notification_id uuid NOT NULL,
+    recipient_id uuid NOT NULL,
+    recipient_type character varying(50) NOT NULL,
+    channel character varying(10) NOT NULL,
+    status character varying(50) DEFAULT 'pending'::character varying,
+    sent_at timestamp with time zone,
+    delivered_at timestamp with time zone,
+    read_at timestamp with time zone,
+    error_message text,
+    metadata jsonb DEFAULT '{}'::jsonb,
+    created_at timestamp with time zone DEFAULT now()
+);
+
+
+--
+-- Name: notification_templates; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.notification_templates (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    tenant_id uuid,
+    name character varying(255) NOT NULL,
+    code character varying(100) NOT NULL,
+    type character varying(10) NOT NULL,
+    subject character varying(255),
+    body text NOT NULL,
+    variables jsonb DEFAULT '[]'::jsonb,
+    is_active boolean DEFAULT true,
+    created_at timestamp with time zone DEFAULT now(),
+    updated_at timestamp with time zone DEFAULT now()
+);
+
+
+--
+-- Name: notifications; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.notifications (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    tenant_id uuid NOT NULL,
+    branch_id uuid,
+    sender_id uuid,
+    title character varying(255) NOT NULL,
+    message text NOT NULL,
+    type character varying(10) DEFAULT 'in_app'::character varying,
+    priority character varying(10) DEFAULT 'low'::character varying,
+    target_roles jsonb DEFAULT '[]'::jsonb,
+    target_users jsonb DEFAULT '[]'::jsonb,
+    metadata jsonb DEFAULT '{}'::jsonb,
+    allow_dismiss boolean DEFAULT true,
+    expires_at timestamp with time zone,
+    created_at timestamp with time zone DEFAULT now(),
+    updated_at timestamp with time zone DEFAULT now()
+);
+
+
+--
+-- Name: parents; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.parents (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    tenant_id uuid NOT NULL,
+    name character varying(255) NOT NULL,
+    relationship character varying(50) NOT NULL,
+    phone character varying(20),
+    email character varying(255),
+    occupation character varying(100),
+    income numeric(10,2),
+    address text,
+    is_primary boolean DEFAULT false,
+    is_active boolean DEFAULT true,
+    created_at timestamp with time zone DEFAULT now(),
+    updated_at timestamp with time zone DEFAULT now()
+);
+
+
+--
+-- Name: payroll; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.payroll (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    tenant_id uuid NOT NULL,
+    branch_id uuid NOT NULL,
+    staff_id uuid NOT NULL,
+    month integer NOT NULL,
+    year integer NOT NULL,
+    basic_pay numeric(10,2) DEFAULT '0'::numeric,
+    allowances jsonb DEFAULT '[]'::jsonb,
+    deductions jsonb DEFAULT '[]'::jsonb,
+    gross_pay numeric(10,2) DEFAULT '0'::numeric,
+    total_deductions numeric(10,2) DEFAULT '0'::numeric,
+    net_pay numeric(10,2) DEFAULT '0'::numeric,
+    payment_date date,
+    payment_method character varying(20),
+    transaction_ref character varying(100),
+    status character varying(50) DEFAULT 'draft'::character varying,
+    remarks text,
+    processed_by uuid,
+    processed_at timestamp with time zone,
+    created_at timestamp with time zone DEFAULT now(),
+    updated_at timestamp with time zone DEFAULT now()
+);
+
+
+--
+-- Name: payroll_salary_components; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.payroll_salary_components (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    tenant_id uuid NOT NULL,
+    branch_id uuid NOT NULL,
+    name character varying(100) NOT NULL,
+    type character varying(20) NOT NULL,
+    calculation_type character varying(50) DEFAULT 'fixed'::character varying,
+    value numeric(10,2) DEFAULT '0'::numeric,
+    is_active boolean DEFAULT true,
+    created_at timestamp with time zone DEFAULT now(),
+    updated_at timestamp with time zone DEFAULT now()
+);
+
+
+--
+-- Name: performance_reviews; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.performance_reviews (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    tenant_id uuid NOT NULL,
+    branch_id uuid NOT NULL,
+    staff_id uuid NOT NULL,
+    review_period character varying(100) NOT NULL,
+    review_date date NOT NULL,
+    reviewed_by uuid NOT NULL,
+    ratings jsonb DEFAULT '{}'::jsonb,
+    overall_rating numeric(3,1),
+    strengths text,
+    areas_for_improvement text,
+    goals jsonb DEFAULT '[]'::jsonb,
+    comments text,
+    status character varying(50) DEFAULT 'draft'::character varying,
+    created_at timestamp with time zone DEFAULT now(),
+    updated_at timestamp with time zone DEFAULT now()
+);
+
+
+--
+-- Name: permissions; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.permissions (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    name character varying(100) NOT NULL,
+    slug character varying(100) NOT NULL,
+    module character varying(100) NOT NULL,
+    description text,
+    is_system boolean DEFAULT false,
+    created_at timestamp with time zone DEFAULT now()
+);
+
+
+--
+-- Name: plan_features; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.plan_features (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    plan_id uuid NOT NULL,
+    feature_flag_id uuid NOT NULL,
+    is_enabled boolean DEFAULT false,
+    feature_value character varying(255),
+    created_at timestamp with time zone DEFAULT now()
+);
+
+
+--
+-- Name: plans; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.plans (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    name character varying(100) NOT NULL,
+    code character varying(50) NOT NULL,
+    description text,
+    price_monthly numeric(10,2) DEFAULT '0'::numeric NOT NULL,
+    price_yearly numeric(10,2) DEFAULT '0'::numeric NOT NULL,
+    max_branches integer DEFAULT 1,
+    max_users integer DEFAULT 50,
+    max_students integer DEFAULT 500,
+    max_staff integer DEFAULT 50,
+    storage_limit_mb integer DEFAULT 500,
+    features jsonb DEFAULT '{}'::jsonb,
+    is_active boolean DEFAULT true,
+    sort_order integer DEFAULT 0,
+    created_at timestamp with time zone DEFAULT now(),
+    updated_at timestamp with time zone DEFAULT now()
+);
+
+
+--
+-- Name: role_permissions; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.role_permissions (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    role_id uuid NOT NULL,
+    permission_id uuid NOT NULL,
+    created_at timestamp with time zone DEFAULT now()
+);
+
+
+--
+-- Name: roles; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.roles (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    tenant_id uuid,
+    name character varying(100) NOT NULL,
+    slug character varying(100) NOT NULL,
+    description text,
+    is_system boolean DEFAULT false,
+    hierarchy_level integer DEFAULT 0,
+    created_at timestamp with time zone DEFAULT now(),
+    updated_at timestamp with time zone DEFAULT now()
+);
+
+
+--
+-- Name: sections; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.sections (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    tenant_id uuid NOT NULL,
+    branch_id uuid NOT NULL,
+    class_id uuid NOT NULL,
+    name character varying(100) NOT NULL,
+    code character varying(50),
+    capacity integer DEFAULT 0,
+    room_number character varying(50),
+    is_active boolean DEFAULT true,
+    created_at timestamp with time zone DEFAULT now(),
+    updated_at timestamp with time zone DEFAULT now(),
+    deleted_at timestamp with time zone
+);
+
+
+--
+-- Name: staff; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.staff (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    tenant_id uuid NOT NULL,
+    branch_id uuid NOT NULL,
+    user_id uuid,
+    employee_code character varying(50) NOT NULL,
+    first_name character varying(100) NOT NULL,
+    last_name character varying(100) NOT NULL,
+    date_of_birth date,
+    gender character varying(10),
+    blood_group character varying(5),
+    phone character varying(20),
+    email character varying(255),
+    address text,
+    city character varying(100),
+    state character varying(100),
+    pincode character varying(10),
+    qualification text,
+    experience_years numeric(4,1),
+    joining_date date,
+    employment_type character varying(20) DEFAULT 'permanent'::character varying,
+    designation character varying(100),
+    department_id uuid,
+    basic_salary numeric(10,2),
+    bank_name character varying(255),
+    bank_account_no character varying(50),
+    ifsc_code character varying(20),
+    pan_number character varying(20),
+    aadhar_number character varying(20),
+    is_active boolean DEFAULT true,
+    is_teaching boolean DEFAULT false,
+    profile_photo_url text,
+    metadata jsonb DEFAULT '{}'::jsonb,
+    created_at timestamp with time zone DEFAULT now(),
+    updated_at timestamp with time zone DEFAULT now(),
+    deleted_at timestamp with time zone
+);
+
+
+--
+-- Name: staff_attendance; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.staff_attendance (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    tenant_id uuid NOT NULL,
+    branch_id uuid NOT NULL,
+    staff_id uuid NOT NULL,
+    date date NOT NULL,
+    check_in timestamp with time zone,
+    check_out timestamp with time zone,
+    status character varying(10) DEFAULT 'present'::character varying,
+    hours_worked numeric(4,1),
+    overtime_hours numeric(4,1),
+    remarks text,
+    marked_by uuid,
+    created_at timestamp with time zone DEFAULT now(),
+    updated_at timestamp with time zone DEFAULT now()
+);
+
+
+--
+-- Name: staff_documents; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.staff_documents (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    tenant_id uuid NOT NULL,
+    staff_id uuid NOT NULL,
+    document_type character varying(100) NOT NULL,
+    document_number character varying(100),
+    file_url text NOT NULL,
+    is_verified boolean DEFAULT false,
+    verified_at timestamp with time zone,
+    verified_by uuid,
+    created_at timestamp with time zone DEFAULT now(),
+    updated_at timestamp with time zone DEFAULT now()
+);
+
+
+--
+-- Name: student_academic_records; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.student_academic_records (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    tenant_id uuid NOT NULL,
+    branch_id uuid NOT NULL,
+    student_id uuid NOT NULL,
+    class_id uuid NOT NULL,
+    section_id uuid,
+    academic_year_id uuid NOT NULL,
+    roll_number character varying(50),
+    is_promoted boolean DEFAULT false,
+    promoted_to_class uuid,
+    promotion_date date,
+    created_at timestamp with time zone DEFAULT now(),
+    updated_at timestamp with time zone DEFAULT now()
+);
+
+
+--
+-- Name: student_documents; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.student_documents (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    tenant_id uuid NOT NULL,
+    student_id uuid NOT NULL,
+    document_type character varying(100) NOT NULL,
+    document_name character varying(255),
+    document_number character varying(100),
+    file_url text NOT NULL,
+    file_size integer,
+    mime_type character varying(100),
+    is_verified boolean DEFAULT false,
+    verified_at timestamp with time zone,
+    verified_by uuid,
+    created_at timestamp with time zone DEFAULT now(),
+    updated_at timestamp with time zone DEFAULT now()
+);
+
+
+--
+-- Name: student_fee_accounts; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.student_fee_accounts (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    tenant_id uuid NOT NULL,
+    branch_id uuid NOT NULL,
+    student_id uuid NOT NULL,
+    fee_structure_id uuid,
+    academic_year_id uuid,
+    total_fee numeric(12,2) DEFAULT '0'::numeric,
+    total_discount numeric(12,2) DEFAULT '0'::numeric,
+    total_paid numeric(12,2) DEFAULT '0'::numeric,
+    total_due numeric(12,2) DEFAULT '0'::numeric,
+    status character varying(50) DEFAULT 'active'::character varying,
+    created_at timestamp with time zone DEFAULT now(),
+    updated_at timestamp with time zone DEFAULT now()
+);
+
+
+--
+-- Name: student_parents; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.student_parents (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    tenant_id uuid,
+    student_id uuid NOT NULL,
+    parent_id uuid NOT NULL,
+    relationship character varying(50) NOT NULL,
+    is_primary boolean DEFAULT false,
+    is_emergency_contact boolean DEFAULT false,
+    created_at timestamp with time zone DEFAULT now()
+);
+
+
+--
+-- Name: students; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.students (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    tenant_id uuid NOT NULL,
+    branch_id uuid NOT NULL,
+    admission_number character varying(50) NOT NULL,
+    roll_number character varying(50),
+    application_id uuid,
+    first_name character varying(100) NOT NULL,
+    middle_name character varying(100),
+    last_name character varying(100) NOT NULL,
+    date_of_birth date,
+    gender character varying(10),
+    blood_group character varying(5),
+    nationality character varying(100) DEFAULT 'Indian'::character varying,
+    religion character varying(100),
+    caste character varying(100),
+    category character varying(50),
+    address text,
+    city character varying(100),
+    state character varying(100),
+    pincode character varying(10),
+    phone character varying(20),
+    email character varying(255),
+    profile_photo_url text,
+    aadhar_number character varying(20),
+    samagra_id character varying(50),
+    is_active boolean DEFAULT true,
+    status character varying(50) DEFAULT 'active'::character varying,
+    admission_date date,
+    leaving_date date,
+    leaving_reason text,
+    metadata jsonb DEFAULT '{}'::jsonb,
+    created_at timestamp with time zone DEFAULT now(),
+    updated_at timestamp with time zone DEFAULT now(),
+    deleted_at timestamp with time zone
+);
+
+
+--
+-- Name: subjects; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.subjects (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    tenant_id uuid NOT NULL,
+    branch_id uuid NOT NULL,
+    name character varying(100) NOT NULL,
+    code character varying(50),
+    subject_type character varying(20) DEFAULT 'theory'::character varying,
+    description text,
+    is_language boolean DEFAULT false,
+    is_active boolean DEFAULT true,
+    created_at timestamp with time zone DEFAULT now(),
+    updated_at timestamp with time zone DEFAULT now(),
+    deleted_at timestamp with time zone
+);
+
+
+--
+-- Name: subscriptions; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.subscriptions (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    tenant_id uuid NOT NULL,
+    plan_id uuid NOT NULL,
+    start_date date NOT NULL,
+    end_date date NOT NULL,
+    billing_cycle character varying(20) DEFAULT 'monthly'::character varying,
+    status character varying(20) DEFAULT 'trial'::character varying,
+    auto_renew boolean DEFAULT true,
+    trial_ends_at date,
+    cancelled_at timestamp with time zone,
+    metadata jsonb DEFAULT '{}'::jsonb,
+    created_at timestamp with time zone DEFAULT now(),
+    updated_at timestamp with time zone DEFAULT now()
+);
+
+
+--
+-- Name: system_config; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.system_config (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    config_key character varying(255) NOT NULL,
+    config_value jsonb DEFAULT '{}'::jsonb NOT NULL,
+    description text,
+    created_at timestamp with time zone DEFAULT now(),
+    updated_at timestamp with time zone DEFAULT now()
+);
+
+
+--
+-- Name: teacher_subjects; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.teacher_subjects (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    tenant_id uuid NOT NULL,
+    branch_id uuid NOT NULL,
+    teacher_id uuid NOT NULL,
+    subject_id uuid NOT NULL,
+    class_id uuid NOT NULL,
+    section_id uuid,
+    is_class_teacher boolean DEFAULT false,
+    created_at timestamp with time zone DEFAULT now()
+);
+
+
+--
+-- Name: tenant_features; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.tenant_features (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    tenant_id uuid NOT NULL,
+    feature_flag_id uuid NOT NULL,
+    is_enabled boolean DEFAULT false,
+    feature_value character varying(255),
+    override_plan boolean DEFAULT false,
+    created_at timestamp with time zone DEFAULT now(),
+    updated_at timestamp with time zone DEFAULT now()
+);
+
+
+--
+-- Name: tenant_settings; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.tenant_settings (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    tenant_id uuid NOT NULL,
+    setting_key character varying(255) NOT NULL,
+    setting_value jsonb DEFAULT '{}'::jsonb NOT NULL,
+    description text,
+    created_at timestamp with time zone DEFAULT now(),
+    updated_at timestamp with time zone DEFAULT now()
+);
+
+
+--
+-- Name: tenants; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.tenants (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    name character varying(255) NOT NULL,
+    slug character varying(100) NOT NULL,
+    email character varying(255),
+    phone character varying(20),
+    address text,
+    city character varying(100),
+    state character varying(100),
+    pincode character varying(10),
+    country character varying(100) DEFAULT 'India'::character varying,
+    logo_url text,
+    status character varying(20) DEFAULT 'trial'::character varying,
+    max_branches integer DEFAULT 1,
+    max_users integer DEFAULT 50,
+    max_students integer DEFAULT 500,
+    max_staff integer DEFAULT 50,
+    storage_limit_mb integer DEFAULT 500,
+    is_active boolean DEFAULT true,
+    metadata jsonb DEFAULT '{}'::jsonb,
+    created_at timestamp with time zone DEFAULT now(),
+    updated_at timestamp with time zone DEFAULT now(),
+    deleted_at timestamp with time zone
+);
+
+
+--
+-- Name: timetable_entries; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.timetable_entries (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    tenant_id uuid NOT NULL,
+    timetable_id uuid NOT NULL,
+    day_of_week smallint NOT NULL,
+    subject_id uuid NOT NULL,
+    teacher_id uuid,
+    start_time time without time zone NOT NULL,
+    end_time time without time zone NOT NULL,
+    room_number character varying(50),
+    is_break boolean DEFAULT false,
+    created_at timestamp with time zone DEFAULT now(),
+    updated_at timestamp with time zone DEFAULT now()
+);
+
+
+--
+-- Name: timetables; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.timetables (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    tenant_id uuid NOT NULL,
+    branch_id uuid NOT NULL,
+    name character varying(255) NOT NULL,
+    class_id uuid NOT NULL,
+    section_id uuid,
+    academic_year_id uuid,
+    is_active boolean DEFAULT true,
+    valid_from date,
+    valid_until date,
+    created_at timestamp with time zone DEFAULT now(),
+    updated_at timestamp with time zone DEFAULT now()
+);
+
+
+--
+-- Name: transport_assignments; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.transport_assignments (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    tenant_id uuid NOT NULL,
+    branch_id uuid NOT NULL,
+    student_id uuid NOT NULL,
+    route_id uuid NOT NULL,
+    stop_id uuid,
+    academic_year_id uuid,
+    effective_from date NOT NULL,
+    effective_to date,
+    status character varying(20) DEFAULT 'active'::character varying,
+    created_at timestamp without time zone DEFAULT now(),
+    updated_at timestamp without time zone DEFAULT now(),
+    deleted_at timestamp without time zone
+);
+
+
+--
+-- Name: transport_fuel_logs; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.transport_fuel_logs (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    tenant_id uuid NOT NULL,
+    branch_id uuid NOT NULL,
+    vehicle_id uuid NOT NULL,
+    fuel_date date NOT NULL,
+    fuel_type character varying(50),
+    quantity_liters numeric(8,2) NOT NULL,
+    cost_per_liter numeric(8,2),
+    total_cost numeric(10,2),
+    odometer_reading integer,
+    vendor_name character varying(255),
+    bill_number character varying(100),
+    bill_url text,
+    remarks text,
+    created_at timestamp without time zone DEFAULT now()
+);
+
+
+--
+-- Name: transport_maintenance; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.transport_maintenance (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    tenant_id uuid NOT NULL,
+    branch_id uuid NOT NULL,
+    vehicle_id uuid NOT NULL,
+    maintenance_type character varying(100) NOT NULL,
+    description text,
+    service_date date NOT NULL,
+    cost numeric(10,2),
+    service_center character varying(255),
+    bill_number character varying(100),
+    bill_url text,
+    next_service_date date,
+    odometer_reading integer,
+    remarks text,
+    created_at timestamp without time zone DEFAULT now(),
+    updated_at timestamp without time zone DEFAULT now()
+);
+
+
+--
+-- Name: transport_route_stops; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.transport_route_stops (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    route_id uuid NOT NULL,
+    name character varying(200) NOT NULL,
+    address text,
+    latitude character varying(50),
+    longitude character varying(50),
+    stop_order integer NOT NULL,
+    pickup_time character varying(10),
+    drop_time character varying(10),
+    created_at timestamp without time zone DEFAULT now(),
+    updated_at timestamp without time zone DEFAULT now()
+);
+
+
+--
+-- Name: transport_routes; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.transport_routes (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    tenant_id uuid NOT NULL,
+    branch_id uuid NOT NULL,
+    name character varying(200) NOT NULL,
+    vehicle_id uuid,
+    description text,
+    distance numeric(10,2),
+    fare numeric(10,2),
+    is_active boolean DEFAULT true,
+    status character varying(20) DEFAULT 'active'::character varying,
+    created_at timestamp without time zone DEFAULT now(),
+    updated_at timestamp without time zone DEFAULT now(),
+    deleted_at timestamp without time zone
+);
+
+
+--
+-- Name: transport_vehicles; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.transport_vehicles (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    tenant_id uuid NOT NULL,
+    branch_id uuid NOT NULL,
+    vehicle_number character varying(50) NOT NULL,
+    model character varying(100),
+    capacity integer,
+    driver_name character varying(100),
+    driver_phone character varying(20),
+    insurance_expiry date,
+    is_active boolean DEFAULT true,
+    status character varying(20) DEFAULT 'active'::character varying,
+    notes text,
+    created_at timestamp without time zone DEFAULT now(),
+    updated_at timestamp without time zone DEFAULT now(),
+    deleted_at timestamp without time zone
+);
+
+
+--
+-- Name: user_roles; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.user_roles (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    tenant_id uuid,
+    user_id uuid NOT NULL,
+    role_id uuid NOT NULL,
+    branch_id uuid,
+    assigned_by uuid,
+    created_at timestamp with time zone DEFAULT now()
+);
+
+
+--
+-- Name: user_sessions; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.user_sessions (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    user_id uuid NOT NULL,
+    tenant_id uuid,
+    access_token text NOT NULL,
+    refresh_token text NOT NULL,
+    ip_address character varying(45),
+    user_agent text,
+    device_info jsonb DEFAULT '{}'::jsonb,
+    device_type character varying(50),
+    is_active boolean DEFAULT true,
+    expires_at timestamp with time zone NOT NULL,
+    refresh_expires_at timestamp with time zone NOT NULL,
+    last_activity timestamp with time zone DEFAULT now(),
+    created_at timestamp with time zone DEFAULT now()
+);
+
+
+--
+-- Name: users; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.users (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    tenant_id uuid,
+    email character varying(255),
+    phone character varying(20),
+    password_hash character varying(255) NOT NULL,
+    first_name character varying(100) NOT NULL,
+    last_name character varying(100) NOT NULL,
+    avatar_url text,
+    gender character varying(10),
+    date_of_birth date,
+    address text,
+    is_superadmin boolean DEFAULT false,
+    is_active boolean DEFAULT true,
+    status character varying(20) DEFAULT 'active'::character varying,
+    two_factor_enabled boolean DEFAULT false,
+    two_factor_secret character varying(255),
+    last_login_at timestamp with time zone,
+    last_login_ip character varying(45),
+    login_attempts integer DEFAULT 0,
+    locked_until timestamp with time zone,
+    password_changed_at timestamp with time zone DEFAULT now(),
+    metadata jsonb DEFAULT '{}'::jsonb,
+    created_at timestamp with time zone DEFAULT now(),
+    updated_at timestamp with time zone DEFAULT now(),
+    deleted_at timestamp with time zone
+);
+
+
+--
+-- Name: visitors; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.visitors (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    tenant_id uuid NOT NULL,
+    branch_id uuid NOT NULL,
+    name character varying(255) NOT NULL,
+    phone character varying(20),
+    email character varying(255),
+    address text,
+    id_proof_type character varying(100),
+    id_proof_number character varying(100),
+    purpose text NOT NULL,
+    person_to_meet character varying(255),
+    department character varying(100),
+    check_in_time timestamp with time zone NOT NULL,
+    check_out_time timestamp with time zone,
+    vehicle_number character varying(50),
+    badge_number character varying(50),
+    temperature numeric(4,1),
+    is_pre_approved boolean DEFAULT false,
+    status character varying(50) DEFAULT 'checked_in'::character varying,
+    created_at timestamp with time zone DEFAULT now(),
+    updated_at timestamp with time zone DEFAULT now()
+);
+
+
+--
+-- Name: webhook_deliveries; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.webhook_deliveries (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    tenant_id uuid NOT NULL,
+    webhook_endpoint_id uuid NOT NULL,
+    event character varying(100) NOT NULL,
+    payload text,
+    status character varying(20) DEFAULT 'pending'::character varying NOT NULL,
+    attempts integer DEFAULT 0,
+    max_attempts integer DEFAULT 3,
+    response_status integer,
+    response_body text,
+    error text,
+    sent_at timestamp with time zone,
+    next_retry_at timestamp with time zone,
+    created_at timestamp with time zone DEFAULT now()
+);
+
+
+--
+-- Name: webhook_endpoints; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.webhook_endpoints (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    tenant_id uuid NOT NULL,
+    name character varying(100) NOT NULL,
+    url text NOT NULL,
+    secret character varying(255) NOT NULL,
+    events text DEFAULT '*'::text NOT NULL,
+    description text,
+    created_by uuid,
+    is_active boolean DEFAULT true,
+    created_at timestamp with time zone DEFAULT now(),
+    updated_at timestamp with time zone DEFAULT now(),
+    deleted_at timestamp with time zone
+);
+
+
+--
+-- Name: academic_years academic_years_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.academic_years
+    ADD CONSTRAINT academic_years_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: accounting_accounts accounting_accounts_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.accounting_accounts
+    ADD CONSTRAINT accounting_accounts_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: accounting_budgets accounting_budgets_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.accounting_budgets
+    ADD CONSTRAINT accounting_budgets_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: accounting_journal_entries accounting_journal_entries_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.accounting_journal_entries
+    ADD CONSTRAINT accounting_journal_entries_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: accounting_journal_entry_items accounting_journal_entry_items_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.accounting_journal_entry_items
+    ADD CONSTRAINT accounting_journal_entry_items_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: announcements announcements_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.announcements
+    ADD CONSTRAINT announcements_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: api_keys api_keys_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.api_keys
+    ADD CONSTRAINT api_keys_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: applications applications_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.applications
+    ADD CONSTRAINT applications_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: appointments appointments_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.appointments
+    ADD CONSTRAINT appointments_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: assets assets_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.assets
+    ADD CONSTRAINT assets_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: assignment_submissions assignment_submissions_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.assignment_submissions
+    ADD CONSTRAINT assignment_submissions_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: assignments assignments_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.assignments
+    ADD CONSTRAINT assignments_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: attendance attendance_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.attendance
+    ADD CONSTRAINT attendance_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: attendance_records attendance_records_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.attendance_records
+    ADD CONSTRAINT attendance_records_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: audit_logs audit_logs_id_created_at_pk; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.audit_logs
+    ADD CONSTRAINT audit_logs_id_created_at_pk PRIMARY KEY (id, created_at);
+
+
+--
+-- Name: book_categories book_categories_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.book_categories
+    ADD CONSTRAINT book_categories_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: branches branches_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.branches
+    ADD CONSTRAINT branches_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: branding_settings branding_settings_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.branding_settings
+    ADD CONSTRAINT branding_settings_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: certificate_templates certificate_templates_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.certificate_templates
+    ADD CONSTRAINT certificate_templates_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: certificates certificates_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.certificates
+    ADD CONSTRAINT certificates_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: circulars circulars_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.circulars
+    ADD CONSTRAINT circulars_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: class_subjects class_subjects_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.class_subjects
+    ADD CONSTRAINT class_subjects_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: classes classes_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.classes
+    ADD CONSTRAINT classes_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: departments departments_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.departments
+    ADD CONSTRAINT departments_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: enquiries enquiries_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.enquiries
+    ADD CONSTRAINT enquiries_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: exam_results exam_results_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.exam_results
+    ADD CONSTRAINT exam_results_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: exam_schedules exam_schedules_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.exam_schedules
+    ADD CONSTRAINT exam_schedules_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: exams exams_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.exams
+    ADD CONSTRAINT exams_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: expense_categories expense_categories_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.expense_categories
+    ADD CONSTRAINT expense_categories_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: expenses expenses_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.expenses
+    ADD CONSTRAINT expenses_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: feature_flags feature_flags_code_unique; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.feature_flags
+    ADD CONSTRAINT feature_flags_code_unique UNIQUE (code);
+
+
+--
+-- Name: feature_flags feature_flags_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.feature_flags
+    ADD CONSTRAINT feature_flags_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: fee_concessions fee_concessions_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.fee_concessions
+    ADD CONSTRAINT fee_concessions_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: fee_discounts fee_discounts_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.fee_discounts
+    ADD CONSTRAINT fee_discounts_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: fee_invoices fee_invoices_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.fee_invoices
+    ADD CONSTRAINT fee_invoices_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: fee_receipts fee_receipts_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.fee_receipts
+    ADD CONSTRAINT fee_receipts_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: fee_structure_items fee_structure_items_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.fee_structure_items
+    ADD CONSTRAINT fee_structure_items_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: fee_structures fee_structures_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.fee_structures
+    ADD CONSTRAINT fee_structures_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: fee_transactions fee_transactions_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.fee_transactions
+    ADD CONSTRAINT fee_transactions_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: homework homework_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.homework
+    ADD CONSTRAINT homework_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: homework_submissions homework_submissions_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.homework_submissions
+    ADD CONSTRAINT homework_submissions_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: hostel_attendance hostel_attendance_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.hostel_attendance
+    ADD CONSTRAINT hostel_attendance_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: hostel_bed_allocations hostel_bed_allocations_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.hostel_bed_allocations
+    ADD CONSTRAINT hostel_bed_allocations_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: hostel_discipline hostel_discipline_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.hostel_discipline
+    ADD CONSTRAINT hostel_discipline_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: hostel_rooms hostel_rooms_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.hostel_rooms
+    ADD CONSTRAINT hostel_rooms_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: hostel_visitors hostel_visitors_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.hostel_visitors
+    ADD CONSTRAINT hostel_visitors_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: hostels hostels_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.hostels
+    ADD CONSTRAINT hostels_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: id_card_templates id_card_templates_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.id_card_templates
+    ADD CONSTRAINT id_card_templates_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: import_batches import_batches_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.import_batches
+    ADD CONSTRAINT import_batches_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: income_categories income_categories_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.income_categories
+    ADD CONSTRAINT income_categories_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: income income_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.income
+    ADD CONSTRAINT income_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: inventory_categories inventory_categories_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.inventory_categories
+    ADD CONSTRAINT inventory_categories_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: inventory_goods_receipt_items inventory_goods_receipt_items_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.inventory_goods_receipt_items
+    ADD CONSTRAINT inventory_goods_receipt_items_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: inventory_goods_receipts inventory_goods_receipts_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.inventory_goods_receipts
+    ADD CONSTRAINT inventory_goods_receipts_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: inventory_items inventory_items_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.inventory_items
+    ADD CONSTRAINT inventory_items_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: inventory_purchase_order_items inventory_purchase_order_items_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.inventory_purchase_order_items
+    ADD CONSTRAINT inventory_purchase_order_items_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: inventory_purchase_orders inventory_purchase_orders_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.inventory_purchase_orders
+    ADD CONSTRAINT inventory_purchase_orders_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: inventory_stock_adjustments inventory_stock_adjustments_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.inventory_stock_adjustments
+    ADD CONSTRAINT inventory_stock_adjustments_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: inventory_suppliers inventory_suppliers_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.inventory_suppliers
+    ADD CONSTRAINT inventory_suppliers_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: job_applications job_applications_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.job_applications
+    ADD CONSTRAINT job_applications_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: job_postings job_postings_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.job_postings
+    ADD CONSTRAINT job_postings_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: leave_requests leave_requests_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.leave_requests
+    ADD CONSTRAINT leave_requests_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: leave_types leave_types_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.leave_types
+    ADD CONSTRAINT leave_types_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: lesson_plans lesson_plans_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.lesson_plans
+    ADD CONSTRAINT lesson_plans_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: library_books library_books_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.library_books
+    ADD CONSTRAINT library_books_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: library_issues library_issues_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.library_issues
+    ADD CONSTRAINT library_issues_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: library_members library_members_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.library_members
+    ADD CONSTRAINT library_members_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: marks marks_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.marks
+    ADD CONSTRAINT marks_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: notification_logs notification_logs_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.notification_logs
+    ADD CONSTRAINT notification_logs_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: notification_templates notification_templates_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.notification_templates
+    ADD CONSTRAINT notification_templates_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: notifications notifications_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.notifications
+    ADD CONSTRAINT notifications_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: parents parents_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.parents
+    ADD CONSTRAINT parents_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: payroll payroll_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.payroll
+    ADD CONSTRAINT payroll_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: payroll_salary_components payroll_salary_components_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.payroll_salary_components
+    ADD CONSTRAINT payroll_salary_components_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: performance_reviews performance_reviews_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.performance_reviews
+    ADD CONSTRAINT performance_reviews_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: permissions permissions_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.permissions
+    ADD CONSTRAINT permissions_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: permissions permissions_slug_unique; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.permissions
+    ADD CONSTRAINT permissions_slug_unique UNIQUE (slug);
+
+
+--
+-- Name: plan_features plan_features_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.plan_features
+    ADD CONSTRAINT plan_features_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: plans plans_code_unique; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.plans
+    ADD CONSTRAINT plans_code_unique UNIQUE (code);
+
+
+--
+-- Name: plans plans_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.plans
+    ADD CONSTRAINT plans_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: role_permissions role_permissions_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.role_permissions
+    ADD CONSTRAINT role_permissions_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: roles roles_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.roles
+    ADD CONSTRAINT roles_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: sections sections_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.sections
+    ADD CONSTRAINT sections_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: staff_attendance staff_attendance_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.staff_attendance
+    ADD CONSTRAINT staff_attendance_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: staff_documents staff_documents_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.staff_documents
+    ADD CONSTRAINT staff_documents_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: staff staff_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.staff
+    ADD CONSTRAINT staff_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: student_academic_records student_academic_records_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.student_academic_records
+    ADD CONSTRAINT student_academic_records_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: student_documents student_documents_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.student_documents
+    ADD CONSTRAINT student_documents_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: student_fee_accounts student_fee_accounts_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.student_fee_accounts
+    ADD CONSTRAINT student_fee_accounts_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: student_parents student_parents_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.student_parents
+    ADD CONSTRAINT student_parents_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: students students_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.students
+    ADD CONSTRAINT students_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: subjects subjects_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.subjects
+    ADD CONSTRAINT subjects_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: subscriptions subscriptions_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.subscriptions
+    ADD CONSTRAINT subscriptions_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: system_config system_config_config_key_unique; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.system_config
+    ADD CONSTRAINT system_config_config_key_unique UNIQUE (config_key);
+
+
+--
+-- Name: system_config system_config_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.system_config
+    ADD CONSTRAINT system_config_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: teacher_subjects teacher_subjects_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.teacher_subjects
+    ADD CONSTRAINT teacher_subjects_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: tenant_features tenant_features_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.tenant_features
+    ADD CONSTRAINT tenant_features_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: tenant_settings tenant_settings_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.tenant_settings
+    ADD CONSTRAINT tenant_settings_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: tenants tenants_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.tenants
+    ADD CONSTRAINT tenants_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: tenants tenants_slug_unique; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.tenants
+    ADD CONSTRAINT tenants_slug_unique UNIQUE (slug);
+
+
+--
+-- Name: timetable_entries timetable_entries_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.timetable_entries
+    ADD CONSTRAINT timetable_entries_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: timetables timetables_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.timetables
+    ADD CONSTRAINT timetables_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: transport_assignments transport_assignments_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.transport_assignments
+    ADD CONSTRAINT transport_assignments_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: transport_fuel_logs transport_fuel_logs_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.transport_fuel_logs
+    ADD CONSTRAINT transport_fuel_logs_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: transport_maintenance transport_maintenance_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.transport_maintenance
+    ADD CONSTRAINT transport_maintenance_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: transport_route_stops transport_route_stops_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.transport_route_stops
+    ADD CONSTRAINT transport_route_stops_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: transport_routes transport_routes_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.transport_routes
+    ADD CONSTRAINT transport_routes_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: transport_vehicles transport_vehicles_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.transport_vehicles
+    ADD CONSTRAINT transport_vehicles_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: user_roles user_roles_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.user_roles
+    ADD CONSTRAINT user_roles_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: user_sessions user_sessions_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.user_sessions
+    ADD CONSTRAINT user_sessions_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: users users_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.users
+    ADD CONSTRAINT users_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: visitors visitors_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.visitors
+    ADD CONSTRAINT visitors_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: webhook_deliveries webhook_deliveries_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.webhook_deliveries
+    ADD CONSTRAINT webhook_deliveries_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: webhook_endpoints webhook_endpoints_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.webhook_endpoints
+    ADD CONSTRAINT webhook_endpoints_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: academic_years_tenant_id_branch_id_name_key; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX academic_years_tenant_id_branch_id_name_key ON public.academic_years USING btree (tenant_id, branch_id, name);
+
+
+--
+-- Name: applications_tenant_id_branch_id_application_number_key; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX applications_tenant_id_branch_id_application_number_key ON public.applications USING btree (tenant_id, branch_id, application_number);
+
+
+--
+-- Name: assignment_submissions_assignment_id_student_id_key; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX assignment_submissions_assignment_id_student_id_key ON public.assignment_submissions USING btree (assignment_id, student_id);
+
+
+--
+-- Name: attendance_class_date_key; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX attendance_class_date_key ON public.attendance USING btree (tenant_id, branch_id, class_id, section_id, date);
+
+
+--
+-- Name: attendance_records_attendance_id_student_id_key; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX attendance_records_attendance_id_student_id_key ON public.attendance_records USING btree (attendance_id, student_id);
+
+
+--
+-- Name: attendance_timetable_entry_date_key; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX attendance_timetable_entry_date_key ON public.attendance USING btree (timetable_entry_id, date);
+
+
+--
+-- Name: branches_tenant_id_code_key; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX branches_tenant_id_code_key ON public.branches USING btree (tenant_id, code) WHERE (deleted_at IS NULL);
+
+
+--
+-- Name: branding_settings_tenant_id_key; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX branding_settings_tenant_id_key ON public.branding_settings USING btree (tenant_id);
+
+
+--
+-- Name: certificates_tenant_id_branch_id_certificate_number_key; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX certificates_tenant_id_branch_id_certificate_number_key ON public.certificates USING btree (tenant_id, branch_id, certificate_number);
+
+
+--
+-- Name: circulars_tenant_id_branch_id_circular_number_key; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX circulars_tenant_id_branch_id_circular_number_key ON public.circulars USING btree (tenant_id, branch_id, circular_number);
+
+
+--
+-- Name: class_subjects_tenant_id_branch_id_class_id_subject_id_key; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX class_subjects_tenant_id_branch_id_class_id_subject_id_key ON public.class_subjects USING btree (tenant_id, branch_id, class_id, subject_id);
+
+
+--
+-- Name: classes_tenant_id_branch_id_name_key; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX classes_tenant_id_branch_id_name_key ON public.classes USING btree (tenant_id, branch_id, name) WHERE (deleted_at IS NULL);
+
+
+--
+-- Name: departments_tenant_id_branch_id_name_key; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX departments_tenant_id_branch_id_name_key ON public.departments USING btree (tenant_id, branch_id, name) WHERE (deleted_at IS NULL);
+
+
+--
+-- Name: exam_results_exam_id_student_id_key; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX exam_results_exam_id_student_id_key ON public.exam_results USING btree (exam_id, student_id);
+
+
+--
+-- Name: expense_categories_tenant_id_name_key; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX expense_categories_tenant_id_name_key ON public.expense_categories USING btree (tenant_id, name);
+
+
+--
+-- Name: fee_invoices_tenant_id_branch_id_invoice_number_key; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX fee_invoices_tenant_id_branch_id_invoice_number_key ON public.fee_invoices USING btree (tenant_id, branch_id, invoice_number);
+
+
+--
+-- Name: fee_receipts_tenant_id_receipt_number_key; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX fee_receipts_tenant_id_receipt_number_key ON public.fee_receipts USING btree (tenant_id, receipt_number);
+
+
+--
+-- Name: fee_transactions_tenant_id_branch_id_transaction_no_key; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX fee_transactions_tenant_id_branch_id_transaction_no_key ON public.fee_transactions USING btree (tenant_id, branch_id, transaction_no);
+
+
+--
+-- Name: homework_submissions_homework_id_student_id_key; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX homework_submissions_homework_id_student_id_key ON public.homework_submissions USING btree (homework_id, student_id);
+
+
+--
+-- Name: idx_academic_years_branch; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_academic_years_branch ON public.academic_years USING btree (branch_id);
+
+
+--
+-- Name: idx_academic_years_current; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_academic_years_current ON public.academic_years USING btree (branch_id) WHERE (is_current = true);
+
+
+--
+-- Name: idx_announcements_branch; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_announcements_branch ON public.announcements USING btree (branch_id);
+
+
+--
+-- Name: idx_announcements_published; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_announcements_published ON public.announcements USING btree (published_at);
+
+
+--
+-- Name: idx_api_keys_hash; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_api_keys_hash ON public.api_keys USING btree (key_hash);
+
+
+--
+-- Name: idx_api_keys_tenant; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_api_keys_tenant ON public.api_keys USING btree (tenant_id);
+
+
+--
+-- Name: idx_applications_branch; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_applications_branch ON public.applications USING btree (branch_id);
+
+
+--
+-- Name: idx_applications_class; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_applications_class ON public.applications USING btree (class_id);
+
+
+--
+-- Name: idx_applications_status; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_applications_status ON public.applications USING btree (status);
+
+
+--
+-- Name: idx_appointments_requested_by; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_appointments_requested_by ON public.appointments USING btree (requested_by);
+
+
+--
+-- Name: idx_appointments_scheduled_at; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_appointments_scheduled_at ON public.appointments USING btree (scheduled_at);
+
+
+--
+-- Name: idx_appointments_status; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_appointments_status ON public.appointments USING btree (status);
+
+
+--
+-- Name: idx_appointments_tenant_branch; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_appointments_tenant_branch ON public.appointments USING btree (tenant_id, branch_id);
+
+
+--
+-- Name: idx_assignment_submissions_assignment; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_assignment_submissions_assignment ON public.assignment_submissions USING btree (assignment_id);
+
+
+--
+-- Name: idx_assignment_submissions_student; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_assignment_submissions_student ON public.assignment_submissions USING btree (student_id);
+
+
+--
+-- Name: idx_assignments_class; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_assignments_class ON public.assignments USING btree (class_id);
+
+
+--
+-- Name: idx_attendance_branch; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_attendance_branch ON public.attendance USING btree (branch_id);
+
+
+--
+-- Name: idx_attendance_class_date; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_attendance_class_date ON public.attendance USING btree (class_id, date);
+
+
+--
+-- Name: idx_attendance_date; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_attendance_date ON public.attendance USING btree (date);
+
+
+--
+-- Name: idx_attendance_records_attendance; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_attendance_records_attendance ON public.attendance_records USING btree (attendance_id);
+
+
+--
+-- Name: idx_attendance_records_branch_date; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_attendance_records_branch_date ON public.attendance_records USING btree (branch_id, attendance_id);
+
+
+--
+-- Name: idx_attendance_records_student; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_attendance_records_student ON public.attendance_records USING btree (student_id);
+
+
+--
+-- Name: idx_audit_logs_action; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_audit_logs_action ON public.audit_logs USING btree (action);
+
+
+--
+-- Name: idx_audit_logs_created; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_audit_logs_created ON public.audit_logs USING btree (created_at);
+
+
+--
+-- Name: idx_audit_logs_module; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_audit_logs_module ON public.audit_logs USING btree (module);
+
+
+--
+-- Name: idx_audit_logs_resource; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_audit_logs_resource ON public.audit_logs USING btree (resource_type, resource_id);
+
+
+--
+-- Name: idx_audit_logs_tenant; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_audit_logs_tenant ON public.audit_logs USING btree (tenant_id);
+
+
+--
+-- Name: idx_audit_logs_user; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_audit_logs_user ON public.audit_logs USING btree (user_id);
+
+
+--
+-- Name: idx_branches_principal; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_branches_principal ON public.branches USING btree (principal_id);
+
+
+--
+-- Name: idx_branches_tenant; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_branches_tenant ON public.branches USING btree (tenant_id);
+
+
+--
+-- Name: idx_class_subjects_class; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_class_subjects_class ON public.class_subjects USING btree (class_id);
+
+
+--
+-- Name: idx_classes_branch; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_classes_branch ON public.classes USING btree (branch_id);
+
+
+--
+-- Name: idx_departments_branch; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_departments_branch ON public.departments USING btree (branch_id);
+
+
+--
+-- Name: idx_enquiries_branch; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_enquiries_branch ON public.enquiries USING btree (branch_id);
+
+
+--
+-- Name: idx_enquiries_status; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_enquiries_status ON public.enquiries USING btree (status);
+
+
+--
+-- Name: idx_exam_results_exam; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_exam_results_exam ON public.exam_results USING btree (exam_id);
+
+
+--
+-- Name: idx_exam_results_rank; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_exam_results_rank ON public.exam_results USING btree (exam_id, rank);
+
+
+--
+-- Name: idx_exam_results_student; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_exam_results_student ON public.exam_results USING btree (student_id);
+
+
+--
+-- Name: idx_exam_schedules_exam; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_exam_schedules_exam ON public.exam_schedules USING btree (exam_id);
+
+
+--
+-- Name: idx_exam_schedules_subject; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_exam_schedules_subject ON public.exam_schedules USING btree (subject_id);
+
+
+--
+-- Name: idx_exams_branch; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_exams_branch ON public.exams USING btree (branch_id);
+
+
+--
+-- Name: idx_exams_class; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_exams_class ON public.exams USING btree (class_id);
+
+
+--
+-- Name: idx_exams_type; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_exams_type ON public.exams USING btree (exam_type);
+
+
+--
+-- Name: idx_expenses_branch; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_expenses_branch ON public.expenses USING btree (branch_id);
+
+
+--
+-- Name: idx_expenses_category; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_expenses_category ON public.expenses USING btree (category_id);
+
+
+--
+-- Name: idx_expenses_date; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_expenses_date ON public.expenses USING btree (expense_date);
+
+
+--
+-- Name: idx_fee_accounts_due; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_fee_accounts_due ON public.student_fee_accounts USING btree (total_due) WHERE (total_due > (0)::numeric);
+
+
+--
+-- Name: idx_fee_accounts_status; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_fee_accounts_status ON public.student_fee_accounts USING btree (status);
+
+
+--
+-- Name: idx_fee_accounts_student; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_fee_accounts_student ON public.student_fee_accounts USING btree (student_id);
+
+
+--
+-- Name: idx_fee_concessions_student; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_fee_concessions_student ON public.fee_concessions USING btree (student_id);
+
+
+--
+-- Name: idx_fee_invoices_due; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_fee_invoices_due ON public.fee_invoices USING btree (due_date) WHERE ((status)::text = 'pending'::text);
+
+
+--
+-- Name: idx_fee_invoices_status; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_fee_invoices_status ON public.fee_invoices USING btree (status);
+
+
+--
+-- Name: idx_fee_invoices_student; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_fee_invoices_student ON public.fee_invoices USING btree (student_id);
+
+
+--
+-- Name: idx_fee_items_structure; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_fee_items_structure ON public.fee_structure_items USING btree (fee_structure_id);
+
+
+--
+-- Name: idx_fee_receipts_transaction; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_fee_receipts_transaction ON public.fee_receipts USING btree (transaction_id);
+
+
+--
+-- Name: idx_fee_structures_branch; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_fee_structures_branch ON public.fee_structures USING btree (branch_id);
+
+
+--
+-- Name: idx_fee_structures_class; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_fee_structures_class ON public.fee_structures USING btree (class_id);
+
+
+--
+-- Name: idx_fee_transactions_account; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_fee_transactions_account ON public.fee_transactions USING btree (fee_account_id);
+
+
+--
+-- Name: idx_fee_transactions_date; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_fee_transactions_date ON public.fee_transactions USING btree (payment_date);
+
+
+--
+-- Name: idx_fee_transactions_status; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_fee_transactions_status ON public.fee_transactions USING btree (status);
+
+
+--
+-- Name: idx_fee_transactions_student; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_fee_transactions_student ON public.fee_transactions USING btree (student_id);
+
+
+--
+-- Name: idx_homework_class; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_homework_class ON public.homework USING btree (class_id);
+
+
+--
+-- Name: idx_homework_due; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_homework_due ON public.homework USING btree (due_date) WHERE ((status)::text = 'active'::text);
+
+
+--
+-- Name: idx_homework_submissions_homework; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_homework_submissions_homework ON public.homework_submissions USING btree (homework_id);
+
+
+--
+-- Name: idx_homework_submissions_student; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_homework_submissions_student ON public.homework_submissions USING btree (student_id);
+
+
+--
+-- Name: idx_homework_teacher; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_homework_teacher ON public.homework USING btree (teacher_id);
+
+
+--
+-- Name: idx_import_batches_status; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_import_batches_status ON public.import_batches USING btree (status);
+
+
+--
+-- Name: idx_import_batches_tenant_entity; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_import_batches_tenant_entity ON public.import_batches USING btree (tenant_id, entity_type);
+
+
+--
+-- Name: idx_income_branch; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_income_branch ON public.income USING btree (branch_id);
+
+
+--
+-- Name: idx_income_date; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_income_date ON public.income USING btree (income_date);
+
+
+--
+-- Name: idx_leave_requests_dates; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_leave_requests_dates ON public.leave_requests USING btree (start_date, end_date);
+
+
+--
+-- Name: idx_leave_requests_staff; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_leave_requests_staff ON public.leave_requests USING btree (staff_id);
+
+
+--
+-- Name: idx_leave_requests_status; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_leave_requests_status ON public.leave_requests USING btree (status);
+
+
+--
+-- Name: idx_lesson_plans_date; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_lesson_plans_date ON public.lesson_plans USING btree (date);
+
+
+--
+-- Name: idx_lesson_plans_teacher; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_lesson_plans_teacher ON public.lesson_plans USING btree (teacher_id);
+
+
+--
+-- Name: idx_marks_exam_schedule; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_marks_exam_schedule ON public.marks USING btree (exam_schedule_id);
+
+
+--
+-- Name: idx_marks_student; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_marks_student ON public.marks USING btree (student_id);
+
+
+--
+-- Name: idx_notification_logs_notification; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_notification_logs_notification ON public.notification_logs USING btree (notification_id);
+
+
+--
+-- Name: idx_notification_logs_recipient; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_notification_logs_recipient ON public.notification_logs USING btree (recipient_id);
+
+
+--
+-- Name: idx_notification_logs_status; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_notification_logs_status ON public.notification_logs USING btree (status);
+
+
+--
+-- Name: idx_notifications_created; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_notifications_created ON public.notifications USING btree (created_at);
+
+
+--
+-- Name: idx_notifications_tenant; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_notifications_tenant ON public.notifications USING btree (tenant_id);
+
+
+--
+-- Name: idx_notifications_type; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_notifications_type ON public.notifications USING btree (type);
+
+
+--
+-- Name: idx_parents_tenant; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_parents_tenant ON public.parents USING btree (tenant_id);
+
+
+--
+-- Name: idx_payroll_month_year; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_payroll_month_year ON public.payroll USING btree (month, year);
+
+
+--
+-- Name: idx_payroll_staff; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_payroll_staff ON public.payroll USING btree (staff_id);
+
+
+--
+-- Name: idx_payroll_status; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_payroll_status ON public.payroll USING btree (status);
+
+
+--
+-- Name: idx_performance_reviews_staff; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_performance_reviews_staff ON public.performance_reviews USING btree (staff_id);
+
+
+--
+-- Name: idx_permissions_module; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_permissions_module ON public.permissions USING btree (module);
+
+
+--
+-- Name: idx_roles_tenant; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_roles_tenant ON public.roles USING btree (tenant_id);
+
+
+--
+-- Name: idx_sections_class; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_sections_class ON public.sections USING btree (class_id);
+
+
+--
+-- Name: idx_sessions_active; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_sessions_active ON public.user_sessions USING btree (expires_at) WHERE (is_active = true);
+
+
+--
+-- Name: idx_sessions_refresh; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_sessions_refresh ON public.user_sessions USING btree (refresh_token);
+
+
+--
+-- Name: idx_sessions_user; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_sessions_user ON public.user_sessions USING btree (user_id);
+
+
+--
+-- Name: idx_staff_attendance_date; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_staff_attendance_date ON public.staff_attendance USING btree (date);
+
+
+--
+-- Name: idx_staff_attendance_staff; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_staff_attendance_staff ON public.staff_attendance USING btree (staff_id);
+
+
+--
+-- Name: idx_staff_branch; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_staff_branch ON public.staff USING btree (branch_id);
+
+
+--
+-- Name: idx_staff_department; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_staff_department ON public.staff USING btree (department_id);
+
+
+--
+-- Name: idx_staff_docs_staff; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_staff_docs_staff ON public.staff_documents USING btree (staff_id);
+
+
+--
+-- Name: idx_staff_teaching; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_staff_teaching ON public.staff USING btree (branch_id) WHERE (is_teaching = true);
+
+
+--
+-- Name: idx_student_academic_records_class; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_student_academic_records_class ON public.student_academic_records USING btree (class_id);
+
+
+--
+-- Name: idx_student_academic_records_student; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_student_academic_records_student ON public.student_academic_records USING btree (student_id);
+
+
+--
+-- Name: idx_student_docs_student; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_student_docs_student ON public.student_documents USING btree (student_id);
+
+
+--
+-- Name: idx_student_parents_student; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_student_parents_student ON public.student_parents USING btree (student_id);
+
+
+--
+-- Name: idx_student_parents_tenant; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_student_parents_tenant ON public.student_parents USING btree (tenant_id);
+
+
+--
+-- Name: idx_students_active; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_students_active ON public.students USING btree (branch_id) WHERE (is_active = true);
+
+
+--
+-- Name: idx_students_branch; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_students_branch ON public.students USING btree (branch_id);
+
+
+--
+-- Name: idx_students_name; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_students_name ON public.students USING btree (first_name, last_name);
+
+
+--
+-- Name: idx_subjects_branch; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_subjects_branch ON public.subjects USING btree (branch_id);
+
+
+--
+-- Name: idx_subscriptions_end_date; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_subscriptions_end_date ON public.subscriptions USING btree (end_date) WHERE ((status)::text = 'active'::text);
+
+
+--
+-- Name: idx_subscriptions_status; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_subscriptions_status ON public.subscriptions USING btree (status);
+
+
+--
+-- Name: idx_subscriptions_tenant; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_subscriptions_tenant ON public.subscriptions USING btree (tenant_id);
+
+
+--
+-- Name: idx_teacher_subjects_teacher; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_teacher_subjects_teacher ON public.teacher_subjects USING btree (teacher_id);
+
+
+--
+-- Name: idx_tenants_slug; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_tenants_slug ON public.tenants USING btree (slug) WHERE (deleted_at IS NULL);
+
+
+--
+-- Name: idx_tenants_status; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_tenants_status ON public.tenants USING btree (status);
+
+
+--
+-- Name: idx_timetable_entries_day; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_timetable_entries_day ON public.timetable_entries USING btree (timetable_id, day_of_week);
+
+
+--
+-- Name: idx_timetable_entries_timetable; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_timetable_entries_timetable ON public.timetable_entries USING btree (timetable_id);
+
+
+--
+-- Name: idx_timetables_class; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_timetables_class ON public.timetables USING btree (class_id);
+
+
+--
+-- Name: idx_user_roles_branch; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_user_roles_branch ON public.user_roles USING btree (branch_id);
+
+
+--
+-- Name: idx_user_roles_tenant; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_user_roles_tenant ON public.user_roles USING btree (tenant_id);
+
+
+--
+-- Name: idx_user_roles_user; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_user_roles_user ON public.user_roles USING btree (user_id);
+
+
+--
+-- Name: idx_users_email; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_users_email ON public.users USING btree (email) WHERE (deleted_at IS NULL);
+
+
+--
+-- Name: idx_users_phone; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_users_phone ON public.users USING btree (phone) WHERE (deleted_at IS NULL);
+
+
+--
+-- Name: idx_users_tenant; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_users_tenant ON public.users USING btree (tenant_id);
+
+
+--
+-- Name: idx_users_tenant_email; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX idx_users_tenant_email ON public.users USING btree (tenant_id, email) WHERE ((tenant_id IS NOT NULL) AND (deleted_at IS NULL));
+
+
+--
+-- Name: idx_users_tenant_phone; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX idx_users_tenant_phone ON public.users USING btree (tenant_id, phone) WHERE ((tenant_id IS NOT NULL) AND (deleted_at IS NULL));
+
+
+--
+-- Name: idx_visitors_branch; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_visitors_branch ON public.visitors USING btree (branch_id);
+
+
+--
+-- Name: idx_visitors_date; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_visitors_date ON public.visitors USING btree (check_in_time);
+
+
+--
+-- Name: idx_visitors_status; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_visitors_status ON public.visitors USING btree (status);
+
+
+--
+-- Name: idx_webhook_deliveries_created; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_webhook_deliveries_created ON public.webhook_deliveries USING btree (created_at);
+
+
+--
+-- Name: idx_webhook_deliveries_endpoint; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_webhook_deliveries_endpoint ON public.webhook_deliveries USING btree (webhook_endpoint_id);
+
+
+--
+-- Name: idx_webhook_deliveries_status; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_webhook_deliveries_status ON public.webhook_deliveries USING btree (status);
+
+
+--
+-- Name: idx_webhook_deliveries_tenant; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_webhook_deliveries_tenant ON public.webhook_deliveries USING btree (tenant_id);
+
+
+--
+-- Name: idx_webhook_endpoints_tenant; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_webhook_endpoints_tenant ON public.webhook_endpoints USING btree (tenant_id);
+
+
+--
+-- Name: income_categories_tenant_id_name_key; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX income_categories_tenant_id_name_key ON public.income_categories USING btree (tenant_id, name);
+
+
+--
+-- Name: leave_types_tenant_id_code_key; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX leave_types_tenant_id_code_key ON public.leave_types USING btree (tenant_id, code);
+
+
+--
+-- Name: marks_exam_schedule_id_student_id_key; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX marks_exam_schedule_id_student_id_key ON public.marks USING btree (exam_schedule_id, student_id);
+
+
+--
+-- Name: notification_templates_tenant_id_code_key; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX notification_templates_tenant_id_code_key ON public.notification_templates USING btree (tenant_id, code);
+
+
+--
+-- Name: payroll_staff_id_month_year_key; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX payroll_staff_id_month_year_key ON public.payroll USING btree (staff_id, month, year);
+
+
+--
+-- Name: plan_features_plan_id_feature_flag_id_key; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX plan_features_plan_id_feature_flag_id_key ON public.plan_features USING btree (plan_id, feature_flag_id);
+
+
+--
+-- Name: role_permissions_role_id_permission_id_key; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX role_permissions_role_id_permission_id_key ON public.role_permissions USING btree (role_id, permission_id);
+
+
+--
+-- Name: roles_tenant_id_slug_key; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX roles_tenant_id_slug_key ON public.roles USING btree (tenant_id, slug);
+
+
+--
+-- Name: sections_tenant_id_branch_id_class_id_name_key; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX sections_tenant_id_branch_id_class_id_name_key ON public.sections USING btree (tenant_id, branch_id, class_id, name) WHERE (deleted_at IS NULL);
+
+
+--
+-- Name: staff_attendance_tenant_id_branch_id_staff_id_date_key; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX staff_attendance_tenant_id_branch_id_staff_id_date_key ON public.staff_attendance USING btree (tenant_id, branch_id, staff_id, date);
+
+
+--
+-- Name: staff_tenant_id_branch_id_employee_code_key; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX staff_tenant_id_branch_id_employee_code_key ON public.staff USING btree (tenant_id, branch_id, employee_code) WHERE (deleted_at IS NULL);
+
+
+--
+-- Name: student_academic_records_student_id_academic_year_id_key; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX student_academic_records_student_id_academic_year_id_key ON public.student_academic_records USING btree (student_id, academic_year_id);
+
+
+--
+-- Name: student_fee_accounts_student_id_academic_year_id_key; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX student_fee_accounts_student_id_academic_year_id_key ON public.student_fee_accounts USING btree (student_id, academic_year_id);
+
+
+--
+-- Name: student_parents_student_id_parent_id_key; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX student_parents_student_id_parent_id_key ON public.student_parents USING btree (student_id, parent_id);
+
+
+--
+-- Name: students_tenant_id_branch_id_admission_number_key; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX students_tenant_id_branch_id_admission_number_key ON public.students USING btree (tenant_id, branch_id, admission_number) WHERE (deleted_at IS NULL);
+
+
+--
+-- Name: subjects_tenant_id_branch_id_code_key; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX subjects_tenant_id_branch_id_code_key ON public.subjects USING btree (tenant_id, branch_id, code) WHERE (deleted_at IS NULL);
+
+
+--
+-- Name: teacher_subjects_tenant_id_branch_id_teacher_id_subject_id_clas; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX teacher_subjects_tenant_id_branch_id_teacher_id_subject_id_clas ON public.teacher_subjects USING btree (tenant_id, branch_id, teacher_id, subject_id, class_id, section_id);
+
+
+--
+-- Name: tenant_features_tenant_id_feature_flag_id_key; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX tenant_features_tenant_id_feature_flag_id_key ON public.tenant_features USING btree (tenant_id, feature_flag_id);
+
+
+--
+-- Name: tenant_settings_tenant_id_setting_key_key; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX tenant_settings_tenant_id_setting_key_key ON public.tenant_settings USING btree (tenant_id, setting_key);
+
+
+--
+-- Name: user_roles_user_id_role_id_branch_id_key; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX user_roles_user_id_role_id_branch_id_key ON public.user_roles USING btree (user_id, role_id, branch_id);
+
+
+--
+-- Name: academic_years academic_years_branch_id_branches_id_fk; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.academic_years
+    ADD CONSTRAINT academic_years_branch_id_branches_id_fk FOREIGN KEY (branch_id) REFERENCES public.branches(id) ON DELETE CASCADE;
+
+
+--
+-- Name: academic_years academic_years_tenant_id_tenants_id_fk; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.academic_years
+    ADD CONSTRAINT academic_years_tenant_id_tenants_id_fk FOREIGN KEY (tenant_id) REFERENCES public.tenants(id) ON DELETE CASCADE;
+
+
+--
+-- Name: announcements announcements_branch_id_branches_id_fk; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.announcements
+    ADD CONSTRAINT announcements_branch_id_branches_id_fk FOREIGN KEY (branch_id) REFERENCES public.branches(id) ON DELETE CASCADE;
+
+
+--
+-- Name: announcements announcements_tenant_id_tenants_id_fk; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.announcements
+    ADD CONSTRAINT announcements_tenant_id_tenants_id_fk FOREIGN KEY (tenant_id) REFERENCES public.tenants(id) ON DELETE CASCADE;
+
+
+--
+-- Name: api_keys api_keys_created_by_users_id_fk; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.api_keys
+    ADD CONSTRAINT api_keys_created_by_users_id_fk FOREIGN KEY (created_by) REFERENCES public.users(id) ON DELETE SET NULL;
+
+
+--
+-- Name: api_keys api_keys_tenant_id_tenants_id_fk; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.api_keys
+    ADD CONSTRAINT api_keys_tenant_id_tenants_id_fk FOREIGN KEY (tenant_id) REFERENCES public.tenants(id) ON DELETE CASCADE;
+
+
+--
+-- Name: applications applications_academic_year_id_academic_years_id_fk; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.applications
+    ADD CONSTRAINT applications_academic_year_id_academic_years_id_fk FOREIGN KEY (academic_year_id) REFERENCES public.academic_years(id);
+
+
+--
+-- Name: applications applications_branch_id_branches_id_fk; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.applications
+    ADD CONSTRAINT applications_branch_id_branches_id_fk FOREIGN KEY (branch_id) REFERENCES public.branches(id) ON DELETE CASCADE;
+
+
+--
+-- Name: applications applications_class_id_classes_id_fk; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.applications
+    ADD CONSTRAINT applications_class_id_classes_id_fk FOREIGN KEY (class_id) REFERENCES public.classes(id);
+
+
+--
+-- Name: applications applications_enquiry_id_enquiries_id_fk; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.applications
+    ADD CONSTRAINT applications_enquiry_id_enquiries_id_fk FOREIGN KEY (enquiry_id) REFERENCES public.enquiries(id);
+
+
+--
+-- Name: applications applications_tenant_id_tenants_id_fk; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.applications
+    ADD CONSTRAINT applications_tenant_id_tenants_id_fk FOREIGN KEY (tenant_id) REFERENCES public.tenants(id) ON DELETE CASCADE;
+
+
+--
+-- Name: appointments appointments_branch_id_branches_id_fk; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.appointments
+    ADD CONSTRAINT appointments_branch_id_branches_id_fk FOREIGN KEY (branch_id) REFERENCES public.branches(id) ON DELETE CASCADE;
+
+
+--
+-- Name: appointments appointments_created_by_users_id_fk; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.appointments
+    ADD CONSTRAINT appointments_created_by_users_id_fk FOREIGN KEY (created_by) REFERENCES public.users(id);
+
+
+--
+-- Name: appointments appointments_requested_by_users_id_fk; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.appointments
+    ADD CONSTRAINT appointments_requested_by_users_id_fk FOREIGN KEY (requested_by) REFERENCES public.users(id);
+
+
+--
+-- Name: appointments appointments_tenant_id_tenants_id_fk; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.appointments
+    ADD CONSTRAINT appointments_tenant_id_tenants_id_fk FOREIGN KEY (tenant_id) REFERENCES public.tenants(id) ON DELETE CASCADE;
+
+
+--
+-- Name: assignment_submissions assignment_submissions_assignment_id_assignments_id_fk; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.assignment_submissions
+    ADD CONSTRAINT assignment_submissions_assignment_id_assignments_id_fk FOREIGN KEY (assignment_id) REFERENCES public.assignments(id) ON DELETE CASCADE;
+
+
+--
+-- Name: assignment_submissions assignment_submissions_student_id_students_id_fk; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.assignment_submissions
+    ADD CONSTRAINT assignment_submissions_student_id_students_id_fk FOREIGN KEY (student_id) REFERENCES public.students(id) ON DELETE CASCADE;
+
+
+--
+-- Name: assignment_submissions assignment_submissions_tenant_id_tenants_id_fk; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.assignment_submissions
+    ADD CONSTRAINT assignment_submissions_tenant_id_tenants_id_fk FOREIGN KEY (tenant_id) REFERENCES public.tenants(id) ON DELETE CASCADE;
+
+
+--
+-- Name: assignments assignments_branch_id_branches_id_fk; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.assignments
+    ADD CONSTRAINT assignments_branch_id_branches_id_fk FOREIGN KEY (branch_id) REFERENCES public.branches(id) ON DELETE CASCADE;
+
+
+--
+-- Name: assignments assignments_class_id_classes_id_fk; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.assignments
+    ADD CONSTRAINT assignments_class_id_classes_id_fk FOREIGN KEY (class_id) REFERENCES public.classes(id);
+
+
+--
+-- Name: assignments assignments_section_id_sections_id_fk; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.assignments
+    ADD CONSTRAINT assignments_section_id_sections_id_fk FOREIGN KEY (section_id) REFERENCES public.sections(id);
+
+
+--
+-- Name: assignments assignments_subject_id_subjects_id_fk; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.assignments
+    ADD CONSTRAINT assignments_subject_id_subjects_id_fk FOREIGN KEY (subject_id) REFERENCES public.subjects(id);
+
+
+--
+-- Name: assignments assignments_teacher_id_staff_id_fk; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.assignments
+    ADD CONSTRAINT assignments_teacher_id_staff_id_fk FOREIGN KEY (teacher_id) REFERENCES public.staff(id);
+
+
+--
+-- Name: assignments assignments_tenant_id_tenants_id_fk; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.assignments
+    ADD CONSTRAINT assignments_tenant_id_tenants_id_fk FOREIGN KEY (tenant_id) REFERENCES public.tenants(id) ON DELETE CASCADE;
+
+
+--
+-- Name: attendance attendance_branch_id_branches_id_fk; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.attendance
+    ADD CONSTRAINT attendance_branch_id_branches_id_fk FOREIGN KEY (branch_id) REFERENCES public.branches(id) ON DELETE CASCADE;
+
+
+--
+-- Name: attendance attendance_class_id_classes_id_fk; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.attendance
+    ADD CONSTRAINT attendance_class_id_classes_id_fk FOREIGN KEY (class_id) REFERENCES public.classes(id);
+
+
+--
+-- Name: attendance_records attendance_records_attendance_id_attendance_id_fk; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.attendance_records
+    ADD CONSTRAINT attendance_records_attendance_id_attendance_id_fk FOREIGN KEY (attendance_id) REFERENCES public.attendance(id) ON DELETE CASCADE;
+
+
+--
+-- Name: attendance_records attendance_records_branch_id_branches_id_fk; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.attendance_records
+    ADD CONSTRAINT attendance_records_branch_id_branches_id_fk FOREIGN KEY (branch_id) REFERENCES public.branches(id) ON DELETE CASCADE;
+
+
+--
+-- Name: attendance_records attendance_records_student_id_students_id_fk; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.attendance_records
+    ADD CONSTRAINT attendance_records_student_id_students_id_fk FOREIGN KEY (student_id) REFERENCES public.students(id) ON DELETE CASCADE;
+
+
+--
+-- Name: attendance_records attendance_records_tenant_id_tenants_id_fk; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.attendance_records
+    ADD CONSTRAINT attendance_records_tenant_id_tenants_id_fk FOREIGN KEY (tenant_id) REFERENCES public.tenants(id) ON DELETE CASCADE;
+
+
+--
+-- Name: attendance attendance_section_id_sections_id_fk; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.attendance
+    ADD CONSTRAINT attendance_section_id_sections_id_fk FOREIGN KEY (section_id) REFERENCES public.sections(id);
+
+
+--
+-- Name: attendance attendance_subject_id_subjects_id_fk; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.attendance
+    ADD CONSTRAINT attendance_subject_id_subjects_id_fk FOREIGN KEY (subject_id) REFERENCES public.subjects(id);
+
+
+--
+-- Name: attendance attendance_teacher_id_staff_id_fk; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.attendance
+    ADD CONSTRAINT attendance_teacher_id_staff_id_fk FOREIGN KEY (teacher_id) REFERENCES public.staff(id);
+
+
+--
+-- Name: attendance attendance_tenant_id_tenants_id_fk; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.attendance
+    ADD CONSTRAINT attendance_tenant_id_tenants_id_fk FOREIGN KEY (tenant_id) REFERENCES public.tenants(id) ON DELETE CASCADE;
+
+
+--
+-- Name: attendance attendance_timetable_entry_id_timetable_entries_id_fk; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.attendance
+    ADD CONSTRAINT attendance_timetable_entry_id_timetable_entries_id_fk FOREIGN KEY (timetable_entry_id) REFERENCES public.timetable_entries(id);
+
+
+--
+-- Name: branches branches_tenant_id_tenants_id_fk; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.branches
+    ADD CONSTRAINT branches_tenant_id_tenants_id_fk FOREIGN KEY (tenant_id) REFERENCES public.tenants(id) ON DELETE CASCADE;
+
+
+--
+-- Name: branding_settings branding_settings_tenant_id_tenants_id_fk; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.branding_settings
+    ADD CONSTRAINT branding_settings_tenant_id_tenants_id_fk FOREIGN KEY (tenant_id) REFERENCES public.tenants(id) ON DELETE CASCADE;
+
+
+--
+-- Name: certificate_templates certificate_templates_branch_id_branches_id_fk; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.certificate_templates
+    ADD CONSTRAINT certificate_templates_branch_id_branches_id_fk FOREIGN KEY (branch_id) REFERENCES public.branches(id) ON DELETE CASCADE;
+
+
+--
+-- Name: certificate_templates certificate_templates_tenant_id_tenants_id_fk; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.certificate_templates
+    ADD CONSTRAINT certificate_templates_tenant_id_tenants_id_fk FOREIGN KEY (tenant_id) REFERENCES public.tenants(id) ON DELETE CASCADE;
+
+
+--
+-- Name: certificates certificates_branch_id_branches_id_fk; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.certificates
+    ADD CONSTRAINT certificates_branch_id_branches_id_fk FOREIGN KEY (branch_id) REFERENCES public.branches(id) ON DELETE CASCADE;
+
+
+--
+-- Name: certificates certificates_template_id_certificate_templates_id_fk; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.certificates
+    ADD CONSTRAINT certificates_template_id_certificate_templates_id_fk FOREIGN KEY (template_id) REFERENCES public.certificate_templates(id);
+
+
+--
+-- Name: certificates certificates_tenant_id_tenants_id_fk; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.certificates
+    ADD CONSTRAINT certificates_tenant_id_tenants_id_fk FOREIGN KEY (tenant_id) REFERENCES public.tenants(id) ON DELETE CASCADE;
+
+
+--
+-- Name: circulars circulars_branch_id_branches_id_fk; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.circulars
+    ADD CONSTRAINT circulars_branch_id_branches_id_fk FOREIGN KEY (branch_id) REFERENCES public.branches(id) ON DELETE CASCADE;
+
+
+--
+-- Name: circulars circulars_tenant_id_tenants_id_fk; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.circulars
+    ADD CONSTRAINT circulars_tenant_id_tenants_id_fk FOREIGN KEY (tenant_id) REFERENCES public.tenants(id) ON DELETE CASCADE;
+
+
+--
+-- Name: class_subjects class_subjects_branch_id_branches_id_fk; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.class_subjects
+    ADD CONSTRAINT class_subjects_branch_id_branches_id_fk FOREIGN KEY (branch_id) REFERENCES public.branches(id) ON DELETE CASCADE;
+
+
+--
+-- Name: class_subjects class_subjects_class_id_classes_id_fk; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.class_subjects
+    ADD CONSTRAINT class_subjects_class_id_classes_id_fk FOREIGN KEY (class_id) REFERENCES public.classes(id) ON DELETE CASCADE;
+
+
+--
+-- Name: class_subjects class_subjects_subject_id_subjects_id_fk; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.class_subjects
+    ADD CONSTRAINT class_subjects_subject_id_subjects_id_fk FOREIGN KEY (subject_id) REFERENCES public.subjects(id) ON DELETE CASCADE;
+
+
+--
+-- Name: class_subjects class_subjects_tenant_id_tenants_id_fk; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.class_subjects
+    ADD CONSTRAINT class_subjects_tenant_id_tenants_id_fk FOREIGN KEY (tenant_id) REFERENCES public.tenants(id) ON DELETE CASCADE;
+
+
+--
+-- Name: classes classes_branch_id_branches_id_fk; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.classes
+    ADD CONSTRAINT classes_branch_id_branches_id_fk FOREIGN KEY (branch_id) REFERENCES public.branches(id) ON DELETE CASCADE;
+
+
+--
+-- Name: classes classes_tenant_id_tenants_id_fk; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.classes
+    ADD CONSTRAINT classes_tenant_id_tenants_id_fk FOREIGN KEY (tenant_id) REFERENCES public.tenants(id) ON DELETE CASCADE;
+
+
+--
+-- Name: departments departments_branch_id_branches_id_fk; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.departments
+    ADD CONSTRAINT departments_branch_id_branches_id_fk FOREIGN KEY (branch_id) REFERENCES public.branches(id) ON DELETE CASCADE;
+
+
+--
+-- Name: departments departments_tenant_id_tenants_id_fk; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.departments
+    ADD CONSTRAINT departments_tenant_id_tenants_id_fk FOREIGN KEY (tenant_id) REFERENCES public.tenants(id) ON DELETE CASCADE;
+
+
+--
+-- Name: enquiries enquiries_academic_year_id_academic_years_id_fk; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.enquiries
+    ADD CONSTRAINT enquiries_academic_year_id_academic_years_id_fk FOREIGN KEY (academic_year_id) REFERENCES public.academic_years(id);
+
+
+--
+-- Name: enquiries enquiries_branch_id_branches_id_fk; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.enquiries
+    ADD CONSTRAINT enquiries_branch_id_branches_id_fk FOREIGN KEY (branch_id) REFERENCES public.branches(id) ON DELETE CASCADE;
+
+
+--
+-- Name: enquiries enquiries_class_id_classes_id_fk; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.enquiries
+    ADD CONSTRAINT enquiries_class_id_classes_id_fk FOREIGN KEY (class_id) REFERENCES public.classes(id);
+
+
+--
+-- Name: enquiries enquiries_tenant_id_tenants_id_fk; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.enquiries
+    ADD CONSTRAINT enquiries_tenant_id_tenants_id_fk FOREIGN KEY (tenant_id) REFERENCES public.tenants(id) ON DELETE CASCADE;
+
+
+--
+-- Name: exam_results exam_results_branch_id_branches_id_fk; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.exam_results
+    ADD CONSTRAINT exam_results_branch_id_branches_id_fk FOREIGN KEY (branch_id) REFERENCES public.branches(id) ON DELETE CASCADE;
+
+
+--
+-- Name: exam_results exam_results_exam_id_exams_id_fk; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.exam_results
+    ADD CONSTRAINT exam_results_exam_id_exams_id_fk FOREIGN KEY (exam_id) REFERENCES public.exams(id) ON DELETE CASCADE;
+
+
+--
+-- Name: exam_results exam_results_student_id_students_id_fk; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.exam_results
+    ADD CONSTRAINT exam_results_student_id_students_id_fk FOREIGN KEY (student_id) REFERENCES public.students(id) ON DELETE CASCADE;
+
+
+--
+-- Name: exam_results exam_results_tenant_id_tenants_id_fk; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.exam_results
+    ADD CONSTRAINT exam_results_tenant_id_tenants_id_fk FOREIGN KEY (tenant_id) REFERENCES public.tenants(id) ON DELETE CASCADE;
+
+
+--
+-- Name: exam_schedules exam_schedules_class_id_classes_id_fk; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.exam_schedules
+    ADD CONSTRAINT exam_schedules_class_id_classes_id_fk FOREIGN KEY (class_id) REFERENCES public.classes(id);
+
+
+--
+-- Name: exam_schedules exam_schedules_exam_id_exams_id_fk; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.exam_schedules
+    ADD CONSTRAINT exam_schedules_exam_id_exams_id_fk FOREIGN KEY (exam_id) REFERENCES public.exams(id) ON DELETE CASCADE;
+
+
+--
+-- Name: exam_schedules exam_schedules_subject_id_subjects_id_fk; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.exam_schedules
+    ADD CONSTRAINT exam_schedules_subject_id_subjects_id_fk FOREIGN KEY (subject_id) REFERENCES public.subjects(id);
+
+
+--
+-- Name: exam_schedules exam_schedules_tenant_id_tenants_id_fk; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.exam_schedules
+    ADD CONSTRAINT exam_schedules_tenant_id_tenants_id_fk FOREIGN KEY (tenant_id) REFERENCES public.tenants(id) ON DELETE CASCADE;
+
+
+--
+-- Name: exams exams_academic_year_id_academic_years_id_fk; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.exams
+    ADD CONSTRAINT exams_academic_year_id_academic_years_id_fk FOREIGN KEY (academic_year_id) REFERENCES public.academic_years(id);
+
+
+--
+-- Name: exams exams_branch_id_branches_id_fk; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.exams
+    ADD CONSTRAINT exams_branch_id_branches_id_fk FOREIGN KEY (branch_id) REFERENCES public.branches(id) ON DELETE CASCADE;
+
+
+--
+-- Name: exams exams_class_id_classes_id_fk; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.exams
+    ADD CONSTRAINT exams_class_id_classes_id_fk FOREIGN KEY (class_id) REFERENCES public.classes(id);
+
+
+--
+-- Name: exams exams_tenant_id_tenants_id_fk; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.exams
+    ADD CONSTRAINT exams_tenant_id_tenants_id_fk FOREIGN KEY (tenant_id) REFERENCES public.tenants(id) ON DELETE CASCADE;
+
+
+--
+-- Name: expense_categories expense_categories_tenant_id_tenants_id_fk; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.expense_categories
+    ADD CONSTRAINT expense_categories_tenant_id_tenants_id_fk FOREIGN KEY (tenant_id) REFERENCES public.tenants(id) ON DELETE CASCADE;
+
+
+--
+-- Name: expenses expenses_branch_id_branches_id_fk; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.expenses
+    ADD CONSTRAINT expenses_branch_id_branches_id_fk FOREIGN KEY (branch_id) REFERENCES public.branches(id) ON DELETE CASCADE;
+
+
+--
+-- Name: expenses expenses_category_id_expense_categories_id_fk; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.expenses
+    ADD CONSTRAINT expenses_category_id_expense_categories_id_fk FOREIGN KEY (category_id) REFERENCES public.expense_categories(id);
+
+
+--
+-- Name: expenses expenses_tenant_id_tenants_id_fk; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.expenses
+    ADD CONSTRAINT expenses_tenant_id_tenants_id_fk FOREIGN KEY (tenant_id) REFERENCES public.tenants(id) ON DELETE CASCADE;
+
+
+--
+-- Name: fee_concessions fee_concessions_discount_id_fee_discounts_id_fk; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.fee_concessions
+    ADD CONSTRAINT fee_concessions_discount_id_fee_discounts_id_fk FOREIGN KEY (discount_id) REFERENCES public.fee_discounts(id);
+
+
+--
+-- Name: fee_concessions fee_concessions_fee_structure_item_id_fee_structure_items_id_fk; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.fee_concessions
+    ADD CONSTRAINT fee_concessions_fee_structure_item_id_fee_structure_items_id_fk FOREIGN KEY (fee_structure_item_id) REFERENCES public.fee_structure_items(id);
+
+
+--
+-- Name: fee_concessions fee_concessions_student_id_students_id_fk; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.fee_concessions
+    ADD CONSTRAINT fee_concessions_student_id_students_id_fk FOREIGN KEY (student_id) REFERENCES public.students(id) ON DELETE CASCADE;
+
+
+--
+-- Name: fee_concessions fee_concessions_tenant_id_tenants_id_fk; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.fee_concessions
+    ADD CONSTRAINT fee_concessions_tenant_id_tenants_id_fk FOREIGN KEY (tenant_id) REFERENCES public.tenants(id) ON DELETE CASCADE;
+
+
+--
+-- Name: fee_discounts fee_discounts_branch_id_branches_id_fk; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.fee_discounts
+    ADD CONSTRAINT fee_discounts_branch_id_branches_id_fk FOREIGN KEY (branch_id) REFERENCES public.branches(id) ON DELETE CASCADE;
+
+
+--
+-- Name: fee_discounts fee_discounts_tenant_id_tenants_id_fk; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.fee_discounts
+    ADD CONSTRAINT fee_discounts_tenant_id_tenants_id_fk FOREIGN KEY (tenant_id) REFERENCES public.tenants(id) ON DELETE CASCADE;
+
+
+--
+-- Name: fee_invoices fee_invoices_branch_id_branches_id_fk; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.fee_invoices
+    ADD CONSTRAINT fee_invoices_branch_id_branches_id_fk FOREIGN KEY (branch_id) REFERENCES public.branches(id) ON DELETE CASCADE;
+
+
+--
+-- Name: fee_invoices fee_invoices_student_id_students_id_fk; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.fee_invoices
+    ADD CONSTRAINT fee_invoices_student_id_students_id_fk FOREIGN KEY (student_id) REFERENCES public.students(id) ON DELETE CASCADE;
+
+
+--
+-- Name: fee_invoices fee_invoices_tenant_id_tenants_id_fk; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.fee_invoices
+    ADD CONSTRAINT fee_invoices_tenant_id_tenants_id_fk FOREIGN KEY (tenant_id) REFERENCES public.tenants(id) ON DELETE CASCADE;
+
+
+--
+-- Name: fee_receipts fee_receipts_tenant_id_tenants_id_fk; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.fee_receipts
+    ADD CONSTRAINT fee_receipts_tenant_id_tenants_id_fk FOREIGN KEY (tenant_id) REFERENCES public.tenants(id) ON DELETE CASCADE;
+
+
+--
+-- Name: fee_receipts fee_receipts_transaction_id_fee_transactions_id_fk; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.fee_receipts
+    ADD CONSTRAINT fee_receipts_transaction_id_fee_transactions_id_fk FOREIGN KEY (transaction_id) REFERENCES public.fee_transactions(id) ON DELETE CASCADE;
+
+
+--
+-- Name: fee_structure_items fee_structure_items_fee_structure_id_fee_structures_id_fk; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.fee_structure_items
+    ADD CONSTRAINT fee_structure_items_fee_structure_id_fee_structures_id_fk FOREIGN KEY (fee_structure_id) REFERENCES public.fee_structures(id) ON DELETE CASCADE;
+
+
+--
+-- Name: fee_structure_items fee_structure_items_tenant_id_tenants_id_fk; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.fee_structure_items
+    ADD CONSTRAINT fee_structure_items_tenant_id_tenants_id_fk FOREIGN KEY (tenant_id) REFERENCES public.tenants(id) ON DELETE CASCADE;
+
+
+--
+-- Name: fee_structures fee_structures_academic_year_id_academic_years_id_fk; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.fee_structures
+    ADD CONSTRAINT fee_structures_academic_year_id_academic_years_id_fk FOREIGN KEY (academic_year_id) REFERENCES public.academic_years(id);
+
+
+--
+-- Name: fee_structures fee_structures_branch_id_branches_id_fk; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.fee_structures
+    ADD CONSTRAINT fee_structures_branch_id_branches_id_fk FOREIGN KEY (branch_id) REFERENCES public.branches(id) ON DELETE CASCADE;
+
+
+--
+-- Name: fee_structures fee_structures_class_id_classes_id_fk; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.fee_structures
+    ADD CONSTRAINT fee_structures_class_id_classes_id_fk FOREIGN KEY (class_id) REFERENCES public.classes(id);
+
+
+--
+-- Name: fee_structures fee_structures_tenant_id_tenants_id_fk; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.fee_structures
+    ADD CONSTRAINT fee_structures_tenant_id_tenants_id_fk FOREIGN KEY (tenant_id) REFERENCES public.tenants(id) ON DELETE CASCADE;
+
+
+--
+-- Name: fee_transactions fee_transactions_branch_id_branches_id_fk; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.fee_transactions
+    ADD CONSTRAINT fee_transactions_branch_id_branches_id_fk FOREIGN KEY (branch_id) REFERENCES public.branches(id) ON DELETE CASCADE;
+
+
+--
+-- Name: fee_transactions fee_transactions_fee_account_id_student_fee_accounts_id_fk; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.fee_transactions
+    ADD CONSTRAINT fee_transactions_fee_account_id_student_fee_accounts_id_fk FOREIGN KEY (fee_account_id) REFERENCES public.student_fee_accounts(id);
+
+
+--
+-- Name: fee_transactions fee_transactions_student_id_students_id_fk; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.fee_transactions
+    ADD CONSTRAINT fee_transactions_student_id_students_id_fk FOREIGN KEY (student_id) REFERENCES public.students(id) ON DELETE CASCADE;
+
+
+--
+-- Name: fee_transactions fee_transactions_tenant_id_tenants_id_fk; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.fee_transactions
+    ADD CONSTRAINT fee_transactions_tenant_id_tenants_id_fk FOREIGN KEY (tenant_id) REFERENCES public.tenants(id) ON DELETE CASCADE;
+
+
+--
+-- Name: homework homework_branch_id_branches_id_fk; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.homework
+    ADD CONSTRAINT homework_branch_id_branches_id_fk FOREIGN KEY (branch_id) REFERENCES public.branches(id) ON DELETE CASCADE;
+
+
+--
+-- Name: homework homework_class_id_classes_id_fk; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.homework
+    ADD CONSTRAINT homework_class_id_classes_id_fk FOREIGN KEY (class_id) REFERENCES public.classes(id);
+
+
+--
+-- Name: homework homework_section_id_sections_id_fk; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.homework
+    ADD CONSTRAINT homework_section_id_sections_id_fk FOREIGN KEY (section_id) REFERENCES public.sections(id);
+
+
+--
+-- Name: homework homework_subject_id_subjects_id_fk; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.homework
+    ADD CONSTRAINT homework_subject_id_subjects_id_fk FOREIGN KEY (subject_id) REFERENCES public.subjects(id);
+
+
+--
+-- Name: homework_submissions homework_submissions_homework_id_homework_id_fk; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.homework_submissions
+    ADD CONSTRAINT homework_submissions_homework_id_homework_id_fk FOREIGN KEY (homework_id) REFERENCES public.homework(id) ON DELETE CASCADE;
+
+
+--
+-- Name: homework_submissions homework_submissions_student_id_students_id_fk; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.homework_submissions
+    ADD CONSTRAINT homework_submissions_student_id_students_id_fk FOREIGN KEY (student_id) REFERENCES public.students(id) ON DELETE CASCADE;
+
+
+--
+-- Name: homework_submissions homework_submissions_tenant_id_tenants_id_fk; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.homework_submissions
+    ADD CONSTRAINT homework_submissions_tenant_id_tenants_id_fk FOREIGN KEY (tenant_id) REFERENCES public.tenants(id) ON DELETE CASCADE;
+
+
+--
+-- Name: homework homework_teacher_id_staff_id_fk; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.homework
+    ADD CONSTRAINT homework_teacher_id_staff_id_fk FOREIGN KEY (teacher_id) REFERENCES public.staff(id);
+
+
+--
+-- Name: homework homework_tenant_id_tenants_id_fk; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.homework
+    ADD CONSTRAINT homework_tenant_id_tenants_id_fk FOREIGN KEY (tenant_id) REFERENCES public.tenants(id) ON DELETE CASCADE;
+
+
+--
+-- Name: id_card_templates id_card_templates_branch_id_branches_id_fk; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.id_card_templates
+    ADD CONSTRAINT id_card_templates_branch_id_branches_id_fk FOREIGN KEY (branch_id) REFERENCES public.branches(id) ON DELETE CASCADE;
+
+
+--
+-- Name: id_card_templates id_card_templates_tenant_id_tenants_id_fk; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.id_card_templates
+    ADD CONSTRAINT id_card_templates_tenant_id_tenants_id_fk FOREIGN KEY (tenant_id) REFERENCES public.tenants(id) ON DELETE CASCADE;
+
+
+--
+-- Name: import_batches import_batches_branch_id_branches_id_fk; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.import_batches
+    ADD CONSTRAINT import_batches_branch_id_branches_id_fk FOREIGN KEY (branch_id) REFERENCES public.branches(id);
+
+
+--
+-- Name: import_batches import_batches_created_by_users_id_fk; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.import_batches
+    ADD CONSTRAINT import_batches_created_by_users_id_fk FOREIGN KEY (created_by) REFERENCES public.users(id);
+
+
+--
+-- Name: import_batches import_batches_deployed_by_users_id_fk; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.import_batches
+    ADD CONSTRAINT import_batches_deployed_by_users_id_fk FOREIGN KEY (deployed_by) REFERENCES public.users(id);
+
+
+--
+-- Name: import_batches import_batches_reviewed_by_users_id_fk; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.import_batches
+    ADD CONSTRAINT import_batches_reviewed_by_users_id_fk FOREIGN KEY (reviewed_by) REFERENCES public.users(id);
+
+
+--
+-- Name: import_batches import_batches_tenant_id_tenants_id_fk; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.import_batches
+    ADD CONSTRAINT import_batches_tenant_id_tenants_id_fk FOREIGN KEY (tenant_id) REFERENCES public.tenants(id) ON DELETE CASCADE;
+
+
+--
+-- Name: income income_branch_id_branches_id_fk; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.income
+    ADD CONSTRAINT income_branch_id_branches_id_fk FOREIGN KEY (branch_id) REFERENCES public.branches(id) ON DELETE CASCADE;
+
+
+--
+-- Name: income_categories income_categories_tenant_id_tenants_id_fk; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.income_categories
+    ADD CONSTRAINT income_categories_tenant_id_tenants_id_fk FOREIGN KEY (tenant_id) REFERENCES public.tenants(id) ON DELETE CASCADE;
+
+
+--
+-- Name: income income_category_id_income_categories_id_fk; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.income
+    ADD CONSTRAINT income_category_id_income_categories_id_fk FOREIGN KEY (category_id) REFERENCES public.income_categories(id);
+
+
+--
+-- Name: income income_tenant_id_tenants_id_fk; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.income
+    ADD CONSTRAINT income_tenant_id_tenants_id_fk FOREIGN KEY (tenant_id) REFERENCES public.tenants(id) ON DELETE CASCADE;
+
+
+--
+-- Name: job_applications job_applications_job_posting_id_job_postings_id_fk; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.job_applications
+    ADD CONSTRAINT job_applications_job_posting_id_job_postings_id_fk FOREIGN KEY (job_posting_id) REFERENCES public.job_postings(id) ON DELETE CASCADE;
+
+
+--
+-- Name: job_applications job_applications_tenant_id_tenants_id_fk; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.job_applications
+    ADD CONSTRAINT job_applications_tenant_id_tenants_id_fk FOREIGN KEY (tenant_id) REFERENCES public.tenants(id) ON DELETE CASCADE;
+
+
+--
+-- Name: job_postings job_postings_branch_id_branches_id_fk; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.job_postings
+    ADD CONSTRAINT job_postings_branch_id_branches_id_fk FOREIGN KEY (branch_id) REFERENCES public.branches(id) ON DELETE CASCADE;
+
+
+--
+-- Name: job_postings job_postings_department_id_departments_id_fk; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.job_postings
+    ADD CONSTRAINT job_postings_department_id_departments_id_fk FOREIGN KEY (department_id) REFERENCES public.departments(id);
+
+
+--
+-- Name: job_postings job_postings_tenant_id_tenants_id_fk; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.job_postings
+    ADD CONSTRAINT job_postings_tenant_id_tenants_id_fk FOREIGN KEY (tenant_id) REFERENCES public.tenants(id) ON DELETE CASCADE;
+
+
+--
+-- Name: leave_requests leave_requests_branch_id_branches_id_fk; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.leave_requests
+    ADD CONSTRAINT leave_requests_branch_id_branches_id_fk FOREIGN KEY (branch_id) REFERENCES public.branches(id) ON DELETE CASCADE;
+
+
+--
+-- Name: leave_requests leave_requests_leave_type_id_leave_types_id_fk; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.leave_requests
+    ADD CONSTRAINT leave_requests_leave_type_id_leave_types_id_fk FOREIGN KEY (leave_type_id) REFERENCES public.leave_types(id);
+
+
+--
+-- Name: leave_requests leave_requests_staff_id_staff_id_fk; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.leave_requests
+    ADD CONSTRAINT leave_requests_staff_id_staff_id_fk FOREIGN KEY (staff_id) REFERENCES public.staff(id) ON DELETE CASCADE;
+
+
+--
+-- Name: leave_requests leave_requests_tenant_id_tenants_id_fk; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.leave_requests
+    ADD CONSTRAINT leave_requests_tenant_id_tenants_id_fk FOREIGN KEY (tenant_id) REFERENCES public.tenants(id) ON DELETE CASCADE;
+
+
+--
+-- Name: leave_types leave_types_tenant_id_tenants_id_fk; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.leave_types
+    ADD CONSTRAINT leave_types_tenant_id_tenants_id_fk FOREIGN KEY (tenant_id) REFERENCES public.tenants(id) ON DELETE CASCADE;
+
+
+--
+-- Name: lesson_plans lesson_plans_branch_id_branches_id_fk; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.lesson_plans
+    ADD CONSTRAINT lesson_plans_branch_id_branches_id_fk FOREIGN KEY (branch_id) REFERENCES public.branches(id) ON DELETE CASCADE;
+
+
+--
+-- Name: lesson_plans lesson_plans_class_id_classes_id_fk; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.lesson_plans
+    ADD CONSTRAINT lesson_plans_class_id_classes_id_fk FOREIGN KEY (class_id) REFERENCES public.classes(id);
+
+
+--
+-- Name: lesson_plans lesson_plans_section_id_sections_id_fk; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.lesson_plans
+    ADD CONSTRAINT lesson_plans_section_id_sections_id_fk FOREIGN KEY (section_id) REFERENCES public.sections(id);
+
+
+--
+-- Name: lesson_plans lesson_plans_subject_id_subjects_id_fk; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.lesson_plans
+    ADD CONSTRAINT lesson_plans_subject_id_subjects_id_fk FOREIGN KEY (subject_id) REFERENCES public.subjects(id);
+
+
+--
+-- Name: lesson_plans lesson_plans_teacher_id_staff_id_fk; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.lesson_plans
+    ADD CONSTRAINT lesson_plans_teacher_id_staff_id_fk FOREIGN KEY (teacher_id) REFERENCES public.staff(id);
+
+
+--
+-- Name: lesson_plans lesson_plans_tenant_id_tenants_id_fk; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.lesson_plans
+    ADD CONSTRAINT lesson_plans_tenant_id_tenants_id_fk FOREIGN KEY (tenant_id) REFERENCES public.tenants(id) ON DELETE CASCADE;
+
+
+--
+-- Name: marks marks_branch_id_branches_id_fk; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.marks
+    ADD CONSTRAINT marks_branch_id_branches_id_fk FOREIGN KEY (branch_id) REFERENCES public.branches(id) ON DELETE CASCADE;
+
+
+--
+-- Name: marks marks_exam_schedule_id_exam_schedules_id_fk; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.marks
+    ADD CONSTRAINT marks_exam_schedule_id_exam_schedules_id_fk FOREIGN KEY (exam_schedule_id) REFERENCES public.exam_schedules(id) ON DELETE CASCADE;
+
+
+--
+-- Name: marks marks_student_id_students_id_fk; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.marks
+    ADD CONSTRAINT marks_student_id_students_id_fk FOREIGN KEY (student_id) REFERENCES public.students(id) ON DELETE CASCADE;
+
+
+--
+-- Name: marks marks_tenant_id_tenants_id_fk; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.marks
+    ADD CONSTRAINT marks_tenant_id_tenants_id_fk FOREIGN KEY (tenant_id) REFERENCES public.tenants(id) ON DELETE CASCADE;
+
+
+--
+-- Name: notification_logs notification_logs_notification_id_notifications_id_fk; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.notification_logs
+    ADD CONSTRAINT notification_logs_notification_id_notifications_id_fk FOREIGN KEY (notification_id) REFERENCES public.notifications(id) ON DELETE CASCADE;
+
+
+--
+-- Name: notification_logs notification_logs_tenant_id_tenants_id_fk; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.notification_logs
+    ADD CONSTRAINT notification_logs_tenant_id_tenants_id_fk FOREIGN KEY (tenant_id) REFERENCES public.tenants(id) ON DELETE CASCADE;
+
+
+--
+-- Name: notification_templates notification_templates_tenant_id_tenants_id_fk; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.notification_templates
+    ADD CONSTRAINT notification_templates_tenant_id_tenants_id_fk FOREIGN KEY (tenant_id) REFERENCES public.tenants(id) ON DELETE CASCADE;
+
+
+--
+-- Name: notifications notifications_branch_id_branches_id_fk; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.notifications
+    ADD CONSTRAINT notifications_branch_id_branches_id_fk FOREIGN KEY (branch_id) REFERENCES public.branches(id);
+
+
+--
+-- Name: notifications notifications_tenant_id_tenants_id_fk; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.notifications
+    ADD CONSTRAINT notifications_tenant_id_tenants_id_fk FOREIGN KEY (tenant_id) REFERENCES public.tenants(id) ON DELETE CASCADE;
+
+
+--
+-- Name: parents parents_tenant_id_tenants_id_fk; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.parents
+    ADD CONSTRAINT parents_tenant_id_tenants_id_fk FOREIGN KEY (tenant_id) REFERENCES public.tenants(id) ON DELETE CASCADE;
+
+
+--
+-- Name: payroll payroll_branch_id_branches_id_fk; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.payroll
+    ADD CONSTRAINT payroll_branch_id_branches_id_fk FOREIGN KEY (branch_id) REFERENCES public.branches(id) ON DELETE CASCADE;
+
+
+--
+-- Name: payroll_salary_components payroll_salary_components_branch_id_branches_id_fk; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.payroll_salary_components
+    ADD CONSTRAINT payroll_salary_components_branch_id_branches_id_fk FOREIGN KEY (branch_id) REFERENCES public.branches(id) ON DELETE CASCADE;
+
+
+--
+-- Name: payroll_salary_components payroll_salary_components_tenant_id_tenants_id_fk; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.payroll_salary_components
+    ADD CONSTRAINT payroll_salary_components_tenant_id_tenants_id_fk FOREIGN KEY (tenant_id) REFERENCES public.tenants(id) ON DELETE CASCADE;
+
+
+--
+-- Name: payroll payroll_staff_id_staff_id_fk; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.payroll
+    ADD CONSTRAINT payroll_staff_id_staff_id_fk FOREIGN KEY (staff_id) REFERENCES public.staff(id) ON DELETE CASCADE;
+
+
+--
+-- Name: payroll payroll_tenant_id_tenants_id_fk; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.payroll
+    ADD CONSTRAINT payroll_tenant_id_tenants_id_fk FOREIGN KEY (tenant_id) REFERENCES public.tenants(id) ON DELETE CASCADE;
+
+
+--
+-- Name: performance_reviews performance_reviews_branch_id_branches_id_fk; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.performance_reviews
+    ADD CONSTRAINT performance_reviews_branch_id_branches_id_fk FOREIGN KEY (branch_id) REFERENCES public.branches(id) ON DELETE CASCADE;
+
+
+--
+-- Name: performance_reviews performance_reviews_staff_id_staff_id_fk; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.performance_reviews
+    ADD CONSTRAINT performance_reviews_staff_id_staff_id_fk FOREIGN KEY (staff_id) REFERENCES public.staff(id) ON DELETE CASCADE;
+
+
+--
+-- Name: performance_reviews performance_reviews_tenant_id_tenants_id_fk; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.performance_reviews
+    ADD CONSTRAINT performance_reviews_tenant_id_tenants_id_fk FOREIGN KEY (tenant_id) REFERENCES public.tenants(id) ON DELETE CASCADE;
+
+
+--
+-- Name: plan_features plan_features_feature_flag_id_feature_flags_id_fk; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.plan_features
+    ADD CONSTRAINT plan_features_feature_flag_id_feature_flags_id_fk FOREIGN KEY (feature_flag_id) REFERENCES public.feature_flags(id) ON DELETE CASCADE;
+
+
+--
+-- Name: plan_features plan_features_plan_id_plans_id_fk; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.plan_features
+    ADD CONSTRAINT plan_features_plan_id_plans_id_fk FOREIGN KEY (plan_id) REFERENCES public.plans(id) ON DELETE CASCADE;
+
+
+--
+-- Name: role_permissions role_permissions_permission_id_permissions_id_fk; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.role_permissions
+    ADD CONSTRAINT role_permissions_permission_id_permissions_id_fk FOREIGN KEY (permission_id) REFERENCES public.permissions(id) ON DELETE CASCADE;
+
+
+--
+-- Name: role_permissions role_permissions_role_id_roles_id_fk; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.role_permissions
+    ADD CONSTRAINT role_permissions_role_id_roles_id_fk FOREIGN KEY (role_id) REFERENCES public.roles(id) ON DELETE CASCADE;
+
+
+--
+-- Name: roles roles_tenant_id_tenants_id_fk; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.roles
+    ADD CONSTRAINT roles_tenant_id_tenants_id_fk FOREIGN KEY (tenant_id) REFERENCES public.tenants(id) ON DELETE CASCADE;
+
+
+--
+-- Name: sections sections_branch_id_branches_id_fk; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.sections
+    ADD CONSTRAINT sections_branch_id_branches_id_fk FOREIGN KEY (branch_id) REFERENCES public.branches(id) ON DELETE CASCADE;
+
+
+--
+-- Name: sections sections_class_id_classes_id_fk; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.sections
+    ADD CONSTRAINT sections_class_id_classes_id_fk FOREIGN KEY (class_id) REFERENCES public.classes(id) ON DELETE CASCADE;
+
+
+--
+-- Name: sections sections_tenant_id_tenants_id_fk; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.sections
+    ADD CONSTRAINT sections_tenant_id_tenants_id_fk FOREIGN KEY (tenant_id) REFERENCES public.tenants(id) ON DELETE CASCADE;
+
+
+--
+-- Name: staff_attendance staff_attendance_branch_id_branches_id_fk; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.staff_attendance
+    ADD CONSTRAINT staff_attendance_branch_id_branches_id_fk FOREIGN KEY (branch_id) REFERENCES public.branches(id) ON DELETE CASCADE;
+
+
+--
+-- Name: staff_attendance staff_attendance_staff_id_staff_id_fk; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.staff_attendance
+    ADD CONSTRAINT staff_attendance_staff_id_staff_id_fk FOREIGN KEY (staff_id) REFERENCES public.staff(id) ON DELETE CASCADE;
+
+
+--
+-- Name: staff_attendance staff_attendance_tenant_id_tenants_id_fk; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.staff_attendance
+    ADD CONSTRAINT staff_attendance_tenant_id_tenants_id_fk FOREIGN KEY (tenant_id) REFERENCES public.tenants(id) ON DELETE CASCADE;
+
+
+--
+-- Name: staff staff_branch_id_branches_id_fk; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.staff
+    ADD CONSTRAINT staff_branch_id_branches_id_fk FOREIGN KEY (branch_id) REFERENCES public.branches(id) ON DELETE CASCADE;
+
+
+--
+-- Name: staff staff_department_id_departments_id_fk; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.staff
+    ADD CONSTRAINT staff_department_id_departments_id_fk FOREIGN KEY (department_id) REFERENCES public.departments(id);
+
+
+--
+-- Name: staff_documents staff_documents_staff_id_staff_id_fk; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.staff_documents
+    ADD CONSTRAINT staff_documents_staff_id_staff_id_fk FOREIGN KEY (staff_id) REFERENCES public.staff(id) ON DELETE CASCADE;
+
+
+--
+-- Name: staff_documents staff_documents_tenant_id_tenants_id_fk; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.staff_documents
+    ADD CONSTRAINT staff_documents_tenant_id_tenants_id_fk FOREIGN KEY (tenant_id) REFERENCES public.tenants(id) ON DELETE CASCADE;
+
+
+--
+-- Name: staff staff_tenant_id_tenants_id_fk; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.staff
+    ADD CONSTRAINT staff_tenant_id_tenants_id_fk FOREIGN KEY (tenant_id) REFERENCES public.tenants(id) ON DELETE CASCADE;
+
+
+--
+-- Name: staff staff_user_id_users_id_fk; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.staff
+    ADD CONSTRAINT staff_user_id_users_id_fk FOREIGN KEY (user_id) REFERENCES public.users(id);
+
+
+--
+-- Name: student_academic_records student_academic_records_academic_year_id_academic_years_id_fk; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.student_academic_records
+    ADD CONSTRAINT student_academic_records_academic_year_id_academic_years_id_fk FOREIGN KEY (academic_year_id) REFERENCES public.academic_years(id);
+
+
+--
+-- Name: student_academic_records student_academic_records_branch_id_branches_id_fk; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.student_academic_records
+    ADD CONSTRAINT student_academic_records_branch_id_branches_id_fk FOREIGN KEY (branch_id) REFERENCES public.branches(id) ON DELETE CASCADE;
+
+
+--
+-- Name: student_academic_records student_academic_records_class_id_classes_id_fk; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.student_academic_records
+    ADD CONSTRAINT student_academic_records_class_id_classes_id_fk FOREIGN KEY (class_id) REFERENCES public.classes(id);
+
+
+--
+-- Name: student_academic_records student_academic_records_promoted_to_class_classes_id_fk; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.student_academic_records
+    ADD CONSTRAINT student_academic_records_promoted_to_class_classes_id_fk FOREIGN KEY (promoted_to_class) REFERENCES public.classes(id);
+
+
+--
+-- Name: student_academic_records student_academic_records_section_id_sections_id_fk; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.student_academic_records
+    ADD CONSTRAINT student_academic_records_section_id_sections_id_fk FOREIGN KEY (section_id) REFERENCES public.sections(id);
+
+
+--
+-- Name: student_academic_records student_academic_records_student_id_students_id_fk; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.student_academic_records
+    ADD CONSTRAINT student_academic_records_student_id_students_id_fk FOREIGN KEY (student_id) REFERENCES public.students(id) ON DELETE CASCADE;
+
+
+--
+-- Name: student_academic_records student_academic_records_tenant_id_tenants_id_fk; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.student_academic_records
+    ADD CONSTRAINT student_academic_records_tenant_id_tenants_id_fk FOREIGN KEY (tenant_id) REFERENCES public.tenants(id) ON DELETE CASCADE;
+
+
+--
+-- Name: student_documents student_documents_student_id_students_id_fk; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.student_documents
+    ADD CONSTRAINT student_documents_student_id_students_id_fk FOREIGN KEY (student_id) REFERENCES public.students(id) ON DELETE CASCADE;
+
+
+--
+-- Name: student_documents student_documents_tenant_id_tenants_id_fk; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.student_documents
+    ADD CONSTRAINT student_documents_tenant_id_tenants_id_fk FOREIGN KEY (tenant_id) REFERENCES public.tenants(id) ON DELETE CASCADE;
+
+
+--
+-- Name: student_fee_accounts student_fee_accounts_academic_year_id_academic_years_id_fk; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.student_fee_accounts
+    ADD CONSTRAINT student_fee_accounts_academic_year_id_academic_years_id_fk FOREIGN KEY (academic_year_id) REFERENCES public.academic_years(id);
+
+
+--
+-- Name: student_fee_accounts student_fee_accounts_branch_id_branches_id_fk; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.student_fee_accounts
+    ADD CONSTRAINT student_fee_accounts_branch_id_branches_id_fk FOREIGN KEY (branch_id) REFERENCES public.branches(id) ON DELETE CASCADE;
+
+
+--
+-- Name: student_fee_accounts student_fee_accounts_fee_structure_id_fee_structures_id_fk; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.student_fee_accounts
+    ADD CONSTRAINT student_fee_accounts_fee_structure_id_fee_structures_id_fk FOREIGN KEY (fee_structure_id) REFERENCES public.fee_structures(id);
+
+
+--
+-- Name: student_fee_accounts student_fee_accounts_student_id_students_id_fk; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.student_fee_accounts
+    ADD CONSTRAINT student_fee_accounts_student_id_students_id_fk FOREIGN KEY (student_id) REFERENCES public.students(id) ON DELETE CASCADE;
+
+
+--
+-- Name: student_fee_accounts student_fee_accounts_tenant_id_tenants_id_fk; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.student_fee_accounts
+    ADD CONSTRAINT student_fee_accounts_tenant_id_tenants_id_fk FOREIGN KEY (tenant_id) REFERENCES public.tenants(id) ON DELETE CASCADE;
+
+
+--
+-- Name: student_parents student_parents_parent_id_parents_id_fk; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.student_parents
+    ADD CONSTRAINT student_parents_parent_id_parents_id_fk FOREIGN KEY (parent_id) REFERENCES public.parents(id) ON DELETE CASCADE;
+
+
+--
+-- Name: student_parents student_parents_student_id_students_id_fk; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.student_parents
+    ADD CONSTRAINT student_parents_student_id_students_id_fk FOREIGN KEY (student_id) REFERENCES public.students(id) ON DELETE CASCADE;
+
+
+--
+-- Name: student_parents student_parents_tenant_id_tenants_id_fk; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.student_parents
+    ADD CONSTRAINT student_parents_tenant_id_tenants_id_fk FOREIGN KEY (tenant_id) REFERENCES public.tenants(id) ON DELETE CASCADE;
+
+
+--
+-- Name: students students_application_id_applications_id_fk; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.students
+    ADD CONSTRAINT students_application_id_applications_id_fk FOREIGN KEY (application_id) REFERENCES public.applications(id);
+
+
+--
+-- Name: students students_branch_id_branches_id_fk; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.students
+    ADD CONSTRAINT students_branch_id_branches_id_fk FOREIGN KEY (branch_id) REFERENCES public.branches(id) ON DELETE CASCADE;
+
+
+--
+-- Name: students students_tenant_id_tenants_id_fk; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.students
+    ADD CONSTRAINT students_tenant_id_tenants_id_fk FOREIGN KEY (tenant_id) REFERENCES public.tenants(id) ON DELETE CASCADE;
+
+
+--
+-- Name: subjects subjects_branch_id_branches_id_fk; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.subjects
+    ADD CONSTRAINT subjects_branch_id_branches_id_fk FOREIGN KEY (branch_id) REFERENCES public.branches(id) ON DELETE CASCADE;
+
+
+--
+-- Name: subjects subjects_tenant_id_tenants_id_fk; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.subjects
+    ADD CONSTRAINT subjects_tenant_id_tenants_id_fk FOREIGN KEY (tenant_id) REFERENCES public.tenants(id) ON DELETE CASCADE;
+
+
+--
+-- Name: subscriptions subscriptions_plan_id_plans_id_fk; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.subscriptions
+    ADD CONSTRAINT subscriptions_plan_id_plans_id_fk FOREIGN KEY (plan_id) REFERENCES public.plans(id);
+
+
+--
+-- Name: subscriptions subscriptions_tenant_id_tenants_id_fk; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.subscriptions
+    ADD CONSTRAINT subscriptions_tenant_id_tenants_id_fk FOREIGN KEY (tenant_id) REFERENCES public.tenants(id) ON DELETE CASCADE;
+
+
+--
+-- Name: teacher_subjects teacher_subjects_branch_id_branches_id_fk; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.teacher_subjects
+    ADD CONSTRAINT teacher_subjects_branch_id_branches_id_fk FOREIGN KEY (branch_id) REFERENCES public.branches(id) ON DELETE CASCADE;
+
+
+--
+-- Name: teacher_subjects teacher_subjects_class_id_classes_id_fk; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.teacher_subjects
+    ADD CONSTRAINT teacher_subjects_class_id_classes_id_fk FOREIGN KEY (class_id) REFERENCES public.classes(id) ON DELETE CASCADE;
+
+
+--
+-- Name: teacher_subjects teacher_subjects_section_id_sections_id_fk; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.teacher_subjects
+    ADD CONSTRAINT teacher_subjects_section_id_sections_id_fk FOREIGN KEY (section_id) REFERENCES public.sections(id) ON DELETE CASCADE;
+
+
+--
+-- Name: teacher_subjects teacher_subjects_subject_id_subjects_id_fk; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.teacher_subjects
+    ADD CONSTRAINT teacher_subjects_subject_id_subjects_id_fk FOREIGN KEY (subject_id) REFERENCES public.subjects(id) ON DELETE CASCADE;
+
+
+--
+-- Name: teacher_subjects teacher_subjects_tenant_id_tenants_id_fk; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.teacher_subjects
+    ADD CONSTRAINT teacher_subjects_tenant_id_tenants_id_fk FOREIGN KEY (tenant_id) REFERENCES public.tenants(id) ON DELETE CASCADE;
+
+
+--
+-- Name: tenant_features tenant_features_feature_flag_id_feature_flags_id_fk; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.tenant_features
+    ADD CONSTRAINT tenant_features_feature_flag_id_feature_flags_id_fk FOREIGN KEY (feature_flag_id) REFERENCES public.feature_flags(id) ON DELETE CASCADE;
+
+
+--
+-- Name: tenant_features tenant_features_tenant_id_tenants_id_fk; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.tenant_features
+    ADD CONSTRAINT tenant_features_tenant_id_tenants_id_fk FOREIGN KEY (tenant_id) REFERENCES public.tenants(id) ON DELETE CASCADE;
+
+
+--
+-- Name: tenant_settings tenant_settings_tenant_id_tenants_id_fk; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.tenant_settings
+    ADD CONSTRAINT tenant_settings_tenant_id_tenants_id_fk FOREIGN KEY (tenant_id) REFERENCES public.tenants(id) ON DELETE CASCADE;
+
+
+--
+-- Name: timetable_entries timetable_entries_subject_id_subjects_id_fk; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.timetable_entries
+    ADD CONSTRAINT timetable_entries_subject_id_subjects_id_fk FOREIGN KEY (subject_id) REFERENCES public.subjects(id);
+
+
+--
+-- Name: timetable_entries timetable_entries_teacher_id_staff_id_fk; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.timetable_entries
+    ADD CONSTRAINT timetable_entries_teacher_id_staff_id_fk FOREIGN KEY (teacher_id) REFERENCES public.staff(id);
+
+
+--
+-- Name: timetable_entries timetable_entries_tenant_id_tenants_id_fk; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.timetable_entries
+    ADD CONSTRAINT timetable_entries_tenant_id_tenants_id_fk FOREIGN KEY (tenant_id) REFERENCES public.tenants(id) ON DELETE CASCADE;
+
+
+--
+-- Name: timetable_entries timetable_entries_timetable_id_timetables_id_fk; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.timetable_entries
+    ADD CONSTRAINT timetable_entries_timetable_id_timetables_id_fk FOREIGN KEY (timetable_id) REFERENCES public.timetables(id) ON DELETE CASCADE;
+
+
+--
+-- Name: timetables timetables_academic_year_id_academic_years_id_fk; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.timetables
+    ADD CONSTRAINT timetables_academic_year_id_academic_years_id_fk FOREIGN KEY (academic_year_id) REFERENCES public.academic_years(id);
+
+
+--
+-- Name: timetables timetables_branch_id_branches_id_fk; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.timetables
+    ADD CONSTRAINT timetables_branch_id_branches_id_fk FOREIGN KEY (branch_id) REFERENCES public.branches(id) ON DELETE CASCADE;
+
+
+--
+-- Name: timetables timetables_class_id_classes_id_fk; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.timetables
+    ADD CONSTRAINT timetables_class_id_classes_id_fk FOREIGN KEY (class_id) REFERENCES public.classes(id);
+
+
+--
+-- Name: timetables timetables_section_id_sections_id_fk; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.timetables
+    ADD CONSTRAINT timetables_section_id_sections_id_fk FOREIGN KEY (section_id) REFERENCES public.sections(id);
+
+
+--
+-- Name: timetables timetables_tenant_id_tenants_id_fk; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.timetables
+    ADD CONSTRAINT timetables_tenant_id_tenants_id_fk FOREIGN KEY (tenant_id) REFERENCES public.tenants(id) ON DELETE CASCADE;
+
+
+--
+-- Name: user_roles user_roles_assigned_by_users_id_fk; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.user_roles
+    ADD CONSTRAINT user_roles_assigned_by_users_id_fk FOREIGN KEY (assigned_by) REFERENCES public.users(id);
+
+
+--
+-- Name: user_roles user_roles_branch_id_branches_id_fk; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.user_roles
+    ADD CONSTRAINT user_roles_branch_id_branches_id_fk FOREIGN KEY (branch_id) REFERENCES public.branches(id) ON DELETE CASCADE;
+
+
+--
+-- Name: user_roles user_roles_role_id_roles_id_fk; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.user_roles
+    ADD CONSTRAINT user_roles_role_id_roles_id_fk FOREIGN KEY (role_id) REFERENCES public.roles(id) ON DELETE CASCADE;
+
+
+--
+-- Name: user_roles user_roles_tenant_id_tenants_id_fk; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.user_roles
+    ADD CONSTRAINT user_roles_tenant_id_tenants_id_fk FOREIGN KEY (tenant_id) REFERENCES public.tenants(id) ON DELETE CASCADE;
+
+
+--
+-- Name: user_roles user_roles_user_id_users_id_fk; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.user_roles
+    ADD CONSTRAINT user_roles_user_id_users_id_fk FOREIGN KEY (user_id) REFERENCES public.users(id) ON DELETE CASCADE;
+
+
+--
+-- Name: user_sessions user_sessions_tenant_id_tenants_id_fk; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.user_sessions
+    ADD CONSTRAINT user_sessions_tenant_id_tenants_id_fk FOREIGN KEY (tenant_id) REFERENCES public.tenants(id) ON DELETE CASCADE;
+
+
+--
+-- Name: user_sessions user_sessions_user_id_users_id_fk; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.user_sessions
+    ADD CONSTRAINT user_sessions_user_id_users_id_fk FOREIGN KEY (user_id) REFERENCES public.users(id) ON DELETE CASCADE;
+
+
+--
+-- Name: users users_tenant_id_tenants_id_fk; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.users
+    ADD CONSTRAINT users_tenant_id_tenants_id_fk FOREIGN KEY (tenant_id) REFERENCES public.tenants(id) ON DELETE CASCADE;
+
+
+--
+-- Name: visitors visitors_branch_id_branches_id_fk; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.visitors
+    ADD CONSTRAINT visitors_branch_id_branches_id_fk FOREIGN KEY (branch_id) REFERENCES public.branches(id) ON DELETE CASCADE;
+
+
+--
+-- Name: visitors visitors_tenant_id_tenants_id_fk; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.visitors
+    ADD CONSTRAINT visitors_tenant_id_tenants_id_fk FOREIGN KEY (tenant_id) REFERENCES public.tenants(id) ON DELETE CASCADE;
+
+
+--
+-- Name: webhook_deliveries webhook_deliveries_tenant_id_tenants_id_fk; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.webhook_deliveries
+    ADD CONSTRAINT webhook_deliveries_tenant_id_tenants_id_fk FOREIGN KEY (tenant_id) REFERENCES public.tenants(id) ON DELETE CASCADE;
+
+
+--
+-- Name: webhook_deliveries webhook_deliveries_webhook_endpoint_id_webhook_endpoints_id_fk; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.webhook_deliveries
+    ADD CONSTRAINT webhook_deliveries_webhook_endpoint_id_webhook_endpoints_id_fk FOREIGN KEY (webhook_endpoint_id) REFERENCES public.webhook_endpoints(id) ON DELETE CASCADE;
+
+
+--
+-- Name: webhook_endpoints webhook_endpoints_created_by_users_id_fk; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.webhook_endpoints
+    ADD CONSTRAINT webhook_endpoints_created_by_users_id_fk FOREIGN KEY (created_by) REFERENCES public.users(id) ON DELETE SET NULL;
+
+
+--
+-- Name: webhook_endpoints webhook_endpoints_tenant_id_tenants_id_fk; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.webhook_endpoints
+    ADD CONSTRAINT webhook_endpoints_tenant_id_tenants_id_fk FOREIGN KEY (tenant_id) REFERENCES public.tenants(id) ON DELETE CASCADE;
+
+
+--
+-- PostgreSQL database dump complete
+--
+
+
 
 -- ============================================================================
--- PART 2: BRANCHES & LOCATIONS
+-- PART 99: SEED DATA (system roles, plans, feature flags)
 -- ============================================================================
-
-CREATE TABLE branches (
-    id              UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    tenant_id       UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
-    name            VARCHAR(255) NOT NULL,
-    code            VARCHAR(50) NOT NULL,
-    email           VARCHAR(255),
-    phone           VARCHAR(20),
-    address         TEXT,
-    city            VARCHAR(100),
-    state           VARCHAR(100),
-    pincode         VARCHAR(10),
-    principal_id    UUID,
-    status          VARCHAR(20) DEFAULT 'active',
-    established_date DATE,
-    metadata        JSONB DEFAULT '{}',
-    created_at      TIMESTAMPTZ DEFAULT NOW(),
-    updated_at      TIMESTAMPTZ DEFAULT NOW(),
-    deleted_at      TIMESTAMPTZ,
-    UNIQUE(tenant_id, code)
-);
-
-CREATE INDEX idx_branches_tenant ON branches(tenant_id);
-CREATE INDEX idx_branches_principal ON branches(principal_id);
-
--- ============================================================================
--- PART 3: USERS, ROLES & AUTHENTICATION
--- ============================================================================
-
-CREATE TABLE users (
-    id              UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    tenant_id       UUID REFERENCES tenants(id) ON DELETE CASCADE,
-    email           VARCHAR(255),
-    phone           VARCHAR(20),
-    password_hash   VARCHAR(255) NOT NULL,
-    first_name      VARCHAR(100) NOT NULL,
-    last_name       VARCHAR(100) NOT NULL,
-    avatar_url      TEXT,
-    gender          gender_type,
-    date_of_birth   DATE,
-    address         TEXT,
-    is_superadmin   BOOLEAN DEFAULT FALSE,
-    is_active       BOOLEAN DEFAULT TRUE,
-    status          user_status DEFAULT 'active',
-    two_factor_enabled BOOLEAN DEFAULT FALSE,
-    two_factor_secret VARCHAR(255),
-    last_login_at   TIMESTAMPTZ,
-    last_login_ip   VARCHAR(45),
-    login_attempts  INTEGER DEFAULT 0,
-    locked_until    TIMESTAMPTZ,
-    password_changed_at TIMESTAMPTZ DEFAULT NOW(),
-    metadata        JSONB DEFAULT '{}',
-    created_at      TIMESTAMPTZ DEFAULT NOW(),
-    updated_at      TIMESTAMPTZ DEFAULT NOW(),
-    deleted_at      TIMESTAMPTZ
-);
-
-CREATE INDEX idx_users_tenant ON users(tenant_id);
-CREATE INDEX idx_users_email ON users(email) WHERE deleted_at IS NULL;
-CREATE INDEX idx_users_phone ON users(phone) WHERE deleted_at IS NULL;
-CREATE UNIQUE INDEX idx_users_tenant_email ON users(tenant_id, email) WHERE tenant_id IS NOT NULL AND deleted_at IS NULL;
-CREATE UNIQUE INDEX idx_users_tenant_phone ON users(tenant_id, phone) WHERE tenant_id IS NOT NULL AND deleted_at IS NULL;
-
-CREATE TABLE roles (
-    id              UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    tenant_id       UUID REFERENCES tenants(id) ON DELETE CASCADE,
-    name            VARCHAR(100) NOT NULL,
-    slug            VARCHAR(100) NOT NULL,
-    description     TEXT,
-    is_system       BOOLEAN DEFAULT FALSE,
-    hierarchy_level INTEGER DEFAULT 0,
-    created_at      TIMESTAMPTZ DEFAULT NOW(),
-    updated_at      TIMESTAMPTZ DEFAULT NOW(),
-    UNIQUE(tenant_id, slug)
-);
-
-CREATE INDEX idx_roles_tenant ON roles(tenant_id);
-
-CREATE TABLE permissions (
-    id              UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    name            VARCHAR(100) NOT NULL,
-    slug            VARCHAR(100) UNIQUE NOT NULL,
-    module          VARCHAR(100) NOT NULL,
-    description     TEXT,
-    is_system       BOOLEAN DEFAULT FALSE,
-    created_at      TIMESTAMPTZ DEFAULT NOW()
-);
-
-CREATE INDEX idx_permissions_module ON permissions(module);
-
-CREATE TABLE role_permissions (
-    id              UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    role_id         UUID NOT NULL REFERENCES roles(id) ON DELETE CASCADE,
-    permission_id   UUID NOT NULL REFERENCES permissions(id) ON DELETE CASCADE,
-    created_at      TIMESTAMPTZ DEFAULT NOW(),
-    UNIQUE(role_id, permission_id)
-);
-
-CREATE TABLE user_roles (
-    id              UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    user_id         UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    role_id         UUID NOT NULL REFERENCES roles(id) ON DELETE CASCADE,
-    branch_id       UUID REFERENCES branches(id) ON DELETE CASCADE,
-    assigned_by     UUID REFERENCES users(id),
-    created_at      TIMESTAMPTZ DEFAULT NOW(),
-    UNIQUE(user_id, role_id, branch_id)
-);
-
-CREATE INDEX idx_user_roles_user ON user_roles(user_id);
-CREATE INDEX idx_user_roles_branch ON user_roles(branch_id);
-
-CREATE TABLE user_sessions (
-    id              UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    user_id         UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    tenant_id       UUID REFERENCES tenants(id) ON DELETE CASCADE,
-    access_token    TEXT NOT NULL,
-    refresh_token   TEXT NOT NULL,
-    ip_address      VARCHAR(45),
-    user_agent      TEXT,
-    device_info     JSONB DEFAULT '{}',
-    device_type     VARCHAR(50),
-    is_active       BOOLEAN DEFAULT TRUE,
-    expires_at      TIMESTAMPTZ NOT NULL,
-    refresh_expires_at TIMESTAMPTZ NOT NULL,
-    last_activity   TIMESTAMPTZ DEFAULT NOW(),
-    created_at      TIMESTAMPTZ DEFAULT NOW()
-);
-
-CREATE INDEX idx_sessions_user ON user_sessions(user_id);
-CREATE INDEX idx_sessions_refresh ON user_sessions(refresh_token);
-CREATE INDEX idx_sessions_active ON user_sessions(expires_at) WHERE is_active = TRUE;
-
--- ============================================================================
--- PART 4: ACADEMIC STRUCTURE
--- ============================================================================
-
-CREATE TABLE academic_years (
-    id              UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    tenant_id       UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
-    branch_id       UUID NOT NULL REFERENCES branches(id) ON DELETE CASCADE,
-    name            VARCHAR(100) NOT NULL,
-    start_date      DATE NOT NULL,
-    end_date        DATE NOT NULL,
-    is_current      BOOLEAN DEFAULT FALSE,
-    is_active       BOOLEAN DEFAULT TRUE,
-    created_at      TIMESTAMPTZ DEFAULT NOW(),
-    updated_at      TIMESTAMPTZ DEFAULT NOW(),
-    UNIQUE(tenant_id, branch_id, name)
-);
-
-CREATE INDEX idx_academic_years_branch ON academic_years(branch_id);
-CREATE INDEX idx_academic_years_current ON academic_years(branch_id) WHERE is_current = TRUE;
-
-CREATE TABLE departments (
-    id              UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    tenant_id       UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
-    branch_id       UUID NOT NULL REFERENCES branches(id) ON DELETE CASCADE,
-    name            VARCHAR(100) NOT NULL,
-    code            VARCHAR(50),
-    description     TEXT,
-    hod_id          UUID,
-    is_active       BOOLEAN DEFAULT TRUE,
-    created_at      TIMESTAMPTZ DEFAULT NOW(),
-    updated_at      TIMESTAMPTZ DEFAULT NOW(),
-    deleted_at      TIMESTAMPTZ,
-    UNIQUE(tenant_id, branch_id, name)
-);
-
-CREATE INDEX idx_departments_branch ON departments(branch_id);
-
-CREATE TABLE classes (
-    id              UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    tenant_id       UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
-    branch_id       UUID NOT NULL REFERENCES branches(id) ON DELETE CASCADE,
-    name            VARCHAR(100) NOT NULL,
-    code            VARCHAR(50),
-    description     TEXT,
-    display_order   INTEGER DEFAULT 0,
-    is_active       BOOLEAN DEFAULT TRUE,
-    created_at      TIMESTAMPTZ DEFAULT NOW(),
-    updated_at      TIMESTAMPTZ DEFAULT NOW(),
-    deleted_at      TIMESTAMPTZ,
-    UNIQUE(tenant_id, branch_id, name)
-);
-
-CREATE INDEX idx_classes_branch ON classes(branch_id);
-
-CREATE TABLE sections (
-    id              UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    tenant_id       UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
-    branch_id       UUID NOT NULL REFERENCES branches(id) ON DELETE CASCADE,
-    class_id        UUID NOT NULL REFERENCES classes(id) ON DELETE CASCADE,
-    name            VARCHAR(100) NOT NULL,
-    code            VARCHAR(50),
-    capacity        INTEGER DEFAULT 0,
-    room_number     VARCHAR(50),
-    is_active       BOOLEAN DEFAULT TRUE,
-    created_at      TIMESTAMPTZ DEFAULT NOW(),
-    updated_at      TIMESTAMPTZ DEFAULT NOW(),
-    deleted_at      TIMESTAMPTZ,
-    UNIQUE(tenant_id, branch_id, class_id, name)
-);
-
-CREATE INDEX idx_sections_class ON sections(class_id);
-
-CREATE TABLE subjects (
-    id              UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    tenant_id       UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
-    branch_id       UUID NOT NULL REFERENCES branches(id) ON DELETE CASCADE,
-    name            VARCHAR(100) NOT NULL,
-    code            VARCHAR(50),
-    subject_type    subject_type DEFAULT 'theory',
-    description     TEXT,
-    is_language     BOOLEAN DEFAULT FALSE,
-    is_active       BOOLEAN DEFAULT TRUE,
-    created_at      TIMESTAMPTZ DEFAULT NOW(),
-    updated_at      TIMESTAMPTZ DEFAULT NOW(),
-    deleted_at      TIMESTAMPTZ,
-    UNIQUE(tenant_id, branch_id, code)
-);
-
-CREATE INDEX idx_subjects_branch ON subjects(branch_id);
-
-CREATE TABLE class_subjects (
-    id              UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    tenant_id       UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
-    branch_id       UUID NOT NULL REFERENCES branches(id) ON DELETE CASCADE,
-    class_id        UUID NOT NULL REFERENCES classes(id) ON DELETE CASCADE,
-    subject_id      UUID NOT NULL REFERENCES subjects(id) ON DELETE CASCADE,
-    is_compulsory   BOOLEAN DEFAULT TRUE,
-    max_marks       INTEGER DEFAULT 100,
-    pass_marks      INTEGER DEFAULT 33,
-    credit_hours    DECIMAL(4,1) DEFAULT 0,
-    display_order   INTEGER DEFAULT 0,
-    created_at      TIMESTAMPTZ DEFAULT NOW(),
-    UNIQUE(tenant_id, branch_id, class_id, subject_id)
-);
-
-CREATE INDEX idx_class_subjects_class ON class_subjects(class_id);
-
-CREATE TABLE teacher_subjects (
-    id              UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    tenant_id       UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
-    branch_id       UUID NOT NULL REFERENCES branches(id) ON DELETE CASCADE,
-    teacher_id      UUID NOT NULL,
-    subject_id      UUID NOT NULL REFERENCES subjects(id) ON DELETE CASCADE,
-    class_id        UUID NOT NULL REFERENCES classes(id) ON DELETE CASCADE,
-    section_id      UUID REFERENCES sections(id) ON DELETE CASCADE,
-    is_class_teacher BOOLEAN DEFAULT FALSE,
-    created_at      TIMESTAMPTZ DEFAULT NOW(),
-    UNIQUE(tenant_id, branch_id, teacher_id, subject_id, class_id, section_id)
-);
-
-CREATE INDEX idx_teacher_subjects_teacher ON teacher_subjects(teacher_id);
-
--- ============================================================================
--- PART 5: ADMISSIONS & STUDENTS
--- ============================================================================
-
-CREATE TABLE enquiries (
-    id              UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    tenant_id       UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
-    branch_id       UUID NOT NULL REFERENCES branches(id) ON DELETE CASCADE,
-    student_name    VARCHAR(255) NOT NULL,
-    date_of_birth   DATE,
-    gender          gender_type,
-    parent_name     VARCHAR(255),
-    parent_phone    VARCHAR(20),
-    parent_email    VARCHAR(255),
-    address         TEXT,
-    class_id        UUID REFERENCES classes(id),
-    academic_year_id UUID REFERENCES academic_years(id),
-    source          VARCHAR(100),
-    status          VARCHAR(50) DEFAULT 'new',
-    remarks         TEXT,
-    follow_up_date  DATE,
-    assigned_to     UUID,
-    converted_to_application BOOLEAN DEFAULT FALSE,
-    metadata        JSONB DEFAULT '{}',
-    created_at      TIMESTAMPTZ DEFAULT NOW(),
-    updated_at      TIMESTAMPTZ DEFAULT NOW()
-);
-
-CREATE INDEX idx_enquiries_branch ON enquiries(branch_id);
-CREATE INDEX idx_enquiries_status ON enquiries(status);
-
-CREATE TABLE applications (
-    id                  UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    tenant_id           UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
-    branch_id           UUID NOT NULL REFERENCES branches(id) ON DELETE CASCADE,
-    application_number  VARCHAR(50) NOT NULL,
-    enquiry_id          UUID REFERENCES enquiries(id),
-    student_first_name  VARCHAR(100) NOT NULL,
-    student_last_name   VARCHAR(100) NOT NULL,
-    date_of_birth       DATE,
-    gender              gender_type,
-    nationality         VARCHAR(100) DEFAULT 'Indian',
-    religion            VARCHAR(100),
-    caste               VARCHAR(100),
-    category            VARCHAR(50),
-    address             TEXT,
-    city                VARCHAR(100),
-    state               VARCHAR(100),
-    pincode             VARCHAR(10),
-    phone               VARCHAR(20),
-    email               VARCHAR(255),
-    blood_group         VARCHAR(5),
-    father_name         VARCHAR(255),
-    father_phone        VARCHAR(20),
-    father_email        VARCHAR(255),
-    father_occupation   VARCHAR(100),
-    mother_name         VARCHAR(255),
-    mother_phone        VARCHAR(20),
-    mother_email        VARCHAR(255),
-    mother_occupation   VARCHAR(100),
-    guardian_name       VARCHAR(255),
-    guardian_relation   VARCHAR(50),
-    guardian_phone      VARCHAR(20),
-    previous_school     VARCHAR(255),
-    previous_class      VARCHAR(50),
-    class_id            UUID REFERENCES classes(id),
-    academic_year_id    UUID REFERENCES academic_years(id),
-    documents           JSONB DEFAULT '{}',
-    status              VARCHAR(50) DEFAULT 'pending',
-    review_remarks      TEXT,
-    reviewed_by         UUID,
-    reviewed_at         TIMESTAMPTZ,
-    admitted            BOOLEAN DEFAULT FALSE,
-    metadata            JSONB DEFAULT '{}',
-    created_at          TIMESTAMPTZ DEFAULT NOW(),
-    updated_at          TIMESTAMPTZ DEFAULT NOW(),
-    UNIQUE(tenant_id, branch_id, application_number)
-);
-
-CREATE INDEX idx_applications_branch ON applications(branch_id);
-CREATE INDEX idx_applications_status ON applications(status);
-CREATE INDEX idx_applications_class ON applications(class_id);
-
-CREATE TABLE students (
-    id                  UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    tenant_id           UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
-    branch_id           UUID NOT NULL REFERENCES branches(id) ON DELETE CASCADE,
-    admission_number    VARCHAR(50) NOT NULL,
-    roll_number         VARCHAR(50),
-    application_id      UUID REFERENCES applications(id),
-    first_name          VARCHAR(100) NOT NULL,
-    middle_name         VARCHAR(100),
-    last_name           VARCHAR(100) NOT NULL,
-    date_of_birth       DATE,
-    gender              gender_type,
-    blood_group         VARCHAR(5),
-    nationality         VARCHAR(100) DEFAULT 'Indian',
-    religion            VARCHAR(100),
-    caste               VARCHAR(100),
-    category            VARCHAR(50),
-    address             TEXT,
-    city                VARCHAR(100),
-    state               VARCHAR(100),
-    pincode             VARCHAR(10),
-    phone               VARCHAR(20),
-    email               VARCHAR(255),
-    profile_photo_url   TEXT,
-    aadhar_number       VARCHAR(20),
-    samagra_id          VARCHAR(50),
-    is_active           BOOLEAN DEFAULT TRUE,
-    status              VARCHAR(50) DEFAULT 'active',
-    admission_date      DATE,
-    leaving_date        DATE,
-    leaving_reason      TEXT,
-    metadata            JSONB DEFAULT '{}',
-    created_at          TIMESTAMPTZ DEFAULT NOW(),
-    updated_at          TIMESTAMPTZ DEFAULT NOW(),
-    deleted_at          TIMESTAMPTZ,
-    UNIQUE(tenant_id, branch_id, admission_number)
-);
-
-CREATE INDEX idx_students_branch ON students(branch_id);
-CREATE INDEX idx_students_active ON students(branch_id) WHERE is_active = TRUE;
-CREATE INDEX idx_students_name ON students(first_name, last_name);
-
-CREATE TABLE student_documents (
-    id              UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    tenant_id       UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
-    student_id      UUID NOT NULL REFERENCES students(id) ON DELETE CASCADE,
-    document_type   VARCHAR(100) NOT NULL,
-    document_name   VARCHAR(255),
-    document_number VARCHAR(100),
-    file_url        TEXT NOT NULL,
-    file_size       INTEGER,
-    mime_type       VARCHAR(100),
-    is_verified     BOOLEAN DEFAULT FALSE,
-    verified_at     TIMESTAMPTZ,
-    verified_by     UUID,
-    created_at      TIMESTAMPTZ DEFAULT NOW(),
-    updated_at      TIMESTAMPTZ DEFAULT NOW()
-);
-
-CREATE INDEX idx_student_docs_student ON student_documents(student_id);
-
-CREATE TABLE parents (
-    id              UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    tenant_id       UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
-    name            VARCHAR(255) NOT NULL,
-    relationship    VARCHAR(50) NOT NULL,
-    phone           VARCHAR(20),
-    email           VARCHAR(255),
-    occupation      VARCHAR(100),
-    income          DECIMAL(10,2),
-    address         TEXT,
-    is_primary      BOOLEAN DEFAULT FALSE,
-    is_active       BOOLEAN DEFAULT TRUE,
-    created_at      TIMESTAMPTZ DEFAULT NOW(),
-    updated_at      TIMESTAMPTZ DEFAULT NOW()
-);
-
-CREATE INDEX idx_parents_tenant ON parents(tenant_id);
-
-CREATE TABLE student_parents (
-    id              UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    student_id      UUID NOT NULL REFERENCES students(id) ON DELETE CASCADE,
-    parent_id       UUID NOT NULL REFERENCES parents(id) ON DELETE CASCADE,
-    relationship    VARCHAR(50) NOT NULL,
-    is_primary      BOOLEAN DEFAULT FALSE,
-    is_emergency_contact BOOLEAN DEFAULT FALSE,
-    created_at      TIMESTAMPTZ DEFAULT NOW(),
-    UNIQUE(student_id, parent_id)
-);
-
-CREATE INDEX idx_student_parents_student ON student_parents(student_id);
-
-CREATE TABLE student_academic_records (
-    id                  UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    tenant_id           UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
-    branch_id           UUID NOT NULL REFERENCES branches(id) ON DELETE CASCADE,
-    student_id          UUID NOT NULL REFERENCES students(id) ON DELETE CASCADE,
-    class_id            UUID NOT NULL REFERENCES classes(id),
-    section_id          UUID REFERENCES sections(id),
-    academic_year_id    UUID NOT NULL REFERENCES academic_years(id),
-    roll_number         VARCHAR(50),
-    is_promoted         BOOLEAN DEFAULT FALSE,
-    promoted_to_class   UUID REFERENCES classes(id),
-    promotion_date      DATE,
-    created_at          TIMESTAMPTZ DEFAULT NOW(),
-    updated_at          TIMESTAMPTZ DEFAULT NOW(),
-    UNIQUE(student_id, academic_year_id)
-);
-
-CREATE INDEX idx_student_academic_records_student ON student_academic_records(student_id);
-CREATE INDEX idx_student_academic_records_class ON student_academic_records(class_id);
-
--- ============================================================================
--- PART 6: STAFF MANAGEMENT
--- ============================================================================
-
-CREATE TABLE staff (
-    id                  UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    tenant_id           UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
-    branch_id           UUID NOT NULL REFERENCES branches(id) ON DELETE CASCADE,
-    user_id             UUID REFERENCES users(id),
-    employee_code       VARCHAR(50) NOT NULL,
-    first_name          VARCHAR(100) NOT NULL,
-    last_name           VARCHAR(100) NOT NULL,
-    date_of_birth       DATE,
-    gender              gender_type,
-    blood_group         VARCHAR(5),
-    phone               VARCHAR(20),
-    email               VARCHAR(255),
-    address             TEXT,
-    city                VARCHAR(100),
-    state               VARCHAR(100),
-    pincode             VARCHAR(10),
-    qualification       TEXT,
-    experience_years    DECIMAL(4,1),
-    joining_date        DATE,
-    employment_type     employment_type DEFAULT 'permanent',
-    designation         VARCHAR(100),
-    department_id       UUID REFERENCES departments(id),
-    basic_salary        DECIMAL(10,2),
-    bank_name           VARCHAR(255),
-    bank_account_no     VARCHAR(50),
-    ifsc_code           VARCHAR(20),
-    pan_number          VARCHAR(20),
-    aadhar_number       VARCHAR(20),
-    is_active           BOOLEAN DEFAULT TRUE,
-    is_teaching         BOOLEAN DEFAULT FALSE,
-    profile_photo_url   TEXT,
-    metadata            JSONB DEFAULT '{}',
-    created_at          TIMESTAMPTZ DEFAULT NOW(),
-    updated_at          TIMESTAMPTZ DEFAULT NOW(),
-    deleted_at          TIMESTAMPTZ,
-    UNIQUE(tenant_id, branch_id, employee_code)
-);
-
-CREATE INDEX idx_staff_branch ON staff(branch_id);
-CREATE INDEX idx_staff_department ON staff(department_id);
-CREATE INDEX idx_staff_teaching ON staff(branch_id) WHERE is_teaching = TRUE;
-
-CREATE TABLE staff_documents (
-    id              UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    tenant_id       UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
-    staff_id        UUID NOT NULL REFERENCES staff(id) ON DELETE CASCADE,
-    document_type   VARCHAR(100) NOT NULL,
-    document_number VARCHAR(100),
-    file_url        TEXT NOT NULL,
-    is_verified     BOOLEAN DEFAULT FALSE,
-    verified_at     TIMESTAMPTZ,
-    verified_by     UUID,
-    created_at      TIMESTAMPTZ DEFAULT NOW(),
-    updated_at      TIMESTAMPTZ DEFAULT NOW()
-);
-
-CREATE INDEX idx_staff_docs_staff ON staff_documents(staff_id);
-
--- ============================================================================
--- PART 7: ATTENDANCE
--- ============================================================================
-
-CREATE TABLE attendance (
-    id              UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    tenant_id       UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
-    branch_id       UUID NOT NULL REFERENCES branches(id) ON DELETE CASCADE,
-    class_id        UUID REFERENCES classes(id),
-    section_id      UUID REFERENCES sections(id),
-    subject_id      UUID REFERENCES subjects(id),
-    teacher_id      UUID REFERENCES staff(id),
-    date            DATE NOT NULL,
-    start_time      TIME,
-    end_time        TIME,
-    total_present   INTEGER DEFAULT 0,
-    total_absent    INTEGER DEFAULT 0,
-    total_students  INTEGER DEFAULT 0,
-    remarks         TEXT,
-    created_by      UUID,
-    created_at      TIMESTAMPTZ DEFAULT NOW(),
-    updated_at      TIMESTAMPTZ DEFAULT NOW(),
-    UNIQUE(tenant_id, branch_id, class_id, section_id, date)
-);
-
-CREATE INDEX idx_attendance_branch ON attendance(branch_id);
-CREATE INDEX idx_attendance_date ON attendance(date);
-CREATE INDEX idx_attendance_class_date ON attendance(class_id, date);
-
-CREATE TABLE attendance_records (
-    id              UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    tenant_id       UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
-    attendance_id   UUID NOT NULL REFERENCES attendance(id) ON DELETE CASCADE,
-    student_id      UUID NOT NULL REFERENCES students(id) ON DELETE CASCADE,
-    status          attendance_status NOT NULL DEFAULT 'present',
-    check_in_time   TIME,
-    check_out_time  TIME,
-    remarks         TEXT,
-    created_at      TIMESTAMPTZ DEFAULT NOW(),
-    UNIQUE(attendance_id, student_id)
-);
-
-CREATE INDEX idx_attendance_records_attendance ON attendance_records(attendance_id);
-CREATE INDEX idx_attendance_records_student ON attendance_records(student_id);
-
-CREATE TABLE staff_attendance (
-    id              UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    tenant_id       UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
-    branch_id       UUID NOT NULL REFERENCES branches(id) ON DELETE CASCADE,
-    staff_id        UUID NOT NULL REFERENCES staff(id) ON DELETE CASCADE,
-    date            DATE NOT NULL,
-    check_in        TIMESTAMPTZ,
-    check_out       TIMESTAMPTZ,
-    status          attendance_status DEFAULT 'present',
-    hours_worked    DECIMAL(4,1),
-    overtime_hours  DECIMAL(4,1),
-    remarks         TEXT,
-    marked_by       UUID,
-    created_at      TIMESTAMPTZ DEFAULT NOW(),
-    updated_at      TIMESTAMPTZ DEFAULT NOW(),
-    UNIQUE(tenant_id, branch_id, staff_id, date)
-);
-
-CREATE INDEX idx_staff_attendance_staff ON staff_attendance(staff_id);
-CREATE INDEX idx_staff_attendance_date ON staff_attendance(date);
-
--- ============================================================================
--- PART 8: LEAVE MANAGEMENT
--- ============================================================================
-
-CREATE TABLE leave_types (
-    id              UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    tenant_id       UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
-    name            VARCHAR(100) NOT NULL,
-    code            VARCHAR(50) NOT NULL,
-    days_allowed    INTEGER NOT NULL,
-    is_paid         BOOLEAN DEFAULT TRUE,
-    carry_forward   BOOLEAN DEFAULT FALSE,
-    max_carry_forward INTEGER DEFAULT 0,
-    is_active       BOOLEAN DEFAULT TRUE,
-    created_at      TIMESTAMPTZ DEFAULT NOW(),
-    updated_at      TIMESTAMPTZ DEFAULT NOW(),
-    UNIQUE(tenant_id, code)
-);
-
-CREATE TABLE leave_requests (
-    id              UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    tenant_id       UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
-    branch_id       UUID NOT NULL REFERENCES branches(id) ON DELETE CASCADE,
-    staff_id        UUID NOT NULL REFERENCES staff(id) ON DELETE CASCADE,
-    leave_type_id   UUID NOT NULL REFERENCES leave_types(id),
-    start_date      DATE NOT NULL,
-    end_date        DATE NOT NULL,
-    total_days      INTEGER NOT NULL,
-    reason          TEXT,
-    status          leave_status DEFAULT 'pending',
-    approved_by     UUID,
-    approved_at     TIMESTAMPTZ,
-    reject_reason   TEXT,
-    document_url    TEXT,
-    created_at      TIMESTAMPTZ DEFAULT NOW(),
-    updated_at      TIMESTAMPTZ DEFAULT NOW()
-);
-
-CREATE INDEX idx_leave_requests_staff ON leave_requests(staff_id);
-CREATE INDEX idx_leave_requests_status ON leave_requests(status);
-CREATE INDEX idx_leave_requests_dates ON leave_requests(start_date, end_date);
-
--- ============================================================================
--- PART 9: FEE & FINANCE
--- ============================================================================
-
-CREATE TABLE fee_structures (
-    id              UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    tenant_id       UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
-    branch_id       UUID NOT NULL REFERENCES branches(id) ON DELETE CASCADE,
-    name            VARCHAR(255) NOT NULL,
-    class_id        UUID REFERENCES classes(id),
-    academic_year_id UUID REFERENCES academic_years(id),
-    frequency       VARCHAR(50) DEFAULT 'monthly',
-    is_active       BOOLEAN DEFAULT TRUE,
-    description     TEXT,
-    created_at      TIMESTAMPTZ DEFAULT NOW(),
-    updated_at      TIMESTAMPTZ DEFAULT NOW(),
-    deleted_at      TIMESTAMPTZ
-);
-
-CREATE INDEX idx_fee_structures_branch ON fee_structures(branch_id);
-CREATE INDEX idx_fee_structures_class ON fee_structures(class_id);
-
-CREATE TABLE fee_structure_items (
-    id              UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    tenant_id       UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
-    fee_structure_id UUID NOT NULL REFERENCES fee_structures(id) ON DELETE CASCADE,
-    name            VARCHAR(255) NOT NULL,
-    amount          DECIMAL(10,2) NOT NULL,
-    is_optional     BOOLEAN DEFAULT FALSE,
-    is_recurring    BOOLEAN DEFAULT TRUE,
-    frequency       VARCHAR(50) DEFAULT 'monthly',
-    due_day         INTEGER,
-    sort_order      INTEGER DEFAULT 0,
-    created_at      TIMESTAMPTZ DEFAULT NOW(),
-    updated_at      TIMESTAMPTZ DEFAULT NOW()
-);
-
-CREATE INDEX idx_fee_items_structure ON fee_structure_items(fee_structure_id);
-
-CREATE TABLE fee_discounts (
-    id              UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    tenant_id       UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
-    branch_id       UUID NOT NULL REFERENCES branches(id) ON DELETE CASCADE,
-    name            VARCHAR(255) NOT NULL,
-    discount_type   VARCHAR(20) NOT NULL,
-    value           DECIMAL(10,2) NOT NULL,
-    applicable_to   VARCHAR(50) DEFAULT 'all',
-    applicable_ids  JSONB DEFAULT '[]',
-    is_active       BOOLEAN DEFAULT TRUE,
-    valid_from      DATE,
-    valid_until     DATE,
-    created_at      TIMESTAMPTZ DEFAULT NOW(),
-    updated_at      TIMESTAMPTZ DEFAULT NOW()
-);
-
-CREATE TABLE fee_concessions (
-    id              UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    tenant_id       UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
-    student_id      UUID NOT NULL REFERENCES students(id) ON DELETE CASCADE,
-    fee_structure_item_id UUID REFERENCES fee_structure_items(id),
-    discount_id     UUID REFERENCES fee_discounts(id),
-    amount          DECIMAL(10,2) NOT NULL,
-    type            VARCHAR(20) NOT NULL,
-    approved_by     UUID,
-    valid_from      DATE,
-    valid_until     DATE,
-    remarks         TEXT,
-    created_at      TIMESTAMPTZ DEFAULT NOW(),
-    updated_at      TIMESTAMPTZ DEFAULT NOW()
-);
-
-CREATE INDEX idx_fee_concessions_student ON fee_concessions(student_id);
-
-CREATE TABLE student_fee_accounts (
-    id                  UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    tenant_id           UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
-    branch_id           UUID NOT NULL REFERENCES branches(id) ON DELETE CASCADE,
-    student_id          UUID NOT NULL REFERENCES students(id) ON DELETE CASCADE,
-    fee_structure_id    UUID REFERENCES fee_structures(id),
-    academic_year_id    UUID REFERENCES academic_years(id),
-    total_fee           DECIMAL(12,2) DEFAULT 0,
-    total_discount      DECIMAL(12,2) DEFAULT 0,
-    total_paid          DECIMAL(12,2) DEFAULT 0,
-    total_due           DECIMAL(12,2) DEFAULT 0,
-    status              VARCHAR(50) DEFAULT 'active',
-    created_at          TIMESTAMPTZ DEFAULT NOW(),
-    updated_at          TIMESTAMPTZ DEFAULT NOW(),
-    UNIQUE(student_id, academic_year_id)
-);
-
-CREATE INDEX idx_fee_accounts_student ON student_fee_accounts(student_id);
-CREATE INDEX idx_fee_accounts_status ON student_fee_accounts(status);
-CREATE INDEX idx_fee_accounts_due ON student_fee_accounts(total_due) WHERE total_due > 0;
-
-CREATE TABLE fee_transactions (
-    id              UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    tenant_id       UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
-    branch_id       UUID NOT NULL REFERENCES branches(id) ON DELETE CASCADE,
-    student_id      UUID NOT NULL REFERENCES students(id) ON DELETE CASCADE,
-    fee_account_id  UUID REFERENCES student_fee_accounts(id),
-    transaction_no  VARCHAR(50) NOT NULL,
-    invoice_no      VARCHAR(50),
-    amount          DECIMAL(12,2) NOT NULL,
-    payment_method  payment_method,
-    payment_date    TIMESTAMPTZ DEFAULT NOW(),
-    due_date        DATE,
-    paid_date       DATE,
-    reference_number VARCHAR(100),
-    cheque_number   VARCHAR(50),
-    cheque_date     DATE,
-    bank_name       VARCHAR(255),
-    upi_id          VARCHAR(100),
-    gateway_response JSONB DEFAULT '{}',
-    status          transaction_status DEFAULT 'completed',
-    remarks         TEXT,
-    reconciled      BOOLEAN DEFAULT FALSE,
-    reconciled_at   TIMESTAMPTZ,
-    created_by      UUID,
-    created_at      TIMESTAMPTZ DEFAULT NOW(),
-    updated_at      TIMESTAMPTZ DEFAULT NOW(),
-    UNIQUE(tenant_id, branch_id, transaction_no)
-);
-
-CREATE INDEX idx_fee_transactions_student ON fee_transactions(student_id);
-CREATE INDEX idx_fee_transactions_account ON fee_transactions(fee_account_id);
-CREATE INDEX idx_fee_transactions_status ON fee_transactions(status);
-CREATE INDEX idx_fee_transactions_date ON fee_transactions(payment_date);
-
-CREATE TABLE fee_receipts (
-    id              UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    tenant_id       UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
-    transaction_id  UUID NOT NULL REFERENCES fee_transactions(id) ON DELETE CASCADE,
-    receipt_number  VARCHAR(50) NOT NULL,
-    receipt_date    DATE NOT NULL,
-    receipt_url     TEXT,
-    created_at      TIMESTAMPTZ DEFAULT NOW(),
-    UNIQUE(tenant_id, receipt_number)
-);
-
-CREATE INDEX idx_fee_receipts_transaction ON fee_receipts(transaction_id);
-
-CREATE TABLE fee_invoices (
-    id              UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    tenant_id       UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
-    branch_id       UUID NOT NULL REFERENCES branches(id) ON DELETE CASCADE,
-    student_id      UUID NOT NULL REFERENCES students(id) ON DELETE CASCADE,
-    invoice_number  VARCHAR(50) NOT NULL,
-    invoice_date    DATE NOT NULL,
-    due_date        DATE NOT NULL,
-    items           JSONB NOT NULL DEFAULT '[]',
-    subtotal        DECIMAL(12,2) NOT NULL,
-    discount_total  DECIMAL(12,2) DEFAULT 0,
-    total_amount    DECIMAL(12,2) NOT NULL,
-    amount_paid     DECIMAL(12,2) DEFAULT 0,
-    balance_due     DECIMAL(12,2) DEFAULT 0,
-    status          VARCHAR(50) DEFAULT 'pending',
-    created_at      TIMESTAMPTZ DEFAULT NOW(),
-    updated_at      TIMESTAMPTZ DEFAULT NOW(),
-    UNIQUE(tenant_id, branch_id, invoice_number)
-);
-
-CREATE INDEX idx_fee_invoices_student ON fee_invoices(student_id);
-CREATE INDEX idx_fee_invoices_status ON fee_invoices(status);
-CREATE INDEX idx_fee_invoices_due ON fee_invoices(due_date) WHERE status = 'pending';
-
--- ============================================================================
--- PART 10: PAYROLL
--- ============================================================================
-
-CREATE TABLE payroll_salary_components (
-    id              UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    tenant_id       UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
-    branch_id       UUID NOT NULL REFERENCES branches(id) ON DELETE CASCADE,
-    name            VARCHAR(100) NOT NULL,
-    type            VARCHAR(20) NOT NULL,
-    calculation_type VARCHAR(50) DEFAULT 'fixed',
-    value           DECIMAL(10,2) DEFAULT 0,
-    is_active       BOOLEAN DEFAULT TRUE,
-    created_at      TIMESTAMPTZ DEFAULT NOW(),
-    updated_at      TIMESTAMPTZ DEFAULT NOW()
-);
-
-CREATE TABLE payroll (
-    id              UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    tenant_id       UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
-    branch_id       UUID NOT NULL REFERENCES branches(id) ON DELETE CASCADE,
-    staff_id        UUID NOT NULL REFERENCES staff(id) ON DELETE CASCADE,
-    month           INTEGER NOT NULL,
-    year            INTEGER NOT NULL,
-    basic_pay       DECIMAL(10,2) DEFAULT 0,
-    allowances      JSONB DEFAULT '[]',
-    deductions      JSONB DEFAULT '[]',
-    gross_pay       DECIMAL(10,2) DEFAULT 0,
-    total_deductions DECIMAL(10,2) DEFAULT 0,
-    net_pay         DECIMAL(10,2) DEFAULT 0,
-    payment_date    DATE,
-    payment_method  payment_method,
-    transaction_ref VARCHAR(100),
-    status          VARCHAR(50) DEFAULT 'draft',
-    remarks         TEXT,
-    processed_by    UUID,
-    processed_at    TIMESTAMPTZ,
-    created_at      TIMESTAMPTZ DEFAULT NOW(),
-    updated_at      TIMESTAMPTZ DEFAULT NOW(),
-    UNIQUE(staff_id, month, year)
-);
-
-CREATE INDEX idx_payroll_staff ON payroll(staff_id);
-CREATE INDEX idx_payroll_month_year ON payroll(month, year);
-CREATE INDEX idx_payroll_status ON payroll(status);
-
--- ============================================================================
--- PART 11: EXPENSES & INCOME
--- ============================================================================
-
-CREATE TABLE expense_categories (
-    id              UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    tenant_id       UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
-    name            VARCHAR(100) NOT NULL,
-    description     TEXT,
-    is_active       BOOLEAN DEFAULT TRUE,
-    created_at      TIMESTAMPTZ DEFAULT NOW(),
-    updated_at      TIMESTAMPTZ DEFAULT NOW(),
-    UNIQUE(tenant_id, name)
-);
-
-CREATE TABLE expenses (
-    id              UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    tenant_id       UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
-    branch_id       UUID NOT NULL REFERENCES branches(id) ON DELETE CASCADE,
-    category_id     UUID REFERENCES expense_categories(id),
-    amount          DECIMAL(12,2) NOT NULL,
-    description     TEXT NOT NULL,
-    expense_date    DATE NOT NULL,
-    payment_method  payment_method,
-    reference_number VARCHAR(100),
-    vendor_name     VARCHAR(255),
-    bill_number     VARCHAR(100),
-    bill_url        TEXT,
-    approved_by     UUID,
-    approved_at     TIMESTAMPTZ,
-    created_by      UUID,
-    created_at      TIMESTAMPTZ DEFAULT NOW(),
-    updated_at      TIMESTAMPTZ DEFAULT NOW()
-);
-
-CREATE INDEX idx_expenses_branch ON expenses(branch_id);
-CREATE INDEX idx_expenses_category ON expenses(category_id);
-CREATE INDEX idx_expenses_date ON expenses(expense_date);
-
-CREATE TABLE income_categories (
-    id              UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    tenant_id       UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
-    name            VARCHAR(100) NOT NULL,
-    description     TEXT,
-    is_active       BOOLEAN DEFAULT TRUE,
-    created_at      TIMESTAMPTZ DEFAULT NOW(),
-    updated_at      TIMESTAMPTZ DEFAULT NOW(),
-    UNIQUE(tenant_id, name)
-);
-
-CREATE TABLE income (
-    id              UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    tenant_id       UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
-    branch_id       UUID NOT NULL REFERENCES branches(id) ON DELETE CASCADE,
-    category_id     UUID REFERENCES income_categories(id),
-    amount          DECIMAL(12,2) NOT NULL,
-    description     TEXT NOT NULL,
-    income_date     DATE NOT NULL,
-    payment_method  payment_method,
-    reference_number VARCHAR(100),
-    created_by      UUID,
-    created_at      TIMESTAMPTZ DEFAULT NOW(),
-    updated_at      TIMESTAMPTZ DEFAULT NOW()
-);
-
-CREATE INDEX idx_income_branch ON income(branch_id);
-CREATE INDEX idx_income_date ON income(income_date);
-
--- ============================================================================
--- PART 12: EXAMINATIONS & RESULTS
--- ============================================================================
-
-CREATE TABLE exams (
-    id              UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    tenant_id       UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
-    branch_id       UUID NOT NULL REFERENCES branches(id) ON DELETE CASCADE,
-    name            VARCHAR(255) NOT NULL,
-    exam_type       exam_type DEFAULT 'unit_test',
-    class_id        UUID REFERENCES classes(id),
-    academic_year_id UUID REFERENCES academic_years(id),
-    start_date      DATE,
-    end_date        DATE,
-    description     TEXT,
-    is_active       BOOLEAN DEFAULT TRUE,
-    created_at      TIMESTAMPTZ DEFAULT NOW(),
-    updated_at      TIMESTAMPTZ DEFAULT NOW()
-);
-
-CREATE INDEX idx_exams_branch ON exams(branch_id);
-CREATE INDEX idx_exams_class ON exams(class_id);
-CREATE INDEX idx_exams_type ON exams(exam_type);
-
-CREATE TABLE exam_schedules (
-    id              UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    tenant_id       UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
-    exam_id         UUID NOT NULL REFERENCES exams(id) ON DELETE CASCADE,
-    subject_id      UUID NOT NULL REFERENCES subjects(id),
-    class_id        UUID REFERENCES classes(id),
-    date            DATE,
-    start_time      TIME,
-    end_time        TIME,
-    max_marks       INTEGER DEFAULT 100,
-    pass_marks      INTEGER DEFAULT 33,
-    room_number     VARCHAR(50),
-    invigilator_id  UUID,
-    created_at      TIMESTAMPTZ DEFAULT NOW(),
-    updated_at      TIMESTAMPTZ DEFAULT NOW()
-);
-
-CREATE INDEX idx_exam_schedules_exam ON exam_schedules(exam_id);
-CREATE INDEX idx_exam_schedules_subject ON exam_schedules(subject_id);
-
-CREATE TABLE marks (
-    id              UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    tenant_id       UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
-    branch_id       UUID NOT NULL REFERENCES branches(id) ON DELETE CASCADE,
-    exam_schedule_id UUID NOT NULL REFERENCES exam_schedules(id) ON DELETE CASCADE,
-    student_id      UUID NOT NULL REFERENCES students(id) ON DELETE CASCADE,
-    marks_obtained  DECIMAL(6,2),
-    max_marks       INTEGER DEFAULT 100,
-    is_absent       BOOLEAN DEFAULT FALSE,
-    is_malpractice  BOOLEAN DEFAULT FALSE,
-    grade           VARCHAR(5),
-    grade_point     DECIMAL(3,1),
-    remarks         TEXT,
-    entered_by      UUID,
-    entered_at      TIMESTAMPTZ,
-    created_at      TIMESTAMPTZ DEFAULT NOW(),
-    updated_at      TIMESTAMPTZ DEFAULT NOW(),
-    UNIQUE(exam_schedule_id, student_id)
-);
-
-CREATE INDEX idx_marks_exam_schedule ON marks(exam_schedule_id);
-CREATE INDEX idx_marks_student ON marks(student_id);
-
-CREATE TABLE exam_results (
-    id              UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    tenant_id       UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
-    branch_id       UUID NOT NULL REFERENCES branches(id) ON DELETE CASCADE,
-    exam_id         UUID NOT NULL REFERENCES exams(id) ON DELETE CASCADE,
-    student_id      UUID NOT NULL REFERENCES students(id) ON DELETE CASCADE,
-    total_marks     DECIMAL(8,2) DEFAULT 0,
-    percentage      DECIMAL(5,2),
-    grade           VARCHAR(5),
-    rank            INTEGER,
-    result_status   VARCHAR(20) DEFAULT 'pass',
-    is_promoted     BOOLEAN,
-    remarks         TEXT,
-    created_at      TIMESTAMPTZ DEFAULT NOW(),
-    updated_at      TIMESTAMPTZ DEFAULT NOW(),
-    UNIQUE(exam_id, student_id)
-);
-
-CREATE INDEX idx_exam_results_exam ON exam_results(exam_id);
-CREATE INDEX idx_exam_results_student ON exam_results(student_id);
-CREATE INDEX idx_exam_results_rank ON exam_results(exam_id, rank);
-
--- ============================================================================
--- PART 13: TIMETABLE
--- ============================================================================
-
-CREATE TABLE timetables (
-    id              UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    tenant_id       UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
-    branch_id       UUID NOT NULL REFERENCES branches(id) ON DELETE CASCADE,
-    name            VARCHAR(255) NOT NULL,
-    class_id        UUID NOT NULL REFERENCES classes(id),
-    section_id      UUID REFERENCES sections(id),
-    academic_year_id UUID REFERENCES academic_years(id),
-    is_active       BOOLEAN DEFAULT TRUE,
-    valid_from      DATE,
-    valid_until     DATE,
-    created_at      TIMESTAMPTZ DEFAULT NOW(),
-    updated_at      TIMESTAMPTZ DEFAULT NOW()
-);
-
-CREATE INDEX idx_timetables_class ON timetables(class_id);
-
-CREATE TABLE timetable_entries (
-    id              UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    tenant_id       UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
-    timetable_id    UUID NOT NULL REFERENCES timetables(id) ON DELETE CASCADE,
-    day_of_week     SMALLINT NOT NULL CHECK (day_of_week BETWEEN 0 AND 6),
-    subject_id      UUID NOT NULL REFERENCES subjects(id),
-    teacher_id      UUID REFERENCES staff(id),
-    start_time      TIME NOT NULL,
-    end_time        TIME NOT NULL,
-    room_number     VARCHAR(50),
-    is_break        BOOLEAN DEFAULT FALSE,
-    created_at      TIMESTAMPTZ DEFAULT NOW(),
-    updated_at      TIMESTAMPTZ DEFAULT NOW()
-);
-
-CREATE INDEX idx_timetable_entries_timetable ON timetable_entries(timetable_id);
-CREATE INDEX idx_timetable_entries_day ON timetable_entries(timetable_id, day_of_week);
-
--- ============================================================================
--- PART 14: HOMEWORK & ASSIGNMENTS
--- ============================================================================
-
-CREATE TABLE homework (
-    id              UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    tenant_id       UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
-    branch_id       UUID NOT NULL REFERENCES branches(id) ON DELETE CASCADE,
-    class_id        UUID NOT NULL REFERENCES classes(id),
-    section_id      UUID REFERENCES sections(id),
-    subject_id      UUID NOT NULL REFERENCES subjects(id),
-    teacher_id      UUID NOT NULL REFERENCES staff(id),
-    title           VARCHAR(255) NOT NULL,
-    description     TEXT,
-    attachment_urls JSONB DEFAULT '[]',
-    due_date        TIMESTAMPTZ NOT NULL,
-    max_marks       INTEGER,
-    is_mandatory    BOOLEAN DEFAULT TRUE,
-    status          VARCHAR(50) DEFAULT 'active',
-    created_at      TIMESTAMPTZ DEFAULT NOW(),
-    updated_at      TIMESTAMPTZ DEFAULT NOW()
-);
-
-CREATE INDEX idx_homework_class ON homework(class_id);
-CREATE INDEX idx_homework_teacher ON homework(teacher_id);
-CREATE INDEX idx_homework_due ON homework(due_date) WHERE status = 'active';
-
-CREATE TABLE homework_submissions (
-    id              UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    tenant_id       UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
-    homework_id     UUID NOT NULL REFERENCES homework(id) ON DELETE CASCADE,
-    student_id      UUID NOT NULL REFERENCES students(id) ON DELETE CASCADE,
-    submission_text TEXT,
-    attachment_urls JSONB DEFAULT '[]',
-    submitted_at    TIMESTAMPTZ DEFAULT NOW(),
-    is_late         BOOLEAN DEFAULT FALSE,
-    marks_obtained  DECIMAL(6,2),
-    feedback        TEXT,
-    status          VARCHAR(50) DEFAULT 'submitted',
-    graded_by       UUID,
-    graded_at       TIMESTAMPTZ,
-    created_at      TIMESTAMPTZ DEFAULT NOW(),
-    updated_at      TIMESTAMPTZ DEFAULT NOW(),
-    UNIQUE(homework_id, student_id)
-);
-
-CREATE INDEX idx_homework_submissions_homework ON homework_submissions(homework_id);
-CREATE INDEX idx_homework_submissions_student ON homework_submissions(student_id);
-
-CREATE TABLE assignments (
-    id              UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    tenant_id       UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
-    branch_id       UUID NOT NULL REFERENCES branches(id) ON DELETE CASCADE,
-    class_id        UUID NOT NULL REFERENCES classes(id),
-    section_id      UUID REFERENCES sections(id),
-    subject_id      UUID NOT NULL REFERENCES subjects(id),
-    teacher_id      UUID NOT NULL REFERENCES staff(id),
-    title           VARCHAR(255) NOT NULL,
-    description     TEXT,
-    assignment_type VARCHAR(50) DEFAULT 'written',
-    attachment_urls JSONB DEFAULT '[]',
-    due_date        TIMESTAMPTZ NOT NULL,
-    max_marks       INTEGER,
-    status          VARCHAR(50) DEFAULT 'active',
-    created_at      TIMESTAMPTZ DEFAULT NOW(),
-    updated_at      TIMESTAMPTZ DEFAULT NOW()
-);
-
-CREATE INDEX idx_assignments_class ON assignments(class_id);
-
-CREATE TABLE assignment_submissions (
-    id              UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    tenant_id       UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
-    assignment_id   UUID NOT NULL REFERENCES assignments(id) ON DELETE CASCADE,
-    student_id      UUID NOT NULL REFERENCES students(id) ON DELETE CASCADE,
-    submission_text TEXT,
-    attachment_urls JSONB DEFAULT '[]',
-    submitted_at    TIMESTAMPTZ DEFAULT NOW(),
-    is_late         BOOLEAN DEFAULT FALSE,
-    marks_obtained  DECIMAL(6,2),
-    feedback        TEXT,
-    status          VARCHAR(50) DEFAULT 'submitted',
-    graded_by       UUID,
-    graded_at       TIMESTAMPTZ,
-    created_at      TIMESTAMPTZ DEFAULT NOW(),
-    updated_at      TIMESTAMPTZ DEFAULT NOW(),
-    UNIQUE(assignment_id, student_id)
-);
-
-CREATE INDEX idx_assignment_submissions_assignment ON assignment_submissions(assignment_id);
-CREATE INDEX idx_assignment_submissions_student ON assignment_submissions(student_id);
-
--- ============================================================================
--- PART 15: LESSON PLANS
--- ============================================================================
-
-CREATE TABLE lesson_plans (
-    id              UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    tenant_id       UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
-    branch_id       UUID NOT NULL REFERENCES branches(id) ON DELETE CASCADE,
-    teacher_id      UUID NOT NULL REFERENCES staff(id),
-    subject_id      UUID NOT NULL REFERENCES subjects(id),
-    class_id        UUID NOT NULL REFERENCES classes(id),
-    section_id      UUID REFERENCES sections(id),
-    title           VARCHAR(255) NOT NULL,
-    objectives      TEXT,
-    content         TEXT,
-    teaching_method VARCHAR(100),
-    resources       TEXT,
-    duration_minutes INTEGER,
-    date            DATE,
-    status          VARCHAR(50) DEFAULT 'draft',
-    created_at      TIMESTAMPTZ DEFAULT NOW(),
-    updated_at      TIMESTAMPTZ DEFAULT NOW()
-);
-
-CREATE INDEX idx_lesson_plans_teacher ON lesson_plans(teacher_id);
-CREATE INDEX idx_lesson_plans_date ON lesson_plans(date);
-
--- ============================================================================
--- PART 16: LIBRARY
--- ============================================================================
-
-CREATE TABLE book_categories (
-    id              UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    tenant_id       UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
-    name            VARCHAR(100) NOT NULL,
-    description     TEXT,
-    is_active       BOOLEAN DEFAULT TRUE,
-    created_at      TIMESTAMPTZ DEFAULT NOW(),
-    updated_at      TIMESTAMPTZ DEFAULT NOW(),
-    UNIQUE(tenant_id, name)
-);
-
-CREATE TABLE books (
-    id                  UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    tenant_id           UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
-    branch_id           UUID NOT NULL REFERENCES branches(id) ON DELETE CASCADE,
-    isbn                VARCHAR(20),
-    title               VARCHAR(255) NOT NULL,
-    author              VARCHAR(255) NOT NULL,
-    publisher           VARCHAR(255),
-    edition             VARCHAR(50),
-    category_id         UUID REFERENCES book_categories(id),
-    language            VARCHAR(50) DEFAULT 'English',
-    pages               INTEGER,
-    shelf_location      VARCHAR(100),
-    purchase_date       DATE,
-    purchase_price      DECIMAL(10,2),
-    quantity            INTEGER NOT NULL DEFAULT 1,
-    available_quantity  INTEGER NOT NULL DEFAULT 1,
-    damaged_quantity    INTEGER DEFAULT 0,
-    lost_quantity       INTEGER DEFAULT 0,
-    description         TEXT,
-    cover_image_url     TEXT,
-    is_active           BOOLEAN DEFAULT TRUE,
-    created_at          TIMESTAMPTZ DEFAULT NOW(),
-    updated_at          TIMESTAMPTZ DEFAULT NOW(),
-    deleted_at          TIMESTAMPTZ
-);
-
-CREATE INDEX idx_books_branch ON books(branch_id);
-CREATE INDEX idx_books_isbn ON books(isbn);
-CREATE INDEX idx_books_category ON books(category_id);
-CREATE INDEX idx_books_title ON books(title);
-
-CREATE TABLE book_issues (
-    id              UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    tenant_id       UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
-    branch_id       UUID NOT NULL REFERENCES branches(id) ON DELETE CASCADE,
-    book_id         UUID NOT NULL REFERENCES books(id),
-    issuer_type     VARCHAR(20) NOT NULL,
-    issuer_id       UUID NOT NULL,
-    issue_date      DATE NOT NULL,
-    due_date        DATE NOT NULL,
-    return_date     DATE,
-    fine_amount     DECIMAL(10,2) DEFAULT 0,
-    fine_paid       BOOLEAN DEFAULT FALSE,
-    fine_paid_date  DATE,
-    status          booking_status DEFAULT 'issued',
-    issued_by       UUID,
-    remarks         TEXT,
-    created_at      TIMESTAMPTZ DEFAULT NOW(),
-    updated_at      TIMESTAMPTZ DEFAULT NOW()
-);
-
-CREATE INDEX idx_book_issues_branch ON book_issues(branch_id);
-CREATE INDEX idx_book_issues_book ON book_issues(book_id);
-CREATE INDEX idx_book_issues_status ON book_issues(status);
-CREATE INDEX idx_book_issues_due ON book_issues(due_date) WHERE status = 'issued';
-
--- ============================================================================
--- PART 17: TRANSPORT
--- ============================================================================
-
-CREATE TABLE vehicles (
-    id                  UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    tenant_id           UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
-    branch_id           UUID NOT NULL REFERENCES branches(id) ON DELETE CASCADE,
-    vehicle_number      VARCHAR(50) NOT NULL,
-    vehicle_type        transport_vehicle_type DEFAULT 'bus',
-    capacity            INTEGER NOT NULL,
-    model               VARCHAR(100),
-    manufacturer        VARCHAR(100),
-    manufacture_year    INTEGER,
-    chassis_number      VARCHAR(100),
-    engine_number       VARCHAR(100),
-    insurance_provider  VARCHAR(255),
-    insurance_expiry    DATE,
-    fitness_expiry      DATE,
-    pollution_expiry    DATE,
-    status              VARCHAR(50) DEFAULT 'active',
-    is_active           BOOLEAN DEFAULT TRUE,
-    created_at          TIMESTAMPTZ DEFAULT NOW(),
-    updated_at          TIMESTAMPTZ DEFAULT NOW(),
-    deleted_at          TIMESTAMPTZ,
-    UNIQUE(tenant_id, branch_id, vehicle_number)
-);
-
-CREATE INDEX idx_vehicles_branch ON vehicles(branch_id);
-
-CREATE TABLE drivers (
-    id              UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    tenant_id       UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
-    branch_id       UUID NOT NULL REFERENCES branches(id) ON DELETE CASCADE,
-    name            VARCHAR(255) NOT NULL,
-    phone           VARCHAR(20) NOT NULL,
-    alternate_phone VARCHAR(20),
-    email           VARCHAR(255),
-    license_number  VARCHAR(50) NOT NULL,
-    license_expiry  DATE,
-    address         TEXT,
-    date_of_birth   DATE,
-    joining_date    DATE,
-    is_active       BOOLEAN DEFAULT TRUE,
-    created_at      TIMESTAMPTZ DEFAULT NOW(),
-    updated_at      TIMESTAMPTZ DEFAULT NOW(),
-    UNIQUE(tenant_id, branch_id, license_number)
-);
-
-CREATE TABLE routes (
-    id              UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    tenant_id       UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
-    branch_id       UUID NOT NULL REFERENCES branches(id) ON DELETE CASCADE,
-    name            VARCHAR(255) NOT NULL,
-    description     TEXT,
-    distance_km     DECIMAL(8,2),
-    vehicle_id      UUID REFERENCES vehicles(id),
-    driver_id       UUID REFERENCES drivers(id),
-    status          VARCHAR(50) DEFAULT 'active',
-    is_active       BOOLEAN DEFAULT TRUE,
-    created_at      TIMESTAMPTZ DEFAULT NOW(),
-    updated_at      TIMESTAMPTZ DEFAULT NOW(),
-    UNIQUE(tenant_id, branch_id, name)
-);
-
-CREATE INDEX idx_routes_branch ON routes(branch_id);
-
-CREATE TABLE route_stops (
-    id              UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    tenant_id       UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
-    route_id        UUID NOT NULL REFERENCES routes(id) ON DELETE CASCADE,
-    name            VARCHAR(255) NOT NULL,
-    address         TEXT,
-    latitude        DECIMAL(10,7),
-    longitude       DECIMAL(10,7),
-    stop_order      INTEGER NOT NULL,
-    pickup_time     TIME,
-    drop_time       TIME,
-    fee             DECIMAL(10,2) DEFAULT 0,
-    created_at      TIMESTAMPTZ DEFAULT NOW(),
-    updated_at      TIMESTAMPTZ DEFAULT NOW()
-);
-
-CREATE INDEX idx_route_stops_route ON route_stops(route_id);
-
-CREATE TABLE student_transport (
-    id              UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    tenant_id       UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
-    branch_id       UUID NOT NULL REFERENCES branches(id) ON DELETE CASCADE,
-    student_id      UUID NOT NULL REFERENCES students(id) ON DELETE CASCADE,
-    route_id        UUID NOT NULL REFERENCES routes(id),
-    stop_id         UUID NOT NULL REFERENCES route_stops(id),
-    fee             DECIMAL(10,2) DEFAULT 0,
-    pickup_point    TEXT,
-    drop_point      TEXT,
-    academic_year_id UUID REFERENCES academic_years(id),
-    status          VARCHAR(50) DEFAULT 'active',
-    effective_from  DATE,
-    effective_until DATE,
-    created_at      TIMESTAMPTZ DEFAULT NOW(),
-    updated_at      TIMESTAMPTZ DEFAULT NOW(),
-    UNIQUE(student_id, academic_year_id)
-);
-
-CREATE INDEX idx_student_transport_student ON student_transport(student_id);
-CREATE INDEX idx_student_transport_route ON student_transport(route_id);
-
-CREATE TABLE transport_fuel_logs (
-    id              UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    tenant_id       UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
-    branch_id       UUID NOT NULL REFERENCES branches(id) ON DELETE CASCADE,
-    vehicle_id      UUID NOT NULL REFERENCES vehicles(id),
-    fuel_date       DATE NOT NULL,
-    fuel_type       VARCHAR(50),
-    quantity_liters DECIMAL(8,2) NOT NULL,
-    cost_per_liter  DECIMAL(8,2),
-    total_cost      DECIMAL(10,2),
-    odometer_reading INTEGER,
-    vendor_name     VARCHAR(255),
-    bill_number     VARCHAR(100),
-    bill_url        TEXT,
-    remarks         TEXT,
-    created_at      TIMESTAMPTZ DEFAULT NOW()
-);
-
-CREATE INDEX idx_fuel_logs_vehicle ON transport_fuel_logs(vehicle_id);
-
-CREATE TABLE transport_maintenance (
-    id              UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    tenant_id       UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
-    branch_id       UUID NOT NULL REFERENCES branches(id) ON DELETE CASCADE,
-    vehicle_id      UUID NOT NULL REFERENCES vehicles(id),
-    maintenance_type VARCHAR(100) NOT NULL,
-    description     TEXT,
-    service_date    DATE NOT NULL,
-    cost            DECIMAL(10,2),
-    service_center  VARCHAR(255),
-    bill_number     VARCHAR(100),
-    bill_url        TEXT,
-    next_service_date DATE,
-    odometer_reading INTEGER,
-    remarks         TEXT,
-    created_at      TIMESTAMPTZ DEFAULT NOW(),
-    updated_at      TIMESTAMPTZ DEFAULT NOW()
-);
-
-CREATE INDEX idx_transport_maintenance_vehicle ON transport_maintenance(vehicle_id);
-
--- ============================================================================
--- PART 18: HOSTEL
--- ============================================================================
-
-CREATE TABLE hostel_rooms (
-    id              UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    tenant_id       UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
-    branch_id       UUID NOT NULL REFERENCES branches(id) ON DELETE CASCADE,
-    room_number     VARCHAR(50) NOT NULL,
-    floor           VARCHAR(50),
-    building        VARCHAR(100),
-    room_type       hostel_room_type DEFAULT 'shared',
-    capacity        INTEGER NOT NULL,
-    current_occupancy INTEGER DEFAULT 0,
-    fee_per_bed     DECIMAL(10,2) DEFAULT 0,
-    amenities       JSONB DEFAULT '[]',
-    status          VARCHAR(50) DEFAULT 'available',
-    is_active       BOOLEAN DEFAULT TRUE,
-    created_at      TIMESTAMPTZ DEFAULT NOW(),
-    updated_at      TIMESTAMPTZ DEFAULT NOW(),
-    UNIQUE(tenant_id, branch_id, room_number)
-);
-
-CREATE INDEX idx_hostel_rooms_branch ON hostel_rooms(branch_id);
-CREATE INDEX idx_hostel_rooms_status ON hostel_rooms(status);
-
-CREATE TABLE hostel_beds (
-    id              UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    tenant_id       UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
-    room_id         UUID NOT NULL REFERENCES hostel_rooms(id) ON DELETE CASCADE,
-    bed_number      VARCHAR(50) NOT NULL,
-    is_occupied     BOOLEAN DEFAULT FALSE,
-    created_at      TIMESTAMPTZ DEFAULT NOW(),
-    updated_at      TIMESTAMPTZ DEFAULT NOW(),
-    UNIQUE(room_id, bed_number)
-);
-
-CREATE INDEX idx_hostel_beds_room ON hostel_beds(room_id);
-
-CREATE TABLE student_hostel (
-    id              UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    tenant_id       UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
-    branch_id       UUID NOT NULL REFERENCES branches(id) ON DELETE CASCADE,
-    student_id      UUID NOT NULL REFERENCES students(id) ON DELETE CASCADE,
-    room_id         UUID NOT NULL REFERENCES hostel_rooms(id),
-    bed_id          UUID NOT NULL REFERENCES hostel_beds(id),
-    check_in_date   DATE NOT NULL,
-    check_out_date  DATE,
-    fee             DECIMAL(10,2) DEFAULT 0,
-    academic_year_id UUID REFERENCES academic_years(id),
-    status          VARCHAR(50) DEFAULT 'active',
-    created_at      TIMESTAMPTZ DEFAULT NOW(),
-    updated_at      TIMESTAMPTZ DEFAULT NOW()
-);
-
-CREATE INDEX idx_student_hostel_student ON student_hostel(student_id);
-CREATE INDEX idx_student_hostel_room ON student_hostel(room_id);
-
-CREATE TABLE hostel_complaints (
-    id              UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    tenant_id       UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
-    branch_id       UUID NOT NULL REFERENCES branches(id) ON DELETE CASCADE,
-    student_id      UUID NOT NULL REFERENCES students(id) ON DELETE CASCADE,
-    complaint_type  VARCHAR(100) NOT NULL,
-    description     TEXT NOT NULL,
-    priority        notification_priority DEFAULT 'medium',
-    status          VARCHAR(50) DEFAULT 'open',
-    resolved_at     TIMESTAMPTZ,
-    resolved_by     UUID,
-    resolution_notes TEXT,
-    created_at      TIMESTAMPTZ DEFAULT NOW(),
-    updated_at      TIMESTAMPTZ DEFAULT NOW()
-);
-
-CREATE INDEX idx_hostel_complaints_student ON hostel_complaints(student_id);
-CREATE INDEX idx_hostel_complaints_status ON hostel_complaints(status);
-
-CREATE TABLE hostel_visitors (
-    id              UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    tenant_id       UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
-    branch_id       UUID NOT NULL REFERENCES branches(id) ON DELETE CASCADE,
-    student_id      UUID NOT NULL REFERENCES students(id) ON DELETE CASCADE,
-    visitor_name    VARCHAR(255) NOT NULL,
-    relationship    VARCHAR(100),
-    phone           VARCHAR(20),
-    visit_date      DATE NOT NULL,
-    check_in_time   TIMESTAMPTZ,
-    check_out_time  TIMESTAMPTZ,
-    purpose         TEXT,
-    id_proof        VARCHAR(100),
-    id_number       VARCHAR(100),
-    created_at      TIMESTAMPTZ DEFAULT NOW()
-);
-
--- ============================================================================
--- PART 19: COMMUNICATION & NOTIFICATIONS
--- ============================================================================
-
-CREATE TABLE notification_templates (
-    id              UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    tenant_id       UUID REFERENCES tenants(id) ON DELETE CASCADE,
-    name            VARCHAR(255) NOT NULL,
-    code            VARCHAR(100) NOT NULL,
-    type            notification_type NOT NULL,
-    subject         VARCHAR(255),
-    body            TEXT NOT NULL,
-    variables       JSONB DEFAULT '[]',
-    is_active       BOOLEAN DEFAULT TRUE,
-    created_at      TIMESTAMPTZ DEFAULT NOW(),
-    updated_at      TIMESTAMPTZ DEFAULT NOW(),
-    UNIQUE(tenant_id, code)
-);
-
-CREATE TABLE notifications (
-    id              UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    tenant_id       UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
-    branch_id       UUID REFERENCES branches(id),
-    sender_id       UUID,
-    title           VARCHAR(255) NOT NULL,
-    message         TEXT NOT NULL,
-    type            notification_type DEFAULT 'in_app',
-    priority        notification_priority DEFAULT 'low',
-    target_roles    JSONB DEFAULT '[]',
-    target_users    JSONB DEFAULT '[]',
-    metadata        JSONB DEFAULT '{}',
-    allow_dismiss   BOOLEAN DEFAULT TRUE,
-    expires_at      TIMESTAMPTZ,
-    created_at      TIMESTAMPTZ DEFAULT NOW(),
-    updated_at      TIMESTAMPTZ DEFAULT NOW()
-);
-
-CREATE INDEX idx_notifications_tenant ON notifications(tenant_id);
-CREATE INDEX idx_notifications_type ON notifications(type);
-CREATE INDEX idx_notifications_created ON notifications(created_at);
-
-CREATE TABLE notification_logs (
-    id              UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    tenant_id       UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
-    notification_id UUID NOT NULL REFERENCES notifications(id) ON DELETE CASCADE,
-    recipient_id    UUID NOT NULL,
-    recipient_type  VARCHAR(50) NOT NULL,
-    channel         notification_type NOT NULL,
-    status          VARCHAR(50) DEFAULT 'pending',
-    sent_at         TIMESTAMPTZ,
-    delivered_at    TIMESTAMPTZ,
-    read_at         TIMESTAMPTZ,
-    error_message   TEXT,
-    metadata        JSONB DEFAULT '{}',
-    created_at      TIMESTAMPTZ DEFAULT NOW()
-);
-
-CREATE INDEX idx_notification_logs_notification ON notification_logs(notification_id);
-CREATE INDEX idx_notification_logs_recipient ON notification_logs(recipient_id);
-CREATE INDEX idx_notification_logs_status ON notification_logs(status);
-
-CREATE TABLE announcements (
-    id              UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    tenant_id       UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
-    branch_id       UUID NOT NULL REFERENCES branches(id) ON DELETE CASCADE,
-    title           VARCHAR(255) NOT NULL,
-    content         TEXT NOT NULL,
-    target_roles    JSONB DEFAULT '[]',
-    target_classes  JSONB DEFAULT '[]',
-    attachment_urls JSONB DEFAULT '[]',
-    priority        notification_priority DEFAULT 'low',
-    is_pinned       BOOLEAN DEFAULT FALSE,
-    published_at    TIMESTAMPTZ,
-    expires_at      TIMESTAMPTZ,
-    created_by      UUID,
-    created_at      TIMESTAMPTZ DEFAULT NOW(),
-    updated_at      TIMESTAMPTZ DEFAULT NOW()
-);
-
-CREATE INDEX idx_announcements_branch ON announcements(branch_id);
-CREATE INDEX idx_announcements_published ON announcements(published_at);
-
-CREATE TABLE circulars (
-    id              UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    tenant_id       UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
-    branch_id       UUID NOT NULL REFERENCES branches(id) ON DELETE CASCADE,
-    circular_number VARCHAR(50) NOT NULL,
-    title           VARCHAR(255) NOT NULL,
-    content         TEXT NOT NULL,
-    target_roles    JSONB DEFAULT '[]',
-    attachment_urls JSONB DEFAULT '[]',
-    issue_date      DATE NOT NULL,
-    created_by      UUID,
-    created_at      TIMESTAMPTZ DEFAULT NOW(),
-    updated_at      TIMESTAMPTZ DEFAULT NOW(),
-    UNIQUE(tenant_id, branch_id, circular_number)
-);
-
--- ============================================================================
--- PART 20: INVENTORY & ASSETS
--- ============================================================================
-
-CREATE TABLE inventory_categories (
-    id              UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    tenant_id       UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
-    name            VARCHAR(100) NOT NULL,
-    description     TEXT,
-    is_active       BOOLEAN DEFAULT TRUE,
-    created_at      TIMESTAMPTZ DEFAULT NOW(),
-    updated_at      TIMESTAMPTZ DEFAULT NOW(),
-    UNIQUE(tenant_id, name)
-);
-
-CREATE TABLE inventory_items (
-    id                  UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    tenant_id           UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
-    branch_id           UUID NOT NULL REFERENCES branches(id) ON DELETE CASCADE,
-    category_id         UUID REFERENCES inventory_categories(id),
-    name                VARCHAR(255) NOT NULL,
-    sku                 VARCHAR(100),
-    description         TEXT,
-    unit                VARCHAR(50),
-    quantity            DECIMAL(12,2) DEFAULT 0,
-    min_quantity        DECIMAL(12,2) DEFAULT 0,
-    max_quantity        DECIMAL(12,2),
-    unit_price          DECIMAL(10,2),
-    total_value         DECIMAL(12,2) GENERATED ALWAYS AS (quantity * unit_price) STORED,
-    location            VARCHAR(255),
-    is_active           BOOLEAN DEFAULT TRUE,
-    created_at          TIMESTAMPTZ DEFAULT NOW(),
-    updated_at          TIMESTAMPTZ DEFAULT NOW(),
-    deleted_at          TIMESTAMPTZ
-);
-
-CREATE INDEX idx_inventory_items_branch ON inventory_items(branch_id);
-CREATE INDEX idx_inventory_items_category ON inventory_items(category_id);
-CREATE INDEX idx_inventory_items_sku ON inventory_items(sku);
-CREATE INDEX idx_inventory_items_low_stock ON inventory_items(quantity) WHERE quantity <= min_quantity;
-
-CREATE TABLE inventory_transactions (
-    id              UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    tenant_id       UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
-    branch_id       UUID NOT NULL REFERENCES branches(id) ON DELETE CASCADE,
-    item_id         UUID NOT NULL REFERENCES inventory_items(id) ON DELETE CASCADE,
-    transaction_type inventory_transaction_type NOT NULL,
-    quantity        DECIMAL(12,2) NOT NULL,
-    unit_price      DECIMAL(10,2),
-    total_amount    DECIMAL(12,2),
-    reference_type  VARCHAR(50),
-    reference_id    UUID,
-    vendor_name     VARCHAR(255),
-    bill_number     VARCHAR(100),
-    remarks         TEXT,
-    created_by      UUID,
-    created_at      TIMESTAMPTZ DEFAULT NOW()
-);
-
-CREATE INDEX idx_inventory_transactions_item ON inventory_transactions(item_id);
-CREATE INDEX idx_inventory_transactions_type ON inventory_transactions(transaction_type);
-
-CREATE TABLE assets (
-    id              UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    tenant_id       UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
-    branch_id       UUID NOT NULL REFERENCES branches(id) ON DELETE CASCADE,
-    name            VARCHAR(255) NOT NULL,
-    asset_type      VARCHAR(100) NOT NULL,
-    asset_code      VARCHAR(50),
-    description     TEXT,
-    purchase_date   DATE,
-    purchase_price  DECIMAL(12,2),
-    current_value   DECIMAL(12,2),
-    depreciation_method VARCHAR(50),
-    depreciation_rate DECIMAL(5,2),
-    warranty_expiry DATE,
-    warranty_details TEXT,
-    location        VARCHAR(255),
-    status          VARCHAR(50) DEFAULT 'active',
-    assigned_to     UUID,
-    condition_note  TEXT,
-    is_active       BOOLEAN DEFAULT TRUE,
-    created_at      TIMESTAMPTZ DEFAULT NOW(),
-    updated_at      TIMESTAMPTZ DEFAULT NOW(),
-    deleted_at      TIMESTAMPTZ
-);
-
-CREATE INDEX idx_assets_branch ON assets(branch_id);
-CREATE INDEX idx_assets_type ON assets(asset_type);
-CREATE INDEX idx_assets_status ON assets(status);
-
--- ============================================================================
--- PART 21: HR & RECRUITMENT
--- ============================================================================
-
-CREATE TABLE job_postings (
-    id              UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    tenant_id       UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
-    branch_id       UUID NOT NULL REFERENCES branches(id) ON DELETE CASCADE,
-    title           VARCHAR(255) NOT NULL,
-    department_id   UUID REFERENCES departments(id),
-    employment_type employment_type DEFAULT 'permanent',
-    description     TEXT,
-    requirements    TEXT,
-    salary_range    VARCHAR(100),
-    location        VARCHAR(255),
-    vacancies       INTEGER DEFAULT 1,
-    posted_date     DATE,
-    closing_date    DATE,
-    status          VARCHAR(50) DEFAULT 'open',
-    created_at      TIMESTAMPTZ DEFAULT NOW(),
-    updated_at      TIMESTAMPTZ DEFAULT NOW()
-);
-
-CREATE TABLE job_applications (
-    id              UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    tenant_id       UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
-    job_posting_id  UUID NOT NULL REFERENCES job_postings(id) ON DELETE CASCADE,
-    applicant_name  VARCHAR(255) NOT NULL,
-    email           VARCHAR(255),
-    phone           VARCHAR(20),
-    resume_url      TEXT,
-    cover_letter    TEXT,
-    qualification   TEXT,
-    experience_years DECIMAL(4,1),
-    current_company VARCHAR(255),
-    current_ctc     VARCHAR(100),
-    expected_ctc    VARCHAR(100),
-    notice_period   VARCHAR(50),
-    status          VARCHAR(50) DEFAULT 'applied',
-    review_notes    TEXT,
-    created_at      TIMESTAMPTZ DEFAULT NOW(),
-    updated_at      TIMESTAMPTZ DEFAULT NOW()
-);
-
-CREATE TABLE performance_reviews (
-    id              UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    tenant_id       UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
-    branch_id       UUID NOT NULL REFERENCES branches(id) ON DELETE CASCADE,
-    staff_id        UUID NOT NULL REFERENCES staff(id) ON DELETE CASCADE,
-    review_period   VARCHAR(100) NOT NULL,
-    review_date     DATE NOT NULL,
-    reviewed_by     UUID NOT NULL,
-    ratings         JSONB DEFAULT '{}',
-    overall_rating  DECIMAL(3,1),
-    strengths       TEXT,
-    areas_for_improvement TEXT,
-    goals           JSONB DEFAULT '[]',
-    comments        TEXT,
-    status          VARCHAR(50) DEFAULT 'draft',
-    created_at      TIMESTAMPTZ DEFAULT NOW(),
-    updated_at      TIMESTAMPTZ DEFAULT NOW()
-);
-
-CREATE INDEX idx_performance_reviews_staff ON performance_reviews(staff_id);
-
--- ============================================================================
--- PART 22: VISITOR MANAGEMENT
--- ============================================================================
-
-CREATE TABLE visitors (
-    id              UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    tenant_id       UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
-    branch_id       UUID NOT NULL REFERENCES branches(id) ON DELETE CASCADE,
-    name            VARCHAR(255) NOT NULL,
-    phone           VARCHAR(20),
-    email           VARCHAR(255),
-    address         TEXT,
-    id_proof_type   VARCHAR(100),
-    id_proof_number VARCHAR(100),
-    purpose         TEXT NOT NULL,
-    person_to_meet  VARCHAR(255),
-    department      VARCHAR(100),
-    check_in_time   TIMESTAMPTZ NOT NULL,
-    check_out_time  TIMESTAMPTZ,
-    vehicle_number  VARCHAR(50),
-    badge_number    VARCHAR(50),
-    temperature     DECIMAL(4,1),
-    is_pre_approved BOOLEAN DEFAULT FALSE,
-    status          VARCHAR(50) DEFAULT 'checked_in',
-    created_at      TIMESTAMPTZ DEFAULT NOW(),
-    updated_at      TIMESTAMPTZ DEFAULT NOW()
-);
-
-CREATE INDEX idx_visitors_branch ON visitors(branch_id);
-CREATE INDEX idx_visitors_status ON visitors(status);
-CREATE INDEX idx_visitors_date ON visitors(check_in_time);
-
--- ============================================================================
--- PART 23: ID CARDS & CERTIFICATES
--- ============================================================================
-
-CREATE TABLE id_card_templates (
-    id              UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    tenant_id       UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
-    branch_id       UUID NOT NULL REFERENCES branches(id) ON DELETE CASCADE,
-    name            VARCHAR(255) NOT NULL,
-    template_type   VARCHAR(50) NOT NULL,
-    design_config   JSONB NOT NULL DEFAULT '{}',
-    is_active       BOOLEAN DEFAULT TRUE,
-    created_at      TIMESTAMPTZ DEFAULT NOW(),
-    updated_at      TIMESTAMPTZ DEFAULT NOW()
-);
-
-CREATE TABLE certificate_templates (
-    id              UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    tenant_id       UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
-    branch_id       UUID NOT NULL REFERENCES branches(id) ON DELETE CASCADE,
-    name            VARCHAR(255) NOT NULL,
-    certificate_type VARCHAR(100) NOT NULL,
-    design_config   JSONB NOT NULL DEFAULT '{}',
-    is_active       BOOLEAN DEFAULT TRUE,
-    created_at      TIMESTAMPTZ DEFAULT NOW(),
-    updated_at      TIMESTAMPTZ DEFAULT NOW()
-);
-
-CREATE TABLE certificates (
-    id                  UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    tenant_id           UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
-    branch_id           UUID NOT NULL REFERENCES branches(id) ON DELETE CASCADE,
-    certificate_number  VARCHAR(50) NOT NULL,
-    template_id         UUID REFERENCES certificate_templates(id),
-    recipient_type      VARCHAR(50) NOT NULL,
-    recipient_id        UUID NOT NULL,
-    issued_date         DATE NOT NULL,
-    issue_reason        TEXT,
-    certificate_url     TEXT,
-    signed_by           UUID,
-    status              VARCHAR(50) DEFAULT 'draft',
-    created_at          TIMESTAMPTZ DEFAULT NOW(),
-    updated_at          TIMESTAMPTZ DEFAULT NOW(),
-    UNIQUE(tenant_id, branch_id, certificate_number)
-);
-
--- ============================================================================
--- PART 24: AUDIT LOGGING
--- ============================================================================
-
-CREATE TABLE audit_logs (
-    id              UUID DEFAULT uuid_generate_v4(),
-    tenant_id       UUID,
-    user_id         UUID,
-    branch_id       UUID,
-    action          VARCHAR(100) NOT NULL,
-    module          VARCHAR(100) NOT NULL,
-    resource_type   VARCHAR(100),
-    resource_id     UUID,
-    description     TEXT,
-    changes         JSONB DEFAULT '{}',
-    metadata        JSONB DEFAULT '{}',
-    ip_address      VARCHAR(45),
-    user_agent      TEXT,
-    session_id      UUID,
-    outcome         VARCHAR(20) DEFAULT 'success',
-    created_at      TIMESTAMPTZ DEFAULT NOW(),
-    PRIMARY KEY (id, created_at)
-) PARTITION BY RANGE (created_at);
-
-CREATE INDEX idx_audit_logs_tenant ON audit_logs(tenant_id);
-CREATE INDEX idx_audit_logs_user ON audit_logs(user_id);
-CREATE INDEX idx_audit_logs_action ON audit_logs(action);
-CREATE INDEX idx_audit_logs_module ON audit_logs(module);
-CREATE INDEX idx_audit_logs_created ON audit_logs(created_at);
-CREATE INDEX idx_audit_logs_resource ON audit_logs(resource_type, resource_id);
-
--- Create monthly partitions for audit_logs
-CREATE TABLE audit_logs_2026_01 PARTITION OF audit_logs
-    FOR VALUES FROM ('2026-01-01') TO ('2026-02-01');
-CREATE TABLE audit_logs_2026_02 PARTITION OF audit_logs
-    FOR VALUES FROM ('2026-02-01') TO ('2026-03-01');
-CREATE TABLE audit_logs_2026_03 PARTITION OF audit_logs
-    FOR VALUES FROM ('2026-03-01') TO ('2026-04-01');
-CREATE TABLE audit_logs_2026_04 PARTITION OF audit_logs
-    FOR VALUES FROM ('2026-04-01') TO ('2026-05-01');
-CREATE TABLE audit_logs_2026_05 PARTITION OF audit_logs
-    FOR VALUES FROM ('2026-05-01') TO ('2026-06-01');
-CREATE TABLE audit_logs_2026_06 PARTITION OF audit_logs
-    FOR VALUES FROM ('2026-06-01') TO ('2026-07-01');
-CREATE TABLE audit_logs_2026_07 PARTITION OF audit_logs
-    FOR VALUES FROM ('2026-07-01') TO ('2026-08-01');
-CREATE TABLE audit_logs_2026_08 PARTITION OF audit_logs
-    FOR VALUES FROM ('2026-08-01') TO ('2026-09-01');
-CREATE TABLE audit_logs_2026_09 PARTITION OF audit_logs
-    FOR VALUES FROM ('2026-09-01') TO ('2026-10-01');
-CREATE TABLE audit_logs_2026_10 PARTITION OF audit_logs
-    FOR VALUES FROM ('2026-10-01') TO ('2026-11-01');
-CREATE TABLE audit_logs_2026_11 PARTITION OF audit_logs
-    FOR VALUES FROM ('2026-11-01') TO ('2026-12-01');
-CREATE TABLE audit_logs_2026_12 PARTITION OF audit_logs
-    FOR VALUES FROM ('2026-12-01') TO ('2027-01-01');
-CREATE TABLE audit_logs_default PARTITION OF audit_logs DEFAULT;
-
--- ============================================================================
--- PART 25: SETTINGS & CONFIGURATION
--- ============================================================================
-
-CREATE TABLE tenant_settings (
-    id              UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    tenant_id       UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
-    setting_key     VARCHAR(255) NOT NULL,
-    setting_value   JSONB NOT NULL DEFAULT '{}',
-    description     TEXT,
-    created_at      TIMESTAMPTZ DEFAULT NOW(),
-    updated_at      TIMESTAMPTZ DEFAULT NOW(),
-    UNIQUE(tenant_id, setting_key)
-);
-
-CREATE TABLE branding_settings (
-    id              UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    tenant_id       UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
-    primary_color   VARCHAR(7) DEFAULT '#2563eb',
-    secondary_color VARCHAR(7) DEFAULT '#1e40af',
-    accent_color    VARCHAR(7) DEFAULT '#f59e0b',
-    logo_url        TEXT,
-    favicon_url     TEXT,
-    login_bg_url    TEXT,
-    login_page_text VARCHAR(255),
-    footer_text     TEXT,
-    custom_domain   VARCHAR(255),
-    custom_css      TEXT,
-    is_white_label  BOOLEAN DEFAULT FALSE,
-    created_at      TIMESTAMPTZ DEFAULT NOW(),
-    updated_at      TIMESTAMPTZ DEFAULT NOW(),
-    UNIQUE(tenant_id)
-);
-
-CREATE TABLE system_config (
-    id              UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    config_key      VARCHAR(255) UNIQUE NOT NULL,
-    config_value    JSONB NOT NULL DEFAULT '{}',
-    description     TEXT,
-    created_at      TIMESTAMPTZ DEFAULT NOW(),
-    updated_at      TIMESTAMPTZ DEFAULT NOW()
-);
-
--- ============================================================================
--- PART 26: FEATURE FLAGS
--- ============================================================================
-
-CREATE TABLE feature_flags (
-    id              UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    code            VARCHAR(100) UNIQUE NOT NULL,
-    name            VARCHAR(255) NOT NULL,
-    description     TEXT,
-    module          VARCHAR(100) NOT NULL,
-    is_system       BOOLEAN DEFAULT FALSE,
-    default_value   BOOLEAN DEFAULT FALSE,
-    created_at      TIMESTAMPTZ DEFAULT NOW(),
-    updated_at      TIMESTAMPTZ DEFAULT NOW()
-);
-
-CREATE TABLE plan_features (
-    id              UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    plan_id         UUID NOT NULL REFERENCES plans(id) ON DELETE CASCADE,
-    feature_flag_id UUID NOT NULL REFERENCES feature_flags(id) ON DELETE CASCADE,
-    is_enabled      BOOLEAN DEFAULT FALSE,
-    feature_value   VARCHAR(255),
-    created_at      TIMESTAMPTZ DEFAULT NOW(),
-    UNIQUE(plan_id, feature_flag_id)
-);
-
-CREATE TABLE tenant_features (
-    id              UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    tenant_id       UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
-    feature_flag_id UUID NOT NULL REFERENCES feature_flags(id) ON DELETE CASCADE,
-    is_enabled      BOOLEAN DEFAULT FALSE,
-    feature_value   VARCHAR(255),
-    override_plan   BOOLEAN DEFAULT FALSE,
-    created_at      TIMESTAMPTZ DEFAULT NOW(),
-    updated_at      TIMESTAMPTZ DEFAULT NOW(),
-    UNIQUE(tenant_id, feature_flag_id)
-);
-
--- ============================================================================
--- PART 27: ROW LEVEL SECURITY POLICIES
--- ============================================================================
-
--- Enable RLS on all tenant-scoped tables
-ALTER TABLE tenants ENABLE ROW LEVEL SECURITY;
-ALTER TABLE branches ENABLE ROW LEVEL SECURITY;
-ALTER TABLE users ENABLE ROW LEVEL SECURITY;
-ALTER TABLE roles ENABLE ROW LEVEL SECURITY;
-ALTER TABLE user_roles ENABLE ROW LEVEL SECURITY;
-ALTER TABLE academic_years ENABLE ROW LEVEL SECURITY;
-ALTER TABLE departments ENABLE ROW LEVEL SECURITY;
-ALTER TABLE classes ENABLE ROW LEVEL SECURITY;
-ALTER TABLE sections ENABLE ROW LEVEL SECURITY;
-ALTER TABLE subjects ENABLE ROW LEVEL SECURITY;
-ALTER TABLE class_subjects ENABLE ROW LEVEL SECURITY;
-ALTER TABLE teacher_subjects ENABLE ROW LEVEL SECURITY;
-ALTER TABLE enquiries ENABLE ROW LEVEL SECURITY;
-ALTER TABLE applications ENABLE ROW LEVEL SECURITY;
-ALTER TABLE students ENABLE ROW LEVEL SECURITY;
-ALTER TABLE student_documents ENABLE ROW LEVEL SECURITY;
-ALTER TABLE parents ENABLE ROW LEVEL SECURITY;
-ALTER TABLE student_parents ENABLE ROW LEVEL SECURITY;
-ALTER TABLE student_academic_records ENABLE ROW LEVEL SECURITY;
-ALTER TABLE staff ENABLE ROW LEVEL SECURITY;
-ALTER TABLE staff_documents ENABLE ROW LEVEL SECURITY;
-ALTER TABLE attendance ENABLE ROW LEVEL SECURITY;
-ALTER TABLE attendance_records ENABLE ROW LEVEL SECURITY;
-ALTER TABLE staff_attendance ENABLE ROW LEVEL SECURITY;
-ALTER TABLE leave_types ENABLE ROW LEVEL SECURITY;
-ALTER TABLE leave_requests ENABLE ROW LEVEL SECURITY;
-ALTER TABLE fee_structures ENABLE ROW LEVEL SECURITY;
-ALTER TABLE fee_structure_items ENABLE ROW LEVEL SECURITY;
-ALTER TABLE fee_discounts ENABLE ROW LEVEL SECURITY;
-ALTER TABLE fee_concessions ENABLE ROW LEVEL SECURITY;
-ALTER TABLE student_fee_accounts ENABLE ROW LEVEL SECURITY;
-ALTER TABLE fee_transactions ENABLE ROW LEVEL SECURITY;
-ALTER TABLE fee_receipts ENABLE ROW LEVEL SECURITY;
-ALTER TABLE fee_invoices ENABLE ROW LEVEL SECURITY;
-ALTER TABLE payroll ENABLE ROW LEVEL SECURITY;
-ALTER TABLE expenses ENABLE ROW LEVEL SECURITY;
-ALTER TABLE income ENABLE ROW LEVEL SECURITY;
-ALTER TABLE exams ENABLE ROW LEVEL SECURITY;
-ALTER TABLE exam_schedules ENABLE ROW LEVEL SECURITY;
-ALTER TABLE marks ENABLE ROW LEVEL SECURITY;
-ALTER TABLE exam_results ENABLE ROW LEVEL SECURITY;
-ALTER TABLE timetables ENABLE ROW LEVEL SECURITY;
-ALTER TABLE timetable_entries ENABLE ROW LEVEL SECURITY;
-ALTER TABLE homework ENABLE ROW LEVEL SECURITY;
-ALTER TABLE homework_submissions ENABLE ROW LEVEL SECURITY;
-ALTER TABLE assignments ENABLE ROW LEVEL SECURITY;
-ALTER TABLE assignment_submissions ENABLE ROW LEVEL SECURITY;
-ALTER TABLE lesson_plans ENABLE ROW LEVEL SECURITY;
-ALTER TABLE books ENABLE ROW LEVEL SECURITY;
-ALTER TABLE book_issues ENABLE ROW LEVEL SECURITY;
-ALTER TABLE vehicles ENABLE ROW LEVEL SECURITY;
-ALTER TABLE drivers ENABLE ROW LEVEL SECURITY;
-ALTER TABLE routes ENABLE ROW LEVEL SECURITY;
-ALTER TABLE route_stops ENABLE ROW LEVEL SECURITY;
-ALTER TABLE student_transport ENABLE ROW LEVEL SECURITY;
-ALTER TABLE hostel_rooms ENABLE ROW LEVEL SECURITY;
-ALTER TABLE hostel_beds ENABLE ROW LEVEL SECURITY;
-ALTER TABLE student_hostel ENABLE ROW LEVEL SECURITY;
-ALTER TABLE hostel_complaints ENABLE ROW LEVEL SECURITY;
-ALTER TABLE notifications ENABLE ROW LEVEL SECURITY;
-ALTER TABLE notification_logs ENABLE ROW LEVEL SECURITY;
-ALTER TABLE announcements ENABLE ROW LEVEL SECURITY;
-ALTER TABLE inventory_items ENABLE ROW LEVEL SECURITY;
-ALTER TABLE inventory_transactions ENABLE ROW LEVEL SECURITY;
-ALTER TABLE assets ENABLE ROW LEVEL SECURITY;
-ALTER TABLE visitors ENABLE ROW LEVEL SECURITY;
-ALTER TABLE certificates ENABLE ROW LEVEL SECURITY;
-ALTER TABLE tenant_settings ENABLE ROW LEVEL SECURITY;
-ALTER TABLE branding_settings ENABLE ROW LEVEL SECURITY;
-
--- SuperAdmin bypass policy
-CREATE POLICY superadmin_all_tenants ON tenants
-    FOR ALL USING (
-        current_setting('app.current_user_id', TRUE) IN (
-            SELECT id FROM users WHERE is_superadmin = TRUE
-        )
-    );
-
--- Function to generate tenant isolation policy for any table
-CREATE OR REPLACE FUNCTION create_tenant_isolation_policy(table_name TEXT)
-RETURNS VOID AS $$
-BEGIN
-    EXECUTE format(
-        'CREATE POLICY tenant_isolation_%s ON %I FOR ALL USING (
-            tenant_id = current_setting(''app.current_tenant_id'')::UUID
-            OR current_setting(''app.is_superadmin'', TRUE) = ''true''
-        )',
-        table_name, table_name
-    );
-END;
-$$ LANGUAGE plpgsql;
-
--- Apply tenant isolation policies to all tenant-scoped tables
-DO $$
-DECLARE
-    tbl TEXT;
-    tables TEXT[] := ARRAY[
-        'branches', 'users', 'roles',
-        'academic_years', 'departments', 'classes', 'sections', 'subjects',
-        'class_subjects', 'teacher_subjects',
-        'enquiries', 'applications', 'students', 'student_documents',
-        'parents', 'student_academic_records',
-        'staff', 'staff_documents',
-        'attendance', 'attendance_records', 'staff_attendance',
-        'leave_types', 'leave_requests',
-        'fee_structures', 'fee_structure_items', 'fee_discounts', 'fee_concessions',
-        'student_fee_accounts', 'fee_transactions', 'fee_receipts', 'fee_invoices',
-        'payroll', 'expenses', 'income',
-        'exams', 'exam_schedules', 'marks', 'exam_results',
-        'timetables', 'timetable_entries',
-        'homework', 'homework_submissions', 'assignments', 'assignment_submissions', 'lesson_plans',
-        'books', 'book_issues',
-        'vehicles', 'drivers', 'routes', 'route_stops', 'student_transport',
-        'hostel_rooms', 'hostel_beds', 'student_hostel', 'hostel_complaints',
-        'notifications', 'notification_logs', 'announcements',
-        'inventory_items', 'inventory_transactions', 'assets',
-        'visitors', 'certificates',
-        'tenant_settings', 'branding_settings'
-    ];
-BEGIN
-    FOREACH tbl IN ARRAY tables
-    LOOP
-        PERFORM create_tenant_isolation_policy(tbl);
-    END LOOP;
-END;
-$$;
-
--- ============================================================================
--- PART 28: SEED DATA
--- ============================================================================
-
--- Default system roles (seeded for every new tenant)
-INSERT INTO roles (tenant_id, name, slug, description, is_system, hierarchy_level) VALUES
+-- Data only: the app's seed script (npm run seed) remains the authoritative
+-- seeder for tenant-level data; these platform-level rows are required for a
+-- fresh deployment to boot (role lookup for erp-superadmin, subscription
+-- plans, feature flags).
+
+INSERT INTO public.roles (tenant_id, name, slug, description, is_system, hierarchy_level) VALUES
     (NULL, 'ERP SuperAdmin', 'erp-superadmin', 'Platform-wide administrator', TRUE, 0);
 
--- Note: The following roles are created per-tenant at tenant creation time:
--- organization-owner, principal, reception, teacher, accountant, hr,
--- librarian, transport-manager, hostel-manager, lab-assistant, it-admin,
--- office-staff, parent, student
-
 -- Default subscription plans
-INSERT INTO plans (name, code, description, price_monthly, price_yearly, max_branches, max_users, max_students, max_staff, storage_limit_mb, features, sort_order) VALUES
+INSERT INTO public.plans (name, code, description, price_monthly, price_yearly, max_branches, max_users, max_students, max_staff, storage_limit_mb, features, sort_order) VALUES
     ('Basic', 'basic', 'For small schools and coaching centres', 0, 0, 1, 20, 200, 20, 200,
      '{"reception": false, "multi_branch": false, "custom_branding": false, "custom_login": false, "hostel": false, "transport": false, "library": false, "white_label": false, "api_access": false}',
      1),
@@ -2195,7 +6337,7 @@ INSERT INTO plans (name, code, description, price_monthly, price_yearly, max_bra
      3);
 
 -- Default feature flags
-INSERT INTO feature_flags (code, name, description, module, default_value) VALUES
+INSERT INTO public.feature_flags (code, name, description, module, default_value) VALUES
     ('multi_branch', 'Multi-Branch Support', 'Allow multiple branches per institution', 'core', FALSE),
     ('reception', 'Reception Module', 'Reception dashboard and visitor management', 'admin', FALSE),
     ('hostel', 'Hostel Management', 'Hostel room, bed and student allocation', 'hostel', FALSE),
@@ -2213,82 +6355,3 @@ INSERT INTO feature_flags (code, name, description, module, default_value) VALUE
     ('online_exams', 'Online Examinations', 'Conduct online exams on the platform', 'academic', FALSE),
     ('lms', 'LMS Module', 'Learning management system', 'academic', FALSE),
     ('video_conferencing', 'Video Conferencing', 'Integrated video conferencing for classes', 'communication', FALSE);
-
--- ============================================================================
--- PART 29: TRIGGERS & AUTOMATION
--- ============================================================================
-
--- Auto-update updated_at timestamp
-CREATE OR REPLACE FUNCTION update_updated_at_column()
-RETURNS TRIGGER AS $$
-BEGIN
-    NEW.updated_at = NOW();
-    RETURN NEW;
-END;
-$$ LANGUAGE plpgsql;
-
--- Apply to all tables with updated_at
-DO $$
-DECLARE
-    tbl TEXT;
-BEGIN
-    FOR tbl IN
-        SELECT table_name FROM information_schema.columns
-        WHERE column_name = 'updated_at'
-        AND table_schema = 'public'
-        AND table_name NOT LIKE 'audit_logs%'
-    LOOP
-        EXECUTE format(
-            'CREATE TRIGGER trg_%s_updated_at BEFORE UPDATE ON %I FOR EACH ROW EXECUTE FUNCTION update_updated_at_column()',
-            tbl, tbl
-        );
-    END LOOP;
-END;
-$$;
-
--- Auto-log critical actions
--- Usage: CREATE TRIGGER trg_audit_students AFTER INSERT OR UPDATE OR DELETE ON students
---     FOR EACH ROW EXECUTE FUNCTION log_audit_entry('action_name', 'module_name');
-CREATE OR REPLACE FUNCTION log_audit_entry()
-RETURNS TRIGGER AS $$
-DECLARE
-    v_branch_id UUID;
-    v_session_id UUID;
-BEGIN
-    BEGIN
-        v_branch_id := current_setting('app.current_branch_id', TRUE)::UUID;
-    EXCEPTION WHEN OTHERS THEN
-        v_branch_id := NULL;
-    END;
-    BEGIN
-        v_session_id := current_setting('app.current_session_id', TRUE)::UUID;
-    EXCEPTION WHEN OTHERS THEN
-        v_session_id := NULL;
-    END;
-
-    INSERT INTO audit_logs (
-        tenant_id, user_id, branch_id, session_id,
-        action, module, resource_type, resource_id,
-        description, changes, ip_address, user_agent
-    ) VALUES (
-        current_setting('app.current_tenant_id', TRUE)::UUID,
-        current_setting('app.current_user_id', TRUE)::UUID,
-        v_branch_id, v_session_id,
-        TG_ARGV[0], TG_ARGV[1], TG_TABLE_NAME,
-        COALESCE(NEW.id, OLD.id),
-        TG_OP || ' on ' || TG_TABLE_NAME,
-        CASE
-            WHEN TG_OP = 'DELETE' THEN row_to_json(OLD)::jsonb
-            WHEN TG_OP = 'UPDATE' THEN jsonb_build_object('old', row_to_json(OLD), 'new', row_to_json(NEW))
-            ELSE row_to_json(NEW)::jsonb
-        END,
-        current_setting('app.client_ip', TRUE),
-        current_setting('app.user_agent', TRUE)
-    );
-    RETURN COALESCE(NEW, OLD);
-END;
-$$ LANGUAGE plpgsql;
-
--- ============================================================================
--- SCHEMA COMPLETE
--- ============================================================================

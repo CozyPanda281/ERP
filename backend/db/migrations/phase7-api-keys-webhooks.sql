@@ -91,14 +91,16 @@ CREATE POLICY tenant_isolation ON webhook_endpoints
     OR current_setting('app.is_superadmin', true) = 'true'
   );
 
-ALTER TABLE webhook_deliveries ENABLE ROW LEVEL SECURITY;
-DROP POLICY IF EXISTS tenant_isolation ON webhook_deliveries;
-CREATE POLICY tenant_isolation ON webhook_deliveries
-  USING (
-    tenant_id = NULLIF(current_setting('app.tenant_id', true), '')::uuid
-    OR current_setting('app.is_superadmin', true) = 'true'
-  )
-  WITH CHECK (
-    tenant_id = NULLIF(current_setting('app.tenant_id', true), '')::uuid
-    OR current_setting('app.is_superadmin', true) = 'true'
-  );
+-- api_key_lookup policy: ApiKeyGuard resolves the key by hash BEFORE the
+-- tenant interceptor runs. Created here because phase10-rls-force.sql may
+-- apply first (alphabetical glob order) and skips api_keys via its
+-- to_regclass guard. phase10's FORCE loop then forces RLS on this table.
+DROP POLICY IF EXISTS api_key_lookup ON api_keys;
+CREATE POLICY api_key_lookup ON api_keys
+  USING (current_setting('app.allow_api_key_lookup', true) = 'true');
+
+-- FORCE row level security (phase10's force loop may have run before these
+-- tables existed, so force explicitly here as well).
+ALTER TABLE api_keys FORCE ROW LEVEL SECURITY;
+ALTER TABLE webhook_endpoints FORCE ROW LEVEL SECURITY;
+ALTER TABLE webhook_deliveries FORCE ROW LEVEL SECURITY;

@@ -755,3 +755,40 @@ Follow-up to the full-project audit (missing/broken code review). All findings w
 ### 5. Verification
 
 **Backend:** 37 suites / 291/291 unit, 2/2 e2e (with and without CI-style env), builds clean. **Frontend:** tsc + vite build clean, 36/36. **Live:** health 200; login -> `GET /students` 200 (total=1, branch-filtered); appointments `t|t|1` + 0-row no-GUC / 3-row with-GUC; upload -> GET 200 real content; `docker compose config` parses (with a root .env); `log-audit.sh` flags phone PII, passes on clean tree.
+
+## [2026-08-06] Fresh-Deploy Fixes (canonical base schema + order-independent migrations)
+
+**Status:** `completed`
+
+**Description:**
+While polishing `phase list.md` into a foolproof document, a fresh-deploy drill was run on a scratch database (001 + all 8 migrations in the exact alphabetical glob order used by compose initdb, `migrate.sh`, and CI, all with `ON_ERROR_STOP=1`). Result: the deploy path was broken at every level. Every claim in this entry is drill-verified, not speculative.
+
+### 1. `database/001_schema.sql` had NEVER applied cleanly (now regenerated)
+
+- The hand-written 001 (107 `CREATE TABLE`s) failed on a fresh DB with `ERROR: operator does not exist: text = uuid` - its obsolete inline RLS section compared `current_setting('app.current_user_id', TRUE)` (text) against `users.id` (uuid) in the `superadmin_all_tenants` policy on `tenants`; if "fixed" by a cast it would then have broken every request (that policy + phase10 FORCE would have blocked the tenant middleware's pre-auth `tenants` lookup). The same section's policy loop also referenced `tenant_id` on tables that don't have it (`hostel_rooms`, etc.).
+- It was also stale: it defined OLD module tables (`books`, `book_issues`, `vehicles`, `drivers`, `routes`, `route_stops`, `student_transport`, `hostel_rooms`, `hostel_beds`, `student_hostel`, `hostel_complaints`, `inventory_items`, `inventory_transactions`, `assets`) and monthly `audit_logs` partitions - while the application's real schema (Drizzle, dev DB) has `library_books/issues/members`, `transport_vehicles/routes/assignments/route_stops`, `hostels` + `hostel_attendance/bed_allocations/discipline/visitors`, `accounting_*`, `inventory_goods_receipts/purchase_orders/stock_adjustments/suppliers`, `import_batches`, and a REGULAR `audit_logs`. A fresh deploy from it built a schema that did not match the app at all.
+- The dev DB itself only worked because it was built via `drizzle-kit push` (no 001), and 001's PART 27 `ENABLE RLS` statements had been half-applied there (up to the first error), which is why dev's RLS posture differed from a real fresh deploy.
+- **Fix:** `database/001_schema.sql` was regenerated from the source of truth - `npx drizzle-kit push --force` into an empty scratch DB, then `pg_dump --schema-only --no-owner --no-privileges` (109 tables, exactly the 109 `pgTable` definitions). New header documents provenance + regeneration/verification rules (regenerate on schema change, never hand-edit DDL, RLS lives only in `backend/db/migrations/`). `\restrict` psql-only meta-lines stripped (would break node-pg execution); seed moved to `PART 99` with `public.`-qualified inserts (pg_dump sets empty `search_path`); obsolete PART 29 trigger section dropped (dev has 0 non-internal triggers; `updated_at`/audit handled in app code).
+
+### 2. Alphabetical glob order breaks migrations (now order-independent)
+
+- `phase10-rls-force.sql` runs BEFORE `phase7`/`phase8`/`phase9` alphabetically. It fatally errored `relation "api_keys" does not exist` (its `auth_lookup` policies on `users` etc. are fine, but the `api_key_lookup` policy on `api_keys` wasn't).
+- `phase12-appointments-rls.sql` runs before `phase9` and fatally errored `relation "appointments" does not exist`.
+- `phase8-soft-delete-uniques.sql` failed with `cannot drop index ... because constraint ... requires it`: 001 declares the uniques as constraints (constraint-owned indexes) while drizzle generates plain unique indexes.
+- `phase10`'s FORCE loop only forces tables that already have a policy, so on a fresh deploy it forced just 9 tables (98 on dev) - `rls-full-tenancy` and `rls-hardening` ran AFTER it and never forced anything (rls-hardening's FORCE was still behind the stale `\if :enable_force` opt-in from the pre-GUC era).
+- **Fixes (all idempotent, applied to dev):**
+  - `phase10`: `api_key_lookup` policy wrapped in a `to_regclass('public.api_keys')` guard; if `api_keys` does not exist yet, phase7 creates it later.
+  - `phase7`: now also creates `api_key_lookup` itself + `FORCE ROW LEVEL SECURITY` on `api_keys`, `webhook_endpoints`, `webhook_deliveries`.
+  - `phase12`: whole body wrapped in `to_regclass('public.appointments')` guard; `phase9` now carries the identical enable + policy + FORCE block so whichever file runs first leaves the table fully protected.
+  - `phase8`: constraint-drop pre-pass (`DO` loop over `pg_constraint`, dropping the 7 named unique constraints if they exist as constraints) before `DROP INDEX IF EXISTS` + partial unique index recreation.
+  - `rls-full-tenancy`: section-1 loop now FORCEs each table it enables; section-2 tables (users, roles, notification_templates, audit_logs) FORCEd explicitly. Stale "OPT-IN - DO NOT ENABLE YET" header removed.
+  - `rls-hardening`: FORCE section made unconditional (was `psql -v enable_force=true` opt-in); stale superuser-era header notes updated.
+
+### 3. Drill verification (fresh DB, exact compose/CI order)
+
+- 001 + phase10, phase11, phase12, phase7, phase8, phase9, rls-full-tenancy, rls-hardening - all 9 steps pass with `ON_ERROR_STOP=1`.
+- **Parity vs dev (reference):** table sets IDENTICAL (110/110 non-partition, zero diffs); RLS-enforced sets IDENTICAL (98/98, zero diffs); policy-bearing tables 98/98; 0 tenant tables unprotected; seed rows present (erp-superadmin role, 3 plans, 17 feature flags).
+- All 8 migration files re-applied to dev (idempotent no-ops): dev unchanged (98 enforced), API alive, tests **291/291 unit + 2/2 e2e**.
+- Scratch databases (`erp_scratch_fresh`, `erp_scratch_drizzle`) dropped after verification.
+
+**Files changed:** `database/001_schema.sql` (regenerated), `backend/db/migrations/{phase7,phase8,phase9,phase10,phase12}-*.sql`, `rls-full-tenancy.sql`, `rls-hardening.sql`.

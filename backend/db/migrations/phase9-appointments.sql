@@ -26,3 +26,21 @@ CREATE INDEX IF NOT EXISTS idx_appointments_tenant_branch ON appointments (tenan
 CREATE INDEX IF NOT EXISTS idx_appointments_requested_by ON appointments (requested_by);
 CREATE INDEX IF NOT EXISTS idx_appointments_scheduled_at ON appointments (scheduled_at);
 CREATE INDEX IF NOT EXISTS idx_appointments_status ON appointments (status);
+
+-- RLS (mirrors phase12-appointments-rls.sql): phase12 may run BEFORE this file
+-- (alphabetical glob order) and guards on to_regclass; this block guarantees
+-- enable + policy + FORCE regardless of which file applies first.
+ALTER TABLE appointments ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS tenant_isolation ON appointments;
+CREATE POLICY tenant_isolation ON appointments
+  USING (
+    tenant_id = NULLIF(current_setting('app.tenant_id', true), '')::uuid
+    OR current_setting('app.is_superadmin', true) = 'true'
+  )
+  WITH CHECK (
+    tenant_id = NULLIF(current_setting('app.tenant_id', true), '')::uuid
+    OR current_setting('app.is_superadmin', true) = 'true'
+  );
+
+ALTER TABLE appointments FORCE ROW LEVEL SECURITY;

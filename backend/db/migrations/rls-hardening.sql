@@ -26,11 +26,10 @@
 --
 -- FORCE NOTE
 -- ----------
--- Superusers (including the current app connection, postgres) and roles with
--- BYPASSRLS ALWAYS bypass RLS even with FORCE ROW LEVEL SECURITY. The FORCE
--- section below only matters if the application is moved to a dedicated
--- non-superuser role. Until then the policies below already protect any
--- future low-privileged role (reports, analytics, read replicas).
+-- The application connects as the dedicated erp_app role (phase10), so FORCE
+-- ROW LEVEL SECURITY is required for these policies to apply — the FORCE
+-- statements in section 3 are unconditional and idempotent. Roles with
+-- BYPASSRLS and superusers always bypass RLS regardless.
 --
 -- Application wiring required BEFORE enabling :enable_force (see section 3):
 --   * node-postgres pool: wrap each request in a transaction and run
@@ -146,19 +145,19 @@ CREATE POLICY tenant_isolation ON payroll_salary_components
   );
 
 -- ---------------------------------------------------------------------------
--- 3. FORCE RLS (OPT-IN)
+-- 3. FORCE RLS (mandatory)
 -- ---------------------------------------------------------------------------
--- The app connects as a superuser, so RLS is bypassed unless FORCED.
--- Do NOT enable until the application sets app.tenant_id / app.is_superadmin
--- per request (see header). Default: disabled.
--- Enable with:  psql -v enable_force=true -f rls-hardening.sql
-\if :enable_force
+-- The application connects as the dedicated erp_app role and sets the
+-- app.tenant_id / app.is_superadmin GUCs per request (TenantContextInterceptor),
+-- so FORCE is required — without it RLS is bypassed. This was historically
+-- opt-in (psql -v enable_force=true); phase10 made it the standard, so these
+-- are now unconditional. Idempotent: re-running on already-forced tables is
+-- a no-op.
 ALTER TABLE user_roles FORCE ROW LEVEL SECURITY;
 ALTER TABLE student_parents FORCE ROW LEVEL SECURITY;
 ALTER TABLE subscriptions FORCE ROW LEVEL SECURITY;
 ALTER TABLE user_sessions FORCE ROW LEVEL SECURITY;
 ALTER TABLE payroll_salary_components FORCE ROW LEVEL SECURITY;
-\endif
 
 -- ---------------------------------------------------------------------------
 -- 4. audit_logs partition primary key verification

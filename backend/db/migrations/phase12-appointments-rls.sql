@@ -10,17 +10,24 @@
 -- Idempotent: safe to run multiple times.
 -- ============================================================================
 
-ALTER TABLE appointments ENABLE ROW LEVEL SECURITY;
-
-DROP POLICY IF EXISTS tenant_isolation ON appointments;
-CREATE POLICY tenant_isolation ON appointments
-  USING (
-    tenant_id = NULLIF(current_setting('app.tenant_id', true), '')::uuid
-    OR current_setting('app.is_superadmin', true) = 'true'
-  )
-  WITH CHECK (
-    tenant_id = NULLIF(current_setting('app.tenant_id', true), '')::uuid
-    OR current_setting('app.is_superadmin', true) = 'true'
-  );
-
-ALTER TABLE appointments FORCE ROW LEVEL SECURITY;
+-- Guarded by to_regclass: appointments is created by phase9, which may apply
+-- AFTER this file (alphabetical glob order). phase9 carries the same
+-- enable + policy + FORCE block, so whichever file runs first leaves the
+-- table fully protected for the other.
+DO $$
+BEGIN
+  IF to_regclass('public.appointments') IS NOT NULL THEN
+    ALTER TABLE appointments ENABLE ROW LEVEL SECURITY;
+    DROP POLICY IF EXISTS tenant_isolation ON appointments;
+    CREATE POLICY tenant_isolation ON appointments
+      USING (
+        tenant_id = NULLIF(current_setting('app.tenant_id', true), '')::uuid
+        OR current_setting('app.is_superadmin', true) = 'true'
+      )
+      WITH CHECK (
+        tenant_id = NULLIF(current_setting('app.tenant_id', true), '')::uuid
+        OR current_setting('app.is_superadmin', true) = 'true'
+      );
+    ALTER TABLE appointments FORCE ROW LEVEL SECURITY;
+  END IF;
+END $$;

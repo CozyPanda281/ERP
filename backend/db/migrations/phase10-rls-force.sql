@@ -98,9 +98,18 @@ CREATE POLICY auth_lookup ON audit_logs
 -- runs (and before the key's tenant is known). The guard sets
 -- app.allow_api_key_lookup for that single lookup, then pins the key's tenant
 -- and clears the flag.
-DROP POLICY IF EXISTS api_key_lookup ON api_keys;
-CREATE POLICY api_key_lookup ON api_keys
-  USING (current_setting('app.allow_api_key_lookup', true) = 'true');
+-- Guarded by to_regclass: api_keys is created by phase7, which may apply AFTER
+-- this file (alphabetical glob order). phase7 itself creates the policy and
+-- forces RLS if this guard skipped it; phase10's FORCE loop below then forces
+-- any policy-bearing table that remains.
+DO $$
+BEGIN
+  IF to_regclass('public.api_keys') IS NOT NULL THEN
+    DROP POLICY IF EXISTS api_key_lookup ON api_keys;
+    CREATE POLICY api_key_lookup ON api_keys
+      USING (current_setting('app.allow_api_key_lookup', true) = 'true');
+  END IF;
+END $$;
 
 -- ---------------------------------------------------------------------------
 -- 4. FORCE ROW LEVEL SECURITY on every policy-bearing table
