@@ -79,7 +79,6 @@ const TENANT_NAV: Record<string, NavItem[]> = {
     { to: '/homework', label: 'Homework', icon: FileText },
     { to: '/notices', label: 'Notices', icon: Megaphone },
     { to: '/appointments', label: 'Appointments', icon: CalendarClock },
-    { to: '/integrations', label: 'API & Webhooks', icon: Webhook },
     { to: '/settings', label: 'Settings', icon: Settings },
   ],
   principal: [
@@ -92,7 +91,6 @@ const TENANT_NAV: Record<string, NavItem[]> = {
     { to: '/homework', label: 'Homework', icon: FileText },
     { to: '/notices', label: 'Notices', icon: Megaphone },
     { to: '/appointments', label: 'Appointments', icon: CalendarClock },
-    { to: '/integrations', label: 'API & Webhooks', icon: Webhook },
   ],
   reception: [
     { to: '/reception', label: 'Dashboard', icon: LayoutDashboard },
@@ -158,6 +156,7 @@ const SUPER_ADMIN_NAV: NavItem[] = [
   { to: '/admin', label: 'Platform', icon: LayoutDashboard },
   { to: '/tenants', label: 'Tenants', icon: Building2 },
   { to: '/subscriptions', label: 'Subscriptions', icon: CreditCard },
+  { to: '/integrations', label: 'API & Webhooks', icon: Webhook },
   { to: '/audit', label: 'Audit Logs', icon: ShieldCheck },
 ]
 

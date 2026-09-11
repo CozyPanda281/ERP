@@ -36,7 +36,9 @@ describe('MetricsService', () => {
     const output = await service.render();
     const lines = output.trim().split('\n');
 
-    expect(lines[0]).toBe('# HELP erp_api_uptime_seconds erp_api_uptime_seconds');
+    expect(lines[0]).toBe(
+      '# HELP erp_api_uptime_seconds erp_api_uptime_seconds',
+    );
     expect(output).toContain(
       'erp_http_requests_total{method="GET",status="200"} 2',
     );

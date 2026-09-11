@@ -1,5 +1,9 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { BadRequestException, ConflictException, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  NotFoundException,
+} from '@nestjs/common';
 import { ApiKeysService, generateApiKey, hashApiKey } from './api-keys.service';
 import { DatabaseProvider } from '../../database/database.provider';
 import { MockDatabaseProvider } from '../../common/test/mocks';
@@ -169,7 +173,9 @@ describe('ApiKeysService', () => {
         is_active: true,
         created_at: '2026-01-01',
       };
-      mockDb.setMockResult('SELECT id, tenant_id, name, key_prefix', { rows: [row] });
+      mockDb.setMockResult('SELECT id, tenant_id, name, key_prefix', {
+        rows: [row],
+      });
       const updates: string[] = [];
       const queryMock = (sql: string) => {
         if (sql.includes('SELECT id, tenant_id, name, key_prefix')) {

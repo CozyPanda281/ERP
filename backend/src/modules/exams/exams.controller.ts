@@ -55,7 +55,12 @@ export class ExamsController {
   }
 
   @Get('exams/:id')
-  @Roles(ROLES.PRINCIPAL, ROLES.TEACHER, ROLES.STUDENT, ROLES.ORGANIZATION_OWNER)
+  @Roles(
+    ROLES.PRINCIPAL,
+    ROLES.TEACHER,
+    ROLES.STUDENT,
+    ROLES.ORGANIZATION_OWNER,
+  )
   @ApiOperation({ summary: 'Get exam by ID' })
   async findExam(@Param('id') id: string) {
     const data = await this.examsService.findExamById(id);
@@ -168,7 +173,12 @@ export class ExamsController {
   }
 
   @Get('exam-marks/student/:studentId')
-  @Roles(ROLES.TEACHER, ROLES.PRINCIPAL, ROLES.STUDENT, ROLES.ORGANIZATION_OWNER)
+  @Roles(
+    ROLES.TEACHER,
+    ROLES.PRINCIPAL,
+    ROLES.STUDENT,
+    ROLES.ORGANIZATION_OWNER,
+  )
   @ApiOperation({ summary: 'Get marks for a student' })
   async findMarksByStudent(
     @Param('studentId') studentId: string,
@@ -224,7 +234,12 @@ export class ExamsController {
   }
 
   @Get('exams/:examId/results/:studentId')
-  @Roles(ROLES.PRINCIPAL, ROLES.TEACHER, ROLES.STUDENT, ROLES.ORGANIZATION_OWNER)
+  @Roles(
+    ROLES.PRINCIPAL,
+    ROLES.TEACHER,
+    ROLES.STUDENT,
+    ROLES.ORGANIZATION_OWNER,
+  )
   @ApiOperation({
     summary: 'Get student result for exam with subject breakdown',
   })
@@ -237,7 +252,12 @@ export class ExamsController {
   }
 
   @Get('student-results/:studentId')
-  @Roles(ROLES.PRINCIPAL, ROLES.TEACHER, ROLES.STUDENT, ROLES.ORGANIZATION_OWNER)
+  @Roles(
+    ROLES.PRINCIPAL,
+    ROLES.TEACHER,
+    ROLES.STUDENT,
+    ROLES.ORGANIZATION_OWNER,
+  )
   @ApiOperation({ summary: 'Get all results for a student across exams' })
   async findResultsByStudent(
     @Param('studentId') studentId: string,
@@ -253,7 +273,12 @@ export class ExamsController {
   }
 
   @Get('exams/:examId/subject-marks/:studentId')
-  @Roles(ROLES.PRINCIPAL, ROLES.TEACHER, ROLES.STUDENT, ROLES.ORGANIZATION_OWNER)
+  @Roles(
+    ROLES.PRINCIPAL,
+    ROLES.TEACHER,
+    ROLES.STUDENT,
+    ROLES.ORGANIZATION_OWNER,
+  )
   @ApiOperation({ summary: 'Get subject-wise marks for a student in an exam' })
   async getSubjectMarks(
     @Param('examId') examId: string,

@@ -14,11 +14,7 @@ import { eq, and, isNull, or, sql, inArray } from 'drizzle-orm';
 import * as schema from '../../database/schema';
 import { EmailService } from '../../shared/email/email.service';
 import { CryptoService } from '../../shared/crypto/crypto.service';
-import {
-  generateTotpSecret,
-  verifyTotp,
-  otpauthUrl,
-} from './totp.util';
+import { generateTotpSecret, verifyTotp, otpauthUrl } from './totp.util';
 
 const TWO_FACTOR_ISSUER = 'ERP Platform';
 const RECOVERY_CODE_COUNT = 10;
@@ -294,7 +290,8 @@ export class AuthService {
     return crypto.createHash('sha256').update(token).digest('hex');
   }
 
-  async logout(sessionId: string, userId: string) {    await this.db.db
+  async logout(sessionId: string, userId: string) {
+    await this.db.db
       .update(schema.userSessions)
       .set({ isActive: false })
       .where(
@@ -436,7 +433,9 @@ export class AuthService {
 
     if (!user) throw new BadRequestException('User not found');
     if (user.twoFactorEnabled) {
-      throw new ConflictException('Two-factor authentication is already enabled');
+      throw new ConflictException(
+        'Two-factor authentication is already enabled',
+      );
     }
 
     let secret = user.twoFactorSecret
@@ -470,7 +469,9 @@ export class AuthService {
 
     if (!user) throw new BadRequestException('User not found');
     if (user.twoFactorEnabled) {
-      throw new ConflictException('Two-factor authentication is already enabled');
+      throw new ConflictException(
+        'Two-factor authentication is already enabled',
+      );
     }
     if (!user.twoFactorSecret) {
       throw new BadRequestException('No pending 2FA setup; call setup first');
@@ -564,7 +565,9 @@ export class AuthService {
     const [user] = await this.db.db
       .select()
       .from(schema.users)
-      .where(and(eq(schema.users.id, payload.sub), isNull(schema.users.deletedAt)))
+      .where(
+        and(eq(schema.users.id, payload.sub), isNull(schema.users.deletedAt)),
+      )
       .limit(1);
 
     if (!user) {
@@ -574,7 +577,9 @@ export class AuthService {
       throw new UnauthorizedException('User account is inactive');
     }
     if (!user.twoFactorEnabled) {
-      throw new UnauthorizedException('Two-factor authentication is not enabled');
+      throw new UnauthorizedException(
+        'Two-factor authentication is not enabled',
+      );
     }
 
     const valid = await this.verifyTwoFactorEntry(user, code);

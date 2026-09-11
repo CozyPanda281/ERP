@@ -1,4 +1,9 @@
-import { Injectable, NestInterceptor, ExecutionContext, CallHandler } from '@nestjs/common';
+import {
+  Injectable,
+  NestInterceptor,
+  ExecutionContext,
+  CallHandler,
+} from '@nestjs/common';
 import { Observable, defer } from 'rxjs';
 import { Request } from 'express';
 import { tenantAls } from '../../database/database.provider';
@@ -46,10 +51,12 @@ export class TenantContextInterceptor implements NestInterceptor {
     // If the middleware did not run (tests, direct invocation), create a
     // request-scoped context here.
     if (!tenantAls.getStore()) {
-      return defer(() => tenantAls.run(new Map<string, string>(), () => {
-        applyGucs();
-        return next.handle();
-      }));
+      return defer(() =>
+        tenantAls.run(new Map<string, string>(), () => {
+          applyGucs();
+          return next.handle();
+        }),
+      );
     }
     applyGucs();
     return next.handle();

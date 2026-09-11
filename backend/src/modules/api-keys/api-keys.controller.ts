@@ -13,7 +13,7 @@ import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import type { Request } from 'express';
 import { ApiKeysService } from './api-keys.service';
 import { Roles } from '../../common/decorators/roles.decorator';
-import { ROLES } from '../../common/constants';
+import { ROLES, TENANT_CONTEXT_KEY } from '../../common/constants';
 
 @ApiTags('API Keys')
 @ApiBearerAuth()
@@ -21,13 +21,20 @@ import { ROLES } from '../../common/constants';
 export class ApiKeysController {
   constructor(private readonly apiKeysService: ApiKeysService) {}
 
+  private resolveTenantId(req: Request): string | null {
+    const user = req.user as any;
+    const tenantContext = (req as any)[TENANT_CONTEXT_KEY] as
+      { tenantId?: string } | null | undefined;
+    return user?.tenantId ?? tenantContext?.tenantId ?? null;
+  }
+
   @Post()
-  @Roles(ROLES.ORGANIZATION_OWNER, ROLES.PRINCIPAL)
+  @Roles(ROLES.SUPER_ADMIN)
   @ApiOperation({ summary: 'Create an API key (secret shown once)' })
   async create(@Req() req: Request, @Body() dto: any) {
     const user = req.user as any;
     const { key, secret } = await this.apiKeysService.create(
-      user.tenantId,
+      this.resolveTenantId(req) as string,
       user.sub,
       dto,
     );
@@ -35,39 +42,41 @@ export class ApiKeysController {
   }
 
   @Get()
-  @Roles(ROLES.ORGANIZATION_OWNER, ROLES.PRINCIPAL)
+  @Roles(ROLES.SUPER_ADMIN)
   @ApiOperation({ summary: 'List API keys (secrets are masked)' })
   async list(@Req() req: Request) {
-    const user = req.user as any;
-    const keys = await this.apiKeysService.list(user.tenantId);
+    const keys = await this.apiKeysService.list(
+      this.resolveTenantId(req) as string,
+    );
     return { success: true, data: keys };
   }
 
   @Patch(':id')
-  @Roles(ROLES.ORGANIZATION_OWNER, ROLES.PRINCIPAL)
+  @Roles(ROLES.SUPER_ADMIN)
   @ApiOperation({ summary: 'Update API key metadata' })
   async update(@Req() req: Request, @Param('id') id: string, @Body() dto: any) {
-    const user = req.user as any;
-    const key = await this.apiKeysService.update(user.tenantId, id, dto);
+    const key = await this.apiKeysService.update(
+      this.resolveTenantId(req) as string,
+      id,
+      dto,
+    );
     return { success: true, data: key };
   }
 
   @Post(':id/revoke')
-  @Roles(ROLES.ORGANIZATION_OWNER, ROLES.PRINCIPAL)
+  @Roles(ROLES.SUPER_ADMIN)
   @HttpCode(200)
   @ApiOperation({ summary: 'Revoke an API key' })
   async revoke(@Req() req: Request, @Param('id') id: string) {
-    const user = req.user as any;
-    await this.apiKeysService.revoke(user.tenantId, id);
+    await this.apiKeysService.revoke(this.resolveTenantId(req) as string, id);
     return { success: true };
   }
 
   @Delete(':id')
-  @Roles(ROLES.ORGANIZATION_OWNER, ROLES.PRINCIPAL)
+  @Roles(ROLES.SUPER_ADMIN)
   @ApiOperation({ summary: 'Delete an API key' })
   async remove(@Req() req: Request, @Param('id') id: string) {
-    const user = req.user as any;
-    await this.apiKeysService.delete(user.tenantId, id);
+    await this.apiKeysService.delete(this.resolveTenantId(req) as string, id);
     return { success: true };
   }
 }

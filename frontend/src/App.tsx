@@ -201,7 +201,7 @@ export default function App() {
           <Route
             path="/integrations"
             element={
-              <RequireRole roles={['organization-owner', 'principal']}>
+              <RequireRole roles={['erp-superadmin']}>
                 <Integrations />
               </RequireRole>
             }

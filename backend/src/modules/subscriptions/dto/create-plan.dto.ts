@@ -60,9 +60,10 @@ export class CreatePlanDto {
   @Min(0)
   storageLimitMb: number;
 
-  @ApiProperty({ example: { reception: true, hostel: false } })
+  @ApiPropertyOptional({ example: { reception: true, hostel: false } })
+  @IsOptional()
   @IsObject()
-  features: Record<string, boolean>;
+  features?: Record<string, boolean>;
 
   @ApiPropertyOptional()
   @IsOptional()

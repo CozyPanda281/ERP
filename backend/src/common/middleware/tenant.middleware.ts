@@ -26,7 +26,11 @@ export class TenantMiddleware implements NestMiddleware {
     });
   }
 
-  private async resolveTenant(req: Request, _res: Response, next: NextFunction) {
+  private async resolveTenant(
+    req: Request,
+    _res: Response,
+    next: NextFunction,
+  ) {
     const tenantId = req.headers['x-tenant-id'] as string;
 
     // Public routes or SuperAdmin auth routes don't require a tenant header

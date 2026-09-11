@@ -30,7 +30,12 @@ export class LibraryController {
 
   @AuditLog({ action: 'post_books', module: 'library' })
   @Post('books')
-  @Roles(ROLES.SUPER_ADMIN, ROLES.PRINCIPAL, ROLES.ORGANIZATION_OWNER, ROLES.LIBRARIAN)
+  @Roles(
+    ROLES.SUPER_ADMIN,
+    ROLES.PRINCIPAL,
+    ROLES.ORGANIZATION_OWNER,
+    ROLES.LIBRARIAN,
+  )
   @ApiOperation({ summary: 'Create a book' })
   async createBook(@Body() body: CreateBookDto, @CurrentUser() user: any) {
     const data = await this.service.createBook({
@@ -42,7 +47,12 @@ export class LibraryController {
   }
 
   @Get('books')
-  @Roles(ROLES.SUPER_ADMIN, ROLES.PRINCIPAL, ROLES.ORGANIZATION_OWNER, ROLES.LIBRARIAN)
+  @Roles(
+    ROLES.SUPER_ADMIN,
+    ROLES.PRINCIPAL,
+    ROLES.ORGANIZATION_OWNER,
+    ROLES.LIBRARIAN,
+  )
   @ApiOperation({ summary: 'List books' })
   async getBooks(@CurrentUser() user: any, @Query() query: LibraryQueryDto) {
     const data = await this.service.findBooksByBranch(user.branchId, query);
@@ -50,7 +60,12 @@ export class LibraryController {
   }
 
   @Get('books/:id')
-  @Roles(ROLES.SUPER_ADMIN, ROLES.PRINCIPAL, ROLES.ORGANIZATION_OWNER, ROLES.LIBRARIAN)
+  @Roles(
+    ROLES.SUPER_ADMIN,
+    ROLES.PRINCIPAL,
+    ROLES.ORGANIZATION_OWNER,
+    ROLES.LIBRARIAN,
+  )
   @ApiOperation({ summary: 'Get book by ID' })
   async getBookById(@Param('id') id: string) {
     const data = await this.service.findBookById(id);
@@ -63,7 +78,12 @@ export class LibraryController {
     resourceIdParam: 'id',
   })
   @Put('books/:id')
-  @Roles(ROLES.SUPER_ADMIN, ROLES.PRINCIPAL, ROLES.ORGANIZATION_OWNER, ROLES.LIBRARIAN)
+  @Roles(
+    ROLES.SUPER_ADMIN,
+    ROLES.PRINCIPAL,
+    ROLES.ORGANIZATION_OWNER,
+    ROLES.LIBRARIAN,
+  )
   @ApiOperation({ summary: 'Update book' })
   async updateBook(@Param('id') id: string, @Body() body: UpdateBookDto) {
     const data = await this.service.updateBook(id, body);
@@ -76,7 +96,12 @@ export class LibraryController {
     resourceIdParam: 'id',
   })
   @Delete('books/:id')
-  @Roles(ROLES.SUPER_ADMIN, ROLES.PRINCIPAL, ROLES.ORGANIZATION_OWNER, ROLES.LIBRARIAN)
+  @Roles(
+    ROLES.SUPER_ADMIN,
+    ROLES.PRINCIPAL,
+    ROLES.ORGANIZATION_OWNER,
+    ROLES.LIBRARIAN,
+  )
   @ApiOperation({ summary: 'Delete book' })
   async deleteBook(@Param('id') id: string) {
     return { success: true, data: await this.service.deleteBook(id) };
@@ -84,7 +109,12 @@ export class LibraryController {
 
   @AuditLog({ action: 'post_members', module: 'library' })
   @Post('members')
-  @Roles(ROLES.SUPER_ADMIN, ROLES.PRINCIPAL, ROLES.ORGANIZATION_OWNER, ROLES.LIBRARIAN)
+  @Roles(
+    ROLES.SUPER_ADMIN,
+    ROLES.PRINCIPAL,
+    ROLES.ORGANIZATION_OWNER,
+    ROLES.LIBRARIAN,
+  )
   @ApiOperation({ summary: 'Create a library member' })
   async createMember(@Body() body: CreateMemberDto, @CurrentUser() user: any) {
     const data = await this.service.createMember({
@@ -96,7 +126,12 @@ export class LibraryController {
   }
 
   @Get('members')
-  @Roles(ROLES.SUPER_ADMIN, ROLES.PRINCIPAL, ROLES.ORGANIZATION_OWNER, ROLES.LIBRARIAN)
+  @Roles(
+    ROLES.SUPER_ADMIN,
+    ROLES.PRINCIPAL,
+    ROLES.ORGANIZATION_OWNER,
+    ROLES.LIBRARIAN,
+  )
   @ApiOperation({ summary: 'List members' })
   async getMembers(@CurrentUser() user: any, @Query() query: LibraryQueryDto) {
     const data = await this.service.findMembersByBranch(user.branchId, query);
@@ -105,7 +140,12 @@ export class LibraryController {
 
   @AuditLog({ action: 'post_issues', module: 'library' })
   @Post('issues')
-  @Roles(ROLES.SUPER_ADMIN, ROLES.PRINCIPAL, ROLES.ORGANIZATION_OWNER, ROLES.LIBRARIAN)
+  @Roles(
+    ROLES.SUPER_ADMIN,
+    ROLES.PRINCIPAL,
+    ROLES.ORGANIZATION_OWNER,
+    ROLES.LIBRARIAN,
+  )
   @ApiOperation({ summary: 'Issue a book' })
   async issueBook(@Body() body: IssueBookDto, @CurrentUser() user: any) {
     const data = await this.service.issueBook({
@@ -122,14 +162,24 @@ export class LibraryController {
     resourceIdParam: 'id',
   })
   @Post('issues/:id/return')
-  @Roles(ROLES.SUPER_ADMIN, ROLES.PRINCIPAL, ROLES.ORGANIZATION_OWNER, ROLES.LIBRARIAN)
+  @Roles(
+    ROLES.SUPER_ADMIN,
+    ROLES.PRINCIPAL,
+    ROLES.ORGANIZATION_OWNER,
+    ROLES.LIBRARIAN,
+  )
   @ApiOperation({ summary: 'Return a book' })
   async returnBook(@Param('id') id: string) {
     return { success: true, data: await this.service.returnBook(id) };
   }
 
   @Get('issues')
-  @Roles(ROLES.SUPER_ADMIN, ROLES.PRINCIPAL, ROLES.ORGANIZATION_OWNER, ROLES.LIBRARIAN)
+  @Roles(
+    ROLES.SUPER_ADMIN,
+    ROLES.PRINCIPAL,
+    ROLES.ORGANIZATION_OWNER,
+    ROLES.LIBRARIAN,
+  )
   @ApiOperation({ summary: 'List issues' })
   async getIssues(@CurrentUser() user: any, @Query() query: LibraryQueryDto) {
     const data = await this.service.findIssuesByBranch(user.branchId, query);

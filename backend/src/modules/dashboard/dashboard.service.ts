@@ -1,7 +1,20 @@
 import { Injectable } from '@nestjs/common';
 import { DatabaseProvider } from '../../database/database.provider';
 import * as schema from '../../database/schema';
-import { and, count, desc, eq, gte, inArray, isNotNull, isNull, lte, or, sql, sum } from 'drizzle-orm';
+import {
+  and,
+  count,
+  desc,
+  eq,
+  gte,
+  inArray,
+  isNotNull,
+  isNull,
+  lte,
+  or,
+  sql,
+  sum,
+} from 'drizzle-orm';
 import { SQL } from 'drizzle-orm';
 
 interface OverviewParams {
@@ -31,7 +44,11 @@ function monthKey(date: Date): string {
 export class DashboardService {
   constructor(private readonly db: DatabaseProvider) {}
 
-  private scoped(table: ScopedTable, tenantId: string, branchId?: string | null) {
+  private scoped(
+    table: ScopedTable,
+    tenantId: string,
+    branchId?: string | null,
+  ) {
     const conds: SQL[] = [eq(table.tenantId, tenantId)];
     if (branchId && table.branchId) conds.push(eq(table.branchId, branchId));
     return conds;
@@ -68,13 +85,21 @@ export class DashboardService {
       feeMonthly,
       attendanceWeekly,
     ] = await Promise.all([
-      countScoped(schema.students as any, [eq((schema.students as any).isActive, true)]),
-      countScoped(schema.staff as any, [eq((schema.staff as any).isActive, true)]),
-      countScoped(schema.classes as any, [eq((schema.classes as any).isActive, true)]),
+      countScoped(schema.students as any, [
+        eq((schema.students as any).isActive, true),
+      ]),
+      countScoped(schema.staff as any, [
+        eq((schema.staff as any).isActive, true),
+      ]),
+      countScoped(schema.classes as any, [
+        eq((schema.classes as any).isActive, true),
+      ]),
       countScoped(schema.sections as any),
       countScoped(schema.subjects as any),
       countScoped(schema.branches as any),
-      countScoped(schema.applications as any, [eq((schema.applications as any).status, 'pending')]),
+      countScoped(schema.applications as any, [
+        eq((schema.applications as any).status, 'pending'),
+      ]),
       countScoped(schema.enquiries as any),
       this.db.db
         .select({ value: count() })
@@ -149,9 +174,7 @@ export class DashboardService {
     const conditions: SQL[] = [
       eq(schema.feeTransactions.tenantId, t),
       eq(schema.feeTransactions.status, 'completed'),
-      ...(branchId
-        ? [eq(schema.feeTransactions.branchId, branchId)]
-        : []),
+      ...(branchId ? [eq(schema.feeTransactions.branchId, branchId)] : []),
     ];
     if (range === 'month') {
       const start = new Date();
@@ -181,15 +204,15 @@ export class DashboardService {
           eq(schema.feeTransactions.tenantId, tenantId),
           eq(schema.feeTransactions.status, 'completed'),
           gte(schema.feeTransactions.paymentDate, start),
-          ...(branchId
-            ? [eq(schema.feeTransactions.branchId, branchId)]
-            : []),
+          ...(branchId ? [eq(schema.feeTransactions.branchId, branchId)] : []),
         ),
       )
       .groupBy(monthCol)
       .orderBy(monthCol);
 
-    const byMonth = new Map(rows.map((r) => [String(r.month), Number(r.amount ?? 0)]));
+    const byMonth = new Map(
+      rows.map((r) => [String(r.month), Number(r.amount ?? 0)]),
+    );
     const series: Array<{ month: string; amount: number }> = [];
     const cursor = new Date();
     cursor.setDate(1);
@@ -232,7 +255,8 @@ export class DashboardService {
     };
   }
 
-  private async attendanceWeekly(tenantId: string, branchId?: string | null) {    const start = new Date();
+  private async attendanceWeekly(tenantId: string, branchId?: string | null) {
+    const start = new Date();
     start.setDate(start.getDate() - 6);
     start.setHours(0, 0, 0, 0);
     const startStr = dateStr(start);
@@ -312,18 +336,27 @@ export class DashboardService {
       .limit(1);
 
     if (!staff) {
-      return { linked: false, message: 'No staff record is linked to this account.' };
+      return {
+        linked: false,
+        message: 'No staff record is linked to this account.',
+      };
     }
 
-    const [myClasses, todayPeriods, homeworkOpen, submissionsPending, todayAttendance, upcomingExams] =
-      await Promise.all([
-        this.teacherClasses(t, staff.id),
-        this.teacherTodayPeriods(t, staff.id),
-        this.teacherHomeworkOpen(t, staff.id, branch),
-        this.teacherSubmissionsPending(t, staff.id, branch),
-        this.teacherTodayAttendance(t, staff.id, branch),
-        this.teacherUpcomingExams(t, staff.id, branch),
-      ]);
+    const [
+      myClasses,
+      todayPeriods,
+      homeworkOpen,
+      submissionsPending,
+      todayAttendance,
+      upcomingExams,
+    ] = await Promise.all([
+      this.teacherClasses(t, staff.id),
+      this.teacherTodayPeriods(t, staff.id),
+      this.teacherHomeworkOpen(t, staff.id, branch),
+      this.teacherSubmissionsPending(t, staff.id, branch),
+      this.teacherTodayAttendance(t, staff.id, branch),
+      this.teacherUpcomingExams(t, staff.id, branch),
+    ]);
 
     return {
       linked: true,
@@ -354,9 +387,18 @@ export class DashboardService {
         isClassTeacher: schema.teacherSubjects.isClassTeacher,
       })
       .from(schema.teacherSubjects)
-      .innerJoin(schema.classes, eq(schema.classes.id, schema.teacherSubjects.classId))
-      .innerJoin(schema.subjects, eq(schema.subjects.id, schema.teacherSubjects.subjectId))
-      .leftJoin(schema.sections, eq(schema.sections.id, schema.teacherSubjects.sectionId))
+      .innerJoin(
+        schema.classes,
+        eq(schema.classes.id, schema.teacherSubjects.classId),
+      )
+      .innerJoin(
+        schema.subjects,
+        eq(schema.subjects.id, schema.teacherSubjects.subjectId),
+      )
+      .leftJoin(
+        schema.sections,
+        eq(schema.sections.id, schema.teacherSubjects.sectionId),
+      )
       .where(eq(schema.teacherSubjects.teacherId, staffId));
 
     const seen = new Set<string>();
@@ -390,10 +432,22 @@ export class DashboardService {
         roomNumber: schema.timetableEntries.roomNumber,
       })
       .from(schema.timetableEntries)
-      .innerJoin(schema.timetables, eq(schema.timetables.id, schema.timetableEntries.timetableId))
-      .innerJoin(schema.subjects, eq(schema.subjects.id, schema.timetableEntries.subjectId))
-      .innerJoin(schema.classes, eq(schema.classes.id, schema.timetables.classId))
-      .leftJoin(schema.sections, eq(schema.sections.id, schema.timetables.sectionId))
+      .innerJoin(
+        schema.timetables,
+        eq(schema.timetables.id, schema.timetableEntries.timetableId),
+      )
+      .innerJoin(
+        schema.subjects,
+        eq(schema.subjects.id, schema.timetableEntries.subjectId),
+      )
+      .innerJoin(
+        schema.classes,
+        eq(schema.classes.id, schema.timetables.classId),
+      )
+      .leftJoin(
+        schema.sections,
+        eq(schema.sections.id, schema.timetables.sectionId),
+      )
       .where(
         and(
           eq(schema.timetables.tenantId, tenantId),
@@ -442,7 +496,10 @@ export class DashboardService {
       })
       .from(schema.homework)
       .innerJoin(schema.classes, eq(schema.classes.id, schema.homework.classId))
-      .innerJoin(schema.subjects, eq(schema.subjects.id, schema.homework.subjectId))
+      .innerJoin(
+        schema.subjects,
+        eq(schema.subjects.id, schema.homework.subjectId),
+      )
       .where(and(...conds))
       .orderBy(sql`${schema.homework.dueDate} ASC`)
       .limit(5);
@@ -465,7 +522,10 @@ export class DashboardService {
     const result = await this.db.db
       .select({ value: count() })
       .from(schema.homeworkSubmissions)
-      .innerJoin(schema.homework, eq(schema.homework.id, schema.homeworkSubmissions.homeworkId))
+      .innerJoin(
+        schema.homework,
+        eq(schema.homework.id, schema.homeworkSubmissions.homeworkId),
+      )
       .where(
         and(...conds, sql`${schema.homeworkSubmissions.gradedAt} IS NULL`),
       );
@@ -532,11 +592,17 @@ export class DashboardService {
       })
       .from(schema.examSchedules)
       .innerJoin(schema.exams, eq(schema.exams.id, schema.examSchedules.examId))
-      .innerJoin(schema.subjects, eq(schema.subjects.id, schema.examSchedules.subjectId))
+      .innerJoin(
+        schema.subjects,
+        eq(schema.subjects.id, schema.examSchedules.subjectId),
+      )
       .where(
         and(
           eq(schema.exams.tenantId, tenantId),
-          inArray(schema.examSchedules.classId, classIds.map((c) => c.id)),
+          inArray(
+            schema.examSchedules.classId,
+            classIds.map((c) => c.id),
+          ),
           gte(schema.examSchedules.date, todayStr),
           ...(branchId ? [eq(schema.exams.branchId, branchId)] : []),
         ),
@@ -578,16 +644,21 @@ export class DashboardService {
       .limit(1);
 
     if (!student) {
-      return { linked: false, message: 'No student record is linked to this account.' };
+      return {
+        linked: false,
+        message: 'No student record is linked to this account.',
+      };
     }
 
-    const [enrollment, attendance, fees, results, homework] = await Promise.all([
-      this.studentEnrollment(t, student.id),
-      this.studentAttendance(t, student.id, params.branchId),
-      this.studentFees(t, student.id),
-      this.studentResults(t, student.id),
-      this.studentHomework(t, student.id),
-    ]);
+    const [enrollment, attendance, fees, results, homework] = await Promise.all(
+      [
+        this.studentEnrollment(t, student.id),
+        this.studentAttendance(t, student.id, params.branchId),
+        this.studentFees(t, student.id),
+        this.studentResults(t, student.id),
+        this.studentHomework(t, student.id),
+      ],
+    );
 
     return {
       linked: true,
@@ -613,14 +684,20 @@ export class DashboardService {
         academicYearName: schema.academicYears.name,
       })
       .from(schema.studentAcademicRecords)
-      .innerJoin(schema.classes, eq(schema.classes.id, schema.studentAcademicRecords.classId))
+      .innerJoin(
+        schema.classes,
+        eq(schema.classes.id, schema.studentAcademicRecords.classId),
+      )
       .leftJoin(
         schema.sections,
         eq(schema.sections.id, schema.studentAcademicRecords.sectionId),
       )
       .innerJoin(
         schema.academicYears,
-        eq(schema.academicYears.id, schema.studentAcademicRecords.academicYearId),
+        eq(
+          schema.academicYears.id,
+          schema.studentAcademicRecords.academicYearId,
+        ),
       )
       .where(eq(schema.studentAcademicRecords.studentId, studentId))
       .orderBy(sql`${schema.studentAcademicRecords.createdAt} DESC`)
@@ -650,7 +727,10 @@ export class DashboardService {
         status: schema.attendanceRecords.status,
       })
       .from(schema.attendanceRecords)
-      .innerJoin(schema.attendance, eq(schema.attendance.id, schema.attendanceRecords.attendanceId))
+      .innerJoin(
+        schema.attendance,
+        eq(schema.attendance.id, schema.attendanceRecords.attendanceId),
+      )
       .where(
         and(
           eq(schema.attendance.tenantId, tenantId),
@@ -744,9 +824,15 @@ export class DashboardService {
         date: schema.examSchedules.date,
       })
       .from(schema.marks)
-      .innerJoin(schema.examSchedules, eq(schema.examSchedules.id, schema.marks.examScheduleId))
+      .innerJoin(
+        schema.examSchedules,
+        eq(schema.examSchedules.id, schema.marks.examScheduleId),
+      )
       .innerJoin(schema.exams, eq(schema.exams.id, schema.examSchedules.examId))
-      .innerJoin(schema.subjects, eq(schema.subjects.id, schema.examSchedules.subjectId))
+      .innerJoin(
+        schema.subjects,
+        eq(schema.subjects.id, schema.examSchedules.subjectId),
+      )
       .where(
         and(
           eq(schema.marks.tenantId, tenantId),
@@ -785,8 +871,13 @@ export class DashboardService {
       eq(schema.homework.classId, record.classId),
       eq(schema.homework.status, 'active'),
       ...(record.sectionId
-        ? [or(isNull(schema.homework.sectionId), eq(schema.homework.sectionId, record.sectionId)) as SQL]
-        : [isNull(schema.homework.sectionId) as SQL]),
+        ? [
+            or(
+              isNull(schema.homework.sectionId),
+              eq(schema.homework.sectionId, record.sectionId),
+            ) as SQL,
+          ]
+        : [isNull(schema.homework.sectionId)]),
     ];
 
     const open = await this.db.db
@@ -803,7 +894,10 @@ export class DashboardService {
         subjectName: schema.subjects.name,
       })
       .from(schema.homework)
-      .innerJoin(schema.subjects, eq(schema.subjects.id, schema.homework.subjectId))
+      .innerJoin(
+        schema.subjects,
+        eq(schema.subjects.id, schema.homework.subjectId),
+      )
       .where(and(...conds, gte(schema.homework.dueDate, new Date())))
       .orderBy(sql`${schema.homework.dueDate} ASC`)
       .limit(5);
@@ -841,13 +935,19 @@ export class DashboardService {
       .limit(1);
 
     if (!parent) {
-      return { linked: false, message: 'No parent record is linked to this account.' };
+      return {
+        linked: false,
+        message: 'No parent record is linked to this account.',
+      };
     }
 
     const studentIds = await this.db.db
       .select({ id: schema.students.id })
       .from(schema.studentParents)
-      .innerJoin(schema.students, eq(schema.students.id, schema.studentParents.studentId))
+      .innerJoin(
+        schema.students,
+        eq(schema.students.id, schema.studentParents.studentId),
+      )
       .where(
         and(
           eq(schema.studentParents.parentId, parent.id),
@@ -873,7 +973,12 @@ export class DashboardService {
       const fee = feesByStudent.get(s.id);
       return {
         ...s,
-        attendance: att ?? { daysRecorded: 0, present: 0, absent: 0, rate: null },
+        attendance: att ?? {
+          daysRecorded: 0,
+          present: 0,
+          absent: 0,
+          rate: null,
+        },
         fees: fee ?? { totalDue: 0, totalPaid: 0 },
       };
     });
@@ -905,9 +1010,20 @@ export class DashboardService {
         schema.studentAcademicRecords,
         eq(schema.studentAcademicRecords.studentId, schema.students.id),
       )
-      .leftJoin(schema.classes, eq(schema.classes.id, schema.studentAcademicRecords.classId))
-      .leftJoin(schema.sections, eq(schema.sections.id, schema.studentAcademicRecords.sectionId))
-      .where(and(eq(schema.students.tenantId, tenantId), inArray(schema.students.id, studentIds)));
+      .leftJoin(
+        schema.classes,
+        eq(schema.classes.id, schema.studentAcademicRecords.classId),
+      )
+      .leftJoin(
+        schema.sections,
+        eq(schema.sections.id, schema.studentAcademicRecords.sectionId),
+      )
+      .where(
+        and(
+          eq(schema.students.tenantId, tenantId),
+          inArray(schema.students.id, studentIds),
+        ),
+      );
 
     const latest: Record<string, any> = {};
     for (const r of rows) {
@@ -926,7 +1042,10 @@ export class DashboardService {
     }));
   }
 
-  private async parentChildrenAttendance(tenantId: string, studentIds: string[]) {
+  private async parentChildrenAttendance(
+    tenantId: string,
+    studentIds: string[],
+  ) {
     const since = new Date();
     since.setDate(since.getDate() - 29);
     since.setHours(0, 0, 0, 0);
@@ -937,7 +1056,10 @@ export class DashboardService {
         status: schema.attendanceRecords.status,
       })
       .from(schema.attendanceRecords)
-      .innerJoin(schema.attendance, eq(schema.attendance.id, schema.attendanceRecords.attendanceId))
+      .innerJoin(
+        schema.attendance,
+        eq(schema.attendance.id, schema.attendanceRecords.attendanceId),
+      )
       .where(
         and(
           eq(schema.attendance.tenantId, tenantId),
@@ -946,9 +1068,16 @@ export class DashboardService {
         ),
       );
 
-    const byStudent = new Map<string, { daysRecorded: number; present: number; absent: number }>();
+    const byStudent = new Map<
+      string,
+      { daysRecorded: number; present: number; absent: number }
+    >();
     for (const r of rows) {
-      const entry = byStudent.get(r.studentId) ?? { daysRecorded: 0, present: 0, absent: 0 };
+      const entry = byStudent.get(r.studentId) ?? {
+        daysRecorded: 0,
+        present: 0,
+        absent: 0,
+      };
       entry.daysRecorded++;
       if (r.status === 'present' || r.status === 'late') entry.present++;
       else entry.absent++;
@@ -958,7 +1087,13 @@ export class DashboardService {
     return new Map(
       [...byStudent.entries()].map(([id, v]) => [
         id,
-        { ...v, rate: v.daysRecorded > 0 ? Math.round((v.present / v.daysRecorded) * 100) : null },
+        {
+          ...v,
+          rate:
+            v.daysRecorded > 0
+              ? Math.round((v.present / v.daysRecorded) * 100)
+              : null,
+        },
       ]),
     );
   }
@@ -981,7 +1116,10 @@ export class DashboardService {
     return new Map(
       rows.map((r) => [
         r.studentId,
-        { totalDue: Number(r.totalDue ?? 0), totalPaid: Number(r.totalPaid ?? 0) },
+        {
+          totalDue: Number(r.totalDue ?? 0),
+          totalPaid: Number(r.totalPaid ?? 0),
+        },
       ]),
     );
   }
@@ -1092,9 +1230,7 @@ export class DashboardService {
         .where(
           and(
             eq(schema.studentFeeAccounts.tenantId, t),
-            ...(branch
-              ? [eq(schema.studentFeeAccounts.branchId, branch)]
-              : []),
+            ...(branch ? [eq(schema.studentFeeAccounts.branchId, branch)] : []),
             eq(schema.studentFeeAccounts.status, 'active'),
             sql`${schema.studentFeeAccounts.totalDue} > 0`,
           ),
@@ -1106,9 +1242,7 @@ export class DashboardService {
         .where(
           and(
             eq(schema.studentFeeAccounts.tenantId, t),
-            ...(branch
-              ? [eq(schema.studentFeeAccounts.branchId, branch)]
-              : []),
+            ...(branch ? [eq(schema.studentFeeAccounts.branchId, branch)] : []),
             eq(schema.studentFeeAccounts.status, 'active'),
           ),
         )
@@ -1458,9 +1592,7 @@ export class DashboardService {
       this.db.db
         .select({ value: count() })
         .from(schema.libraryIssues)
-        .where(
-          and(issueCond(), eq(schema.libraryIssues.status, 'issued')),
-        )
+        .where(and(issueCond(), eq(schema.libraryIssues.status, 'issued')))
         .then((r) => Number(r[0]?.value ?? 0)),
       this.db.db
         .select({ value: count() })
@@ -1588,9 +1720,7 @@ export class DashboardService {
         .where(
           and(
             eq(schema.transportFuelLogs.tenantId, t),
-            ...(branch
-              ? [eq(schema.transportFuelLogs.branchId, branch)]
-              : []),
+            ...(branch ? [eq(schema.transportFuelLogs.branchId, branch)] : []),
             gte(schema.transportFuelLogs.fuelDate, monthStart),
           ),
         )
@@ -1605,7 +1735,10 @@ export class DashboardService {
               ? [eq(schema.transportMaintenance.branchId, branch)]
               : []),
             gte(schema.transportMaintenance.nextServiceDate, monthStart),
-            lte(schema.transportMaintenance.nextServiceDate, dateStr(new Date())),
+            lte(
+              schema.transportMaintenance.nextServiceDate,
+              dateStr(new Date()),
+            ),
           ),
         )
         .then((r) => Number(r[0]?.value ?? 0)),
@@ -1625,9 +1758,7 @@ export class DashboardService {
         .where(
           and(
             eq(schema.transportFuelLogs.tenantId, t),
-            ...(branch
-              ? [eq(schema.transportFuelLogs.branchId, branch)]
-              : []),
+            ...(branch ? [eq(schema.transportFuelLogs.branchId, branch)] : []),
           ),
         )
         .orderBy(desc(schema.transportFuelLogs.fuelDate))
@@ -1651,10 +1782,7 @@ export class DashboardService {
     };
   }
 
-  async hostelOverview(params: {
-    tenantId: string;
-    branchId?: string | null;
-  }) {
+  async hostelOverview(params: { tenantId: string; branchId?: string | null }) {
     const { tenantId: t, branchId: branch } = params;
     const today = dateStr(new Date());
 
@@ -1689,13 +1817,19 @@ export class DashboardService {
       this.db.db
         .select({ value: count() })
         .from(schema.hostelRooms)
-        .innerJoin(schema.hostels, eq(schema.hostels.id, schema.hostelRooms.hostelId))
+        .innerJoin(
+          schema.hostels,
+          eq(schema.hostels.id, schema.hostelRooms.hostelId),
+        )
         .where(roomCond())
         .then((r) => Number(r[0]?.value ?? 0)),
       this.db.db
         .select({ value: count() })
         .from(schema.hostelRooms)
-        .innerJoin(schema.hostels, eq(schema.hostels.id, schema.hostelRooms.hostelId))
+        .innerJoin(
+          schema.hostels,
+          eq(schema.hostels.id, schema.hostelRooms.hostelId),
+        )
         .where(
           and(
             roomCond(),
@@ -1709,7 +1843,10 @@ export class DashboardService {
       this.db.db
         .select({ value: count() })
         .from(schema.hostelRooms)
-        .innerJoin(schema.hostels, eq(schema.hostels.id, schema.hostelRooms.hostelId))
+        .innerJoin(
+          schema.hostels,
+          eq(schema.hostels.id, schema.hostelRooms.hostelId),
+        )
         .where(
           and(
             roomCond(),
@@ -1739,9 +1876,7 @@ export class DashboardService {
         .where(
           and(
             eq(schema.hostelAttendance.tenantId, t),
-            ...(branch
-              ? [eq(schema.hostelAttendance.branchId, branch)]
-              : []),
+            ...(branch ? [eq(schema.hostelAttendance.branchId, branch)] : []),
             eq(schema.hostelAttendance.date, today),
           ),
         )
@@ -1752,9 +1887,7 @@ export class DashboardService {
         .where(
           and(
             eq(schema.hostelAttendance.tenantId, t),
-            ...(branch
-              ? [eq(schema.hostelAttendance.branchId, branch)]
-              : []),
+            ...(branch ? [eq(schema.hostelAttendance.branchId, branch)] : []),
             eq(schema.hostelAttendance.date, today),
             eq(schema.hostelAttendance.status, 'present'),
           ),
@@ -1803,9 +1936,7 @@ export class DashboardService {
         available: roomsAvailable,
         occupied: roomsOccupied,
         occupancyRate:
-          roomsTotal > 0
-            ? Math.round((roomsOccupied / roomsTotal) * 100)
-            : 0,
+          roomsTotal > 0 ? Math.round((roomsOccupied / roomsTotal) * 100) : 0,
       },
       allocations: { active: activeAllocations, recent: recentAllocations },
       attendance: {

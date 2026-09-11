@@ -67,7 +67,9 @@ export const departments = pgTable(
   (table) => ({
     tenantBranchNameUnique: uniqueIndex(
       'departments_tenant_id_branch_id_name_key',
-    ).on(table.tenantId, table.branchId, table.name).where(sql`deleted_at IS NULL`),
+    )
+      .on(table.tenantId, table.branchId, table.name)
+      .where(sql`deleted_at IS NULL`),
     branchIdx: index('idx_departments_branch').on(table.branchId),
   }),
 );
@@ -92,9 +94,9 @@ export const classes = pgTable(
     deletedAt: timestamp('deleted_at', { withTimezone: true }),
   },
   (table) => ({
-    tenantBranchNameUnique: uniqueIndex(
-      'classes_tenant_id_branch_id_name_key',
-    ).on(table.tenantId, table.branchId, table.name).where(sql`deleted_at IS NULL`),
+    tenantBranchNameUnique: uniqueIndex('classes_tenant_id_branch_id_name_key')
+      .on(table.tenantId, table.branchId, table.name)
+      .where(sql`deleted_at IS NULL`),
     branchIdx: index('idx_classes_branch').on(table.branchId),
   }),
 );
@@ -124,7 +126,9 @@ export const sections = pgTable(
   (table) => ({
     tenantBranchClassNameUnique: uniqueIndex(
       'sections_tenant_id_branch_id_class_id_name_key',
-    ).on(table.tenantId, table.branchId, table.classId, table.name).where(sql`deleted_at IS NULL`),
+    )
+      .on(table.tenantId, table.branchId, table.classId, table.name)
+      .where(sql`deleted_at IS NULL`),
     classIdx: index('idx_sections_class').on(table.classId),
   }),
 );
@@ -150,9 +154,9 @@ export const subjects = pgTable(
     deletedAt: timestamp('deleted_at', { withTimezone: true }),
   },
   (table) => ({
-    tenantBranchCodeUnique: uniqueIndex(
-      'subjects_tenant_id_branch_id_code_key',
-    ).on(table.tenantId, table.branchId, table.code).where(sql`deleted_at IS NULL`),
+    tenantBranchCodeUnique: uniqueIndex('subjects_tenant_id_branch_id_code_key')
+      .on(table.tenantId, table.branchId, table.code)
+      .where(sql`deleted_at IS NULL`),
     branchIdx: index('idx_subjects_branch').on(table.branchId),
   }),
 );

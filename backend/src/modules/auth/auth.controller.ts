@@ -8,10 +8,7 @@ import { RefreshTokenDto } from './dto/refresh.dto';
 import { LogoutDto } from './dto/logout.dto';
 import { ForgotPasswordDto } from './dto/forgot-password.dto';
 import { ResetPasswordDto } from './dto/reset-password.dto';
-import {
-  TwoFactorCodeDto,
-  TwoFactorLoginDto,
-} from './dto/two-factor.dto';
+import { TwoFactorCodeDto, TwoFactorLoginDto } from './dto/two-factor.dto';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { ROLES } from '../../common/constants';
 import { Public } from '../../common/decorators';
@@ -62,7 +59,9 @@ export class AuthController {
   @Post('2fa/setup')
   @HttpCode(HttpStatus.OK)
   @ApiBearerAuth()
-  @ApiOperation({ summary: 'Start 2FA setup (returns TOTP secret + otpauth URL)' })
+  @ApiOperation({
+    summary: 'Start 2FA setup (returns TOTP secret + otpauth URL)',
+  })
   async twoFactorSetup(@CurrentUser() user: any) {
     return this.authService.startTwoFactorSetup(user.id);
   }
@@ -73,7 +72,10 @@ export class AuthController {
   @ApiOperation({
     summary: 'Verify a code and enable 2FA; returns one-time recovery codes',
   })
-  async twoFactorVerify(@CurrentUser() user: any, @Body() dto: TwoFactorCodeDto) {
+  async twoFactorVerify(
+    @CurrentUser() user: any,
+    @Body() dto: TwoFactorCodeDto,
+  ) {
     return this.authService.enableTwoFactor(user.id, dto.code);
   }
 
@@ -81,7 +83,10 @@ export class AuthController {
   @HttpCode(HttpStatus.OK)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Disable 2FA after verifying the current code' })
-  async twoFactorDisable(@CurrentUser() user: any, @Body() dto: TwoFactorCodeDto) {
+  async twoFactorDisable(
+    @CurrentUser() user: any,
+    @Body() dto: TwoFactorCodeDto,
+  ) {
     return this.authService.disableTwoFactor(user.id, dto.code);
   }
 

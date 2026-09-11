@@ -144,7 +144,7 @@ describe('WebhooksService', () => {
       const body = init.body as string;
       expect(signature).toBe(service.sign(timestamp, body, endpoint.secret));
 
-      const successUpdate = updates.find((u) => u.includes("SET status = $2"));
+      const successUpdate = updates.find((u) => u.includes('SET status = $2'));
       expect(successUpdate).toBeTruthy();
       const updateCall = updates.indexOf(successUpdate!);
       expect(updates[updateCall].includes('attempts = $3')).toBe(true);
@@ -158,8 +158,16 @@ describe('WebhooksService', () => {
       };
       const fetchMock = jest
         .fn()
-        .mockResolvedValueOnce({ ok: false, status: 500, text: async () => 'boom' })
-        .mockResolvedValueOnce({ ok: true, status: 200, text: async () => 'ok' });
+        .mockResolvedValueOnce({
+          ok: false,
+          status: 500,
+          text: async () => 'boom',
+        })
+        .mockResolvedValueOnce({
+          ok: true,
+          status: 200,
+          text: async () => 'ok',
+        });
       (global as any).fetch = fetchMock;
 
       const dbCalls: string[] = [];
@@ -180,7 +188,8 @@ describe('WebhooksService', () => {
 
       expect(fetchMock).toHaveBeenCalledTimes(2);
       const successUpdate = dbCalls.findIndex(
-        (sql) => sql.includes('SET status = $2') && sql.includes('attempts = $3'),
+        (sql) =>
+          sql.includes('SET status = $2') && sql.includes('attempts = $3'),
       );
       expect(successUpdate).toBeGreaterThan(-1);
     });
@@ -221,16 +230,16 @@ describe('WebhooksService', () => {
       };
       mockDb.query = queryMock as any;
       await service.listDeliveries('t-1', { status: 'failed' });
-      expect(calls[0]).toContain("d.status = $2");
+      expect(calls[0]).toContain('d.status = $2');
     });
   });
 
   describe('retryDelivery', () => {
     it('throws NotFound for unknown deliveries', async () => {
       mockDb.setMockResult('JOIN webhook_endpoints e', { rows: [] });
-      await expect(
-        service.retryDelivery('t-1', 'nope'),
-      ).rejects.toThrow(NotFoundException);
+      await expect(service.retryDelivery('t-1', 'nope')).rejects.toThrow(
+        NotFoundException,
+      );
     });
 
     it('rejects retrying a successful delivery', async () => {
@@ -251,9 +260,9 @@ describe('WebhooksService', () => {
           },
         ],
       });
-      await expect(
-        service.retryDelivery('t-1', 'd-1'),
-      ).rejects.toThrow(BadRequestException);
+      await expect(service.retryDelivery('t-1', 'd-1')).rejects.toThrow(
+        BadRequestException,
+      );
     });
   });
 

@@ -133,10 +133,7 @@ export class AppointmentsService {
     );
   }
 
-  private async myParentIds(
-    tenantId: string,
-    user: any,
-  ): Promise<string[]> {
+  private async myParentIds(tenantId: string, user: any): Promise<string[]> {
     const result = await this.db.query(
       `SELECT id, email, phone FROM parents WHERE tenant_id = $1`,
       [tenantId],
@@ -147,9 +144,7 @@ export class AppointmentsService {
       .filter((r: any) => {
         const email = this.decryptOrRaw(r.email).trim().toLowerCase();
         const phone = this.decryptOrRaw(r.phone).trim();
-        return (
-          email === me || (phone !== '' && phone.trim() === user.phone)
-        );
+        return email === me || (phone !== '' && phone.trim() === user.phone);
       })
       .map((r: any) => r.id);
   }
@@ -171,7 +166,8 @@ export class AppointmentsService {
     if (this.isManager(user)) return true;
     if (record.requested_by === user.sub) return true;
     const participants: AppointmentParticipant[] = record.participants ?? [];
-    if (participants.some((p) => p.userId && p.userId === user.sub)) return true;
+    if (participants.some((p) => p.userId && p.userId === user.sub))
+      return true;
     const myParents = await this.myParentIds(tenantId, user);
     if (
       myParents.length > 0 &&
@@ -311,7 +307,9 @@ export class AppointmentsService {
     const record = result.rows[0];
     if (!record) throw new NotFoundException('Appointment not found');
     if (!(await this.canAccess(tenantId, user, record))) {
-      throw new ForbiddenException('You do not have access to this appointment');
+      throw new ForbiddenException(
+        'You do not have access to this appointment',
+      );
     }
     return this.mapRecord(record);
   }
@@ -329,7 +327,9 @@ export class AppointmentsService {
     const record = existing.rows[0];
     if (!record) throw new NotFoundException('Appointment not found');
     if (!(await this.canAccess(tenantId, user, record))) {
-      throw new ForbiddenException('You do not have access to this appointment');
+      throw new ForbiddenException(
+        'You do not have access to this appointment',
+      );
     }
     const isManager = this.isManager(user);
     if (record.requested_by !== user.sub && !isManager) {
@@ -401,7 +401,9 @@ export class AppointmentsService {
     const record = existing.rows[0];
     if (!record) throw new NotFoundException('Appointment not found');
     if (!(await this.canAccess(tenantId, user, record))) {
-      throw new ForbiddenException('You do not have access to this appointment');
+      throw new ForbiddenException(
+        'You do not have access to this appointment',
+      );
     }
     const isManager = this.isManager(user);
     const isRequester = record.requested_by === user.sub;
@@ -427,7 +429,7 @@ export class AppointmentsService {
       [
         status,
         status === 'cancelled' || status === 'declined'
-          ? reason ?? null
+          ? (reason ?? null)
           : null,
         id,
       ],

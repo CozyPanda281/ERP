@@ -81,7 +81,9 @@ describe('ApiKeyGuard', () => {
     });
 
     it('rejects revoked keys', async () => {
-      mockDb.setMockResult('FROM api_keys', { rows: [keyRow({ is_active: false })] });
+      mockDb.setMockResult('FROM api_keys', {
+        rows: [keyRow({ is_active: false })],
+      });
       const { context } = buildContext({ 'x-api-key': 'erp_live_abc' });
       await expect(guard.canActivate(context)).rejects.toThrow(
         UnauthorizedException,
@@ -90,9 +92,7 @@ describe('ApiKeyGuard', () => {
 
     it('rejects expired keys', async () => {
       mockDb.setMockResult('FROM api_keys', {
-        rows: [
-          keyRow({ expires_at: '2020-01-01T00:00:00Z' }),
-        ],
+        rows: [keyRow({ expires_at: '2020-01-01T00:00:00Z' })],
       });
       const { context } = buildContext({ 'x-api-key': 'erp_live_abc' });
       await expect(guard.canActivate(context)).rejects.toThrow(

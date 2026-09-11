@@ -49,7 +49,9 @@ export const appointments = pgTable(
     requestedByIdx: index('idx_appointments_requested_by').on(
       table.requestedBy,
     ),
-    scheduledAtIdx: index('idx_appointments_scheduled_at').on(table.scheduledAt),
+    scheduledAtIdx: index('idx_appointments_scheduled_at').on(
+      table.scheduledAt,
+    ),
     statusIdx: index('idx_appointments_status').on(table.status),
   }),
 );

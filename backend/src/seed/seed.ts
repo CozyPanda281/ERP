@@ -38,7 +38,14 @@ async function seed() {
     await pool.query(
       `INSERT INTO users (id, email, password_hash, first_name, last_name, is_superadmin, is_active, status, created_at, updated_at)
        VALUES ($1, $2, $3, $4, $5, TRUE, TRUE, 'active', $6, $6)`,
-      [userId, process.env.SEED_ADMIN_EMAIL || 'admin@erp.com', passwordHash, 'Super', 'Admin', now],
+      [
+        userId,
+        process.env.SEED_ADMIN_EMAIL || 'admin@erp.com',
+        passwordHash,
+        'Super',
+        'Admin',
+        now,
+      ],
     );
 
     // Assign super_admin role. Superadmin authorization does NOT depend on
@@ -68,7 +75,9 @@ async function seed() {
       console.log(`SuperAdmin created: ${email}`);
       console.log(`Generated password (save it now): ${password}`);
     } else {
-      console.log(`SuperAdmin created: ${email} (password from SEED_ADMIN_PASSWORD)`);
+      console.log(
+        `SuperAdmin created: ${email} (password from SEED_ADMIN_PASSWORD)`,
+      );
     }
   } catch (err) {
     console.error('Seed failed:', err);

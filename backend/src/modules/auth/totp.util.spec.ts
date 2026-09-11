@@ -19,7 +19,9 @@ describe('totp.util', () => {
     });
 
     it('encodes the RFC 6238 secret correctly', () => {
-      expect(base32Encode(Buffer.from('12345678901234567890'))).toBe(RFC_SECRET);
+      expect(base32Encode(Buffer.from('12345678901234567890'))).toBe(
+        RFC_SECRET,
+      );
     });
   });
 
@@ -44,20 +46,34 @@ describe('totp.util', () => {
     const now = Math.floor(Date.now() / 1000);
 
     it('accepts the current code', () => {
-      expect(verifyTotp(RFC_SECRET, totpToken(RFC_SECRET), { timeSeconds: now })).toBe(true);
+      expect(
+        verifyTotp(RFC_SECRET, totpToken(RFC_SECRET), { timeSeconds: now }),
+      ).toBe(true);
     });
 
     it('accepts codes within the ±1 window', () => {
-      expect(verifyTotp(RFC_SECRET, totpToken(RFC_SECRET, now - 30), { timeSeconds: now })).toBe(true);
-      expect(verifyTotp(RFC_SECRET, totpToken(RFC_SECRET, now + 30), { timeSeconds: now })).toBe(true);
+      expect(
+        verifyTotp(RFC_SECRET, totpToken(RFC_SECRET, now - 30), {
+          timeSeconds: now,
+        }),
+      ).toBe(true);
+      expect(
+        verifyTotp(RFC_SECRET, totpToken(RFC_SECRET, now + 30), {
+          timeSeconds: now,
+        }),
+      ).toBe(true);
     });
 
     it('rejects a wrong code', () => {
-      expect(verifyTotp(RFC_SECRET, '000000', { timeSeconds: now })).toBe(false);
+      expect(verifyTotp(RFC_SECRET, '000000', { timeSeconds: now })).toBe(
+        false,
+      );
     });
 
     it('rejects malformed input', () => {
-      expect(verifyTotp(RFC_SECRET, 'abcdef', { timeSeconds: now })).toBe(false);
+      expect(verifyTotp(RFC_SECRET, 'abcdef', { timeSeconds: now })).toBe(
+        false,
+      );
       expect(verifyTotp(RFC_SECRET, '12345', { timeSeconds: now })).toBe(false);
     });
   });

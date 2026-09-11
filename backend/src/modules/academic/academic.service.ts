@@ -328,7 +328,9 @@ export class AcademicService {
       )
       .limit(1);
     if (existing.length)
-      throw new ConflictException('Section with this name already exists in this class');
+      throw new ConflictException(
+        'Section with this name already exists in this class',
+      );
 
     const id = uuidv4();
     await this.db.db.insert(schema.sections).values({

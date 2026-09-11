@@ -48,8 +48,17 @@ export class MetricsService {
       lines.push(`${name} ${value}`);
     };
 
-    metric('erp_api_uptime_seconds', 'gauge', Math.round((Date.now() - this.startedAt) / 1000));
-    metric('erp_api_time_seconds', 'gauge', Date.now() / 1000, 'UNIX timestamp of scrape');
+    metric(
+      'erp_api_uptime_seconds',
+      'gauge',
+      Math.round((Date.now() - this.startedAt) / 1000),
+    );
+    metric(
+      'erp_api_time_seconds',
+      'gauge',
+      Date.now() / 1000,
+      'UNIX timestamp of scrape',
+    );
     metric('erp_nodejs_heap_bytes', 'gauge', heapUsed, 'heap used bytes');
     metric('erp_nodejs_heap_total_bytes', 'gauge', heapTotal);
     metric('erp_nodejs_rss_bytes', 'gauge', rss);
@@ -61,11 +70,15 @@ export class MetricsService {
     metric('erp_db_pool_waiting', 'gauge', pool.waiting);
     metric('erp_queue_enabled', 'gauge', this.queue.enabled ? 1 : 0);
 
-    lines.push('# HELP erp_http_requests_total HTTP requests by method and status');
+    lines.push(
+      '# HELP erp_http_requests_total HTTP requests by method and status',
+    );
     lines.push('# TYPE erp_http_requests_total counter');
     for (const [key, count] of [...this.requests.entries()].sort()) {
       const [method, status] = key.split(' ');
-      lines.push(`erp_http_requests_total{method="${method}",status="${status}"} ${count}`);
+      lines.push(
+        `erp_http_requests_total{method="${method}",status="${status}"} ${count}`,
+      );
     }
 
     void this.mem;

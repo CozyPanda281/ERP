@@ -155,7 +155,12 @@ export class TimetableController {
   }
 
   @Get('timetables/:id/day/:day')
-  @Roles(ROLES.PRINCIPAL, ROLES.TEACHER, ROLES.STUDENT, ROLES.ORGANIZATION_OWNER)
+  @Roles(
+    ROLES.PRINCIPAL,
+    ROLES.TEACHER,
+    ROLES.STUDENT,
+    ROLES.ORGANIZATION_OWNER,
+  )
   @ApiOperation({ summary: 'Get entries for a specific day' })
   async getDayEntries(@Param('id') id: string, @Param('day') day: number) {
     const data = await this.timetableService.getDayEntries(id, day);

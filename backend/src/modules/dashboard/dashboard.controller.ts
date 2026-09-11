@@ -14,7 +14,8 @@ export class DashboardController {
   @Get('overview')
   @Roles(ROLES.ORGANIZATION_OWNER, ROLES.PRINCIPAL)
   @ApiOperation({
-    summary: 'Dashboard overview for Owner/Principal (counts, fees, attendance)',
+    summary:
+      'Dashboard overview for Owner/Principal (counts, fees, attendance)',
   })
   async overview(@Req() req: Request) {
     const user = req.user as any;
@@ -43,7 +44,8 @@ export class DashboardController {
   @Get('student')
   @Roles(ROLES.STUDENT)
   @ApiOperation({
-    summary: 'Student portal: my enrollment, attendance, fees, results, homework',
+    summary:
+      'Student portal: my enrollment, attendance, fees, results, homework',
   })
   async student(@Req() req: Request) {
     const user = req.user as any;
@@ -130,7 +132,8 @@ export class DashboardController {
   @Get('transport')
   @Roles(ROLES.TRANSPORT_MANAGER)
   @ApiOperation({
-    summary: 'Transport portal: vehicles, routes, assignments, fuel, maintenance',
+    summary:
+      'Transport portal: vehicles, routes, assignments, fuel, maintenance',
   })
   async transport(@Req() req: Request) {
     const user = req.user as any;

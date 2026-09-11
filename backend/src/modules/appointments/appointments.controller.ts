@@ -69,10 +69,7 @@ export class AppointmentsController {
   @Get()
   @Roles(...APPOINTMENT_ROLES)
   @ApiOperation({ summary: 'List appointments (branch calendar)' })
-  async list(
-    @Req() req: Request,
-    @Query('branchId') branchId?: string,
-  ) {
+  async list(@Req() req: Request, @Query('branchId') branchId?: string) {
     const user = req.user as any;
     const appointments = await this.appointmentsService.list(
       user.tenantId,
@@ -110,11 +107,7 @@ export class AppointmentsController {
   @Patch(':id')
   @Roles(...APPOINTMENT_ROLES)
   @ApiOperation({ summary: 'Update an appointment' })
-  async update(
-    @Req() req: Request,
-    @Param('id') id: string,
-    @Body() dto: any,
-  ) {
+  async update(@Req() req: Request, @Param('id') id: string, @Body() dto: any) {
     const user = req.user as any;
     const appointment = await this.appointmentsService.update(
       user.tenantId,

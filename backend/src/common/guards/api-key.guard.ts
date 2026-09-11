@@ -98,29 +98,37 @@ export class ApiKeyGuard implements CanActivate {
       apiKey: true,
       roles: ['API_KEY'],
       isSuperAdmin: false,
-      scopes: key.scopes.split(',').map((s) => s.trim()).filter(Boolean),
+      scopes: key.scopes
+        .split(',')
+        .map((s) => s.trim())
+        .filter(Boolean),
       rateLimitPerMinute: key.rate_limit_per_minute,
-    } as any;
+    };
     (request as any).apiKeyContext = {
       keyId: key.id,
       tenantId: key.tenant_id,
       name: key.name,
-      scopes: key.scopes.split(',').map((s) => s.trim()).filter(Boolean),
+      scopes: key.scopes
+        .split(',')
+        .map((s) => s.trim())
+        .filter(Boolean),
       rateLimitPerMinute: key.rate_limit_per_minute,
       expiresAt: key.expires_at,
-    } as ApiKeyContext;
+    };
 
     this.db
       .query(`UPDATE api_keys SET last_used_at = now() WHERE id = $1`, [key.id])
       .catch((err) =>
-        this.logger.warn(`Failed to touch api_key last_used_at: ${err.message}`),
+        this.logger.warn(
+          `Failed to touch api_key last_used_at: ${err.message}`,
+        ),
       );
 
     return true;
   }
 
   private extractKey(request: Request): string | null {
-    const auth = request.headers['authorization'] as string | undefined;
+    const auth = request.headers['authorization'];
     if (auth?.toLowerCase().startsWith('bearer ')) {
       return auth.slice(7).trim();
     }

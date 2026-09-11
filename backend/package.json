@@ -21,7 +21,7 @@
     "seed": "ts-node src/seed/seed.ts"
   },
   "dependencies": {
-    "@nestjs/common": "^11.0.1",
+    "@nestjs/common": "^11.2.3",
     "@nestjs/config": "^4.0.4",
     "@nestjs/core": "^11.0.1",
     "@nestjs/jwt": "^11.0.2",
@@ -38,11 +38,10 @@
     "date-fns": "^4.4.0",
     "drizzle-orm": "^0.45.2",
     "helmet": "^8.3.0",
-    "multer": "^2.2.0",
+    "multer": "^2.3.0",
     "nodemailer": "^9.0.3",
     "passport": "^0.7.0",
     "passport-jwt": "^4.0.1",
-    "passport-local": "^1.0.0",
     "pg": "^8.22.0",
     "redis": "^6.1.0",
     "reflect-metadata": "^0.2.2",
@@ -54,7 +53,8 @@
   },
   "overrides": {
     "js-yaml": "5.2.3",
-    "esbuild": "^0.25.0"
+    "esbuild": "^0.25.0",
+    "multer": "^2.3.0"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3.2.0",
@@ -72,7 +72,6 @@
     "@types/node": "^24.0.0",
     "@types/nodemailer": "^8.0.1",
     "@types/passport-jwt": "^4.0.1",
-    "@types/passport-local": "^1.0.38",
     "@types/pg": "^8.20.0",
     "@types/supertest": "^7.0.0",
     "@types/uuid": "^10.0.0",
@@ -111,5 +110,13 @@
     ],
     "coverageDirectory": "../coverage",
     "testEnvironment": "node"
+  },
+  "allowScripts": {
+    "bcrypt@6.0.0": true,
+    "@swc/core@1.15.47": true,
+    "esbuild@0.25.12": true,
+    "esbuild@0.28.1": true,
+    "msgpackr-extract@3.0.4": true,
+    "unrs-resolver@1.12.2": true
   }
 }

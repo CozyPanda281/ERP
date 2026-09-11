@@ -102,6 +102,26 @@ const EMPTY_PLAN = {
   storageLimitMb: '500',
 }
 
+const EMPTY_PROVISION = {
+  tenantId: '',
+  name: '',
+  slug: '',
+  email: '',
+  phone: '',
+  city: '',
+  planId: '',
+  billingCycle: 'yearly',
+  trialDays: '0',
+  status: 'active',
+  startDate: '',
+  endDate: '',
+  autoRenew: 'true',
+  ownerFirstName: '',
+  ownerLastName: '',
+  ownerEmail: '',
+  ownerPassword: '',
+}
+
 export default function Subscriptions() {
   const queryClient = useQueryClient()
   const [error, setError] = useState<string | null>(null)
@@ -110,6 +130,9 @@ export default function Subscriptions() {
   const [planOpen, setPlanOpen] = useState(false)
   const [planForm, setPlanForm] = useState({ ...EMPTY_PLAN })
   const [saving, setSaving] = useState(false)
+  const [provOpen, setProvOpen] = useState(false)
+  const [provForm, setProvForm] = useState({ ...EMPTY_PROVISION })
+  const [provisioning, setProvisioning] = useState(false)
 
   const plansQuery = useQuery({
     queryKey: ['plans'],
@@ -158,6 +181,79 @@ export default function Subscriptions() {
     onError: (err) => setError(errorMessage(err)),
   })
 
+  const provision = useMutation({
+    mutationFn: () =>
+      unwrap(
+        api.post('/tenants/provision', {
+          tenantId: provForm.tenantId.trim() || undefined,
+          name: provForm.name.trim(),
+          slug: provForm.slug.trim(),
+          email: provForm.email.trim() || undefined,
+          phone: provForm.phone.trim() || undefined,
+          city: provForm.city.trim() || undefined,
+          planId: provForm.planId,
+          billingCycle: provForm.billingCycle,
+          trialDays: Number(provForm.trialDays),
+          status: provForm.status,
+          startDate: provForm.startDate || undefined,
+          endDate: provForm.endDate || undefined,
+          autoRenew: provForm.autoRenew === 'true',
+          ownerFirstName: provForm.ownerFirstName.trim(),
+          ownerLastName: provForm.ownerLastName.trim(),
+          ownerEmail: provForm.ownerEmail.trim(),
+          ownerPassword: provForm.ownerPassword,
+        }),
+      ),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['subscriptions-all'] })
+      queryClient.invalidateQueries({ queryKey: ['tenants'] })
+      setProvOpen(false)
+      setProvForm({ ...EMPTY_PROVISION })
+      setInfo('Subscription created')
+    },
+    onError: (err) => setError(errorMessage(err)),
+  })
+
+  const renewSub = useMutation({
+    mutationFn: (tenantId: string) =>
+      unwrap(api.post(`/subscriptions/renew/${tenantId}`)),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['subscriptions-all'] })
+      setInfo('Subscription renewed')
+    },
+    onError: (err) => setError(errorMessage(err)),
+  })
+
+  const changePlanSub = useMutation({
+    mutationFn: ({ tenantId, planId }: { tenantId: string; planId: string }) =>
+      unwrap(api.post(`/subscriptions/change-plan/${tenantId}`, { planId })),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['subscriptions-all'] })
+      setInfo('Plan changed')
+    },
+    onError: (err) => setError(errorMessage(err)),
+  })
+
+  const suspendSub = useMutation({
+    mutationFn: (tenantId: string) =>
+      unwrap(api.post(`/subscriptions/suspend/${tenantId}`, { reason: 'Suspended by super admin' })),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['subscriptions-all'] })
+      setInfo('Subscription suspended')
+    },
+    onError: (err) => setError(errorMessage(err)),
+  })
+
+  const cancelSub = useMutation({
+    mutationFn: (tenantId: string) =>
+      unwrap(api.post(`/subscriptions/cancel/${tenantId}`)),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['subscriptions-all'] })
+      setInfo('Subscription cancelled')
+    },
+    onError: (err) => setError(errorMessage(err)),
+  })
+
   const statusTone = (s: string | null): 'green' | 'amber' | 'slate' | 'red' =>
     s === 'active' ? 'green' : s === 'trial' ? 'amber' : s === 'suspended' ? 'red' : 'slate'
 
@@ -181,6 +277,14 @@ export default function Subscriptions() {
             className="inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700"
           >
             <Plus size={16} /> New Plan
+          </button>
+        )}
+        {tab === 'subscriptions' && (
+          <button
+            onClick={() => setProvOpen(true)}
+            className="inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700"
+          >
+            <Plus size={16} /> New Subscription
           </button>
         )}
       </div>
@@ -253,6 +357,7 @@ export default function Subscriptions() {
                 <th className="px-4 py-3 font-medium">Start</th>
                 <th className="px-4 py-3 font-medium">End</th>
                 <th className="px-4 py-3 font-medium">Status</th>
+                <th className="px-4 py-3 font-medium">Controls</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
@@ -262,11 +367,51 @@ export default function Subscriptions() {
                     {s.tenantName ?? s.tenantId.slice(0, 8)}
                     <div className="font-mono text-xs text-slate-400">{s.tenantSlug ?? ''}</div>
                   </td>
-                  <td className="px-4 py-3 text-slate-600">{s.planName ?? s.planCode ?? '—'}</td>
+                  <td className="px-4 py-3 text-slate-600">
+                    <div className="flex items-center gap-1">
+                      <select
+                        value={s.planId}
+                        onChange={(e) => changePlanSub.mutate({ tenantId: s.tenantId, planId: e.target.value })}
+                        className="max-w-[140px] rounded-md border border-slate-200 px-1.5 py-1 text-xs text-slate-600 focus:border-indigo-500 focus:outline-none"
+                        title="Change plan"
+                      >
+                        {plans.map((p) => (
+                          <option key={p.id} value={p.id}>
+                            {p.name}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  </td>
                   <td className="px-4 py-3 text-slate-600">{s.billingCycle ?? '—'}</td>
                   <td className="px-4 py-3 text-slate-600">{s.startDate ? String(s.startDate).slice(0, 10) : '—'}</td>
                   <td className="px-4 py-3 text-slate-600">{s.endDate ? String(s.endDate).slice(0, 10) : '—'}</td>
                   <td className="px-4 py-3"><Badge tone={statusTone(s.status)}>{s.status ?? '—'}</Badge></td>
+                  <td className="px-4 py-3">
+                    <div className="flex items-center gap-1.5">
+                      <button
+                        onClick={() => renewSub.mutate(s.tenantId)}
+                        disabled={renewSub.isPending}
+                        className="rounded-md px-2 py-1 text-xs font-medium text-emerald-700 hover:bg-emerald-50 disabled:opacity-50"
+                      >
+                        Renew
+                      </button>
+                      <button
+                        onClick={() => suspendSub.mutate(s.tenantId)}
+                        disabled={suspendSub.isPending}
+                        className="rounded-md px-2 py-1 text-xs font-medium text-amber-700 hover:bg-amber-50 disabled:opacity-50"
+                      >
+                        Suspend
+                      </button>
+                      <button
+                        onClick={() => cancelSub.mutate(s.tenantId)}
+                        disabled={cancelSub.isPending}
+                        className="rounded-md px-2 py-1 text-xs font-medium text-red-700 hover:bg-red-50 disabled:opacity-50"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  </td>
                 </tr>
               ))}
             </tbody>
@@ -394,6 +539,206 @@ export default function Subscriptions() {
               className="inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700 disabled:opacity-50"
             >
               {saving && <Loader2 size={14} className="animate-spin" />} Create Plan
+            </button>
+          </div>
+        </form>
+      </Modal>
+
+      <Modal open={provOpen} title="New Subscription" onClose={() => setProvOpen(false)}>
+        <form
+          onSubmit={(e) => {
+            e.preventDefault()
+            setProvisioning(true)
+            provision.mutate(undefined, { onSettled: () => setProvisioning(false) })
+          }}
+          className="space-y-4"
+        >
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">Tenant</p>
+            <div className="mt-2 grid grid-cols-2 gap-3">
+              <Field label="Company / School name" required>
+                <input
+                  required
+                  value={provForm.name}
+                  onChange={(e) => setProvForm({ ...provForm, name: e.target.value })}
+                  className={inputCls}
+                />
+              </Field>
+              <Field label="Slug" required>
+                <input
+                  required
+                  value={provForm.slug}
+                  onChange={(e) => setProvForm({ ...provForm, slug: e.target.value })}
+                  placeholder="my-school"
+                  className={inputCls}
+                />
+              </Field>
+              <Field label="Custom Tenant ID (optional)">
+                <input
+                  value={provForm.tenantId}
+                  onChange={(e) => setProvForm({ ...provForm, tenantId: e.target.value })}
+                  placeholder="Leave blank to auto-generate"
+                  className={inputCls}
+                />
+              </Field>
+              <Field label="Email">
+                <input
+                  type="email"
+                  value={provForm.email}
+                  onChange={(e) => setProvForm({ ...provForm, email: e.target.value })}
+                  className={inputCls}
+                />
+              </Field>
+              <Field label="Phone">
+                <input
+                  value={provForm.phone}
+                  onChange={(e) => setProvForm({ ...provForm, phone: e.target.value })}
+                  className={inputCls}
+                />
+              </Field>
+              <Field label="City">
+                <input
+                  value={provForm.city}
+                  onChange={(e) => setProvForm({ ...provForm, city: e.target.value })}
+                  className={inputCls}
+                />
+              </Field>
+            </div>
+          </div>
+
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">Owner account</p>
+            <div className="mt-2 grid grid-cols-2 gap-3">
+              <Field label="First name" required>
+                <input
+                  required
+                  value={provForm.ownerFirstName}
+                  onChange={(e) => setProvForm({ ...provForm, ownerFirstName: e.target.value })}
+                  className={inputCls}
+                />
+              </Field>
+              <Field label="Last name" required>
+                <input
+                  required
+                  value={provForm.ownerLastName}
+                  onChange={(e) => setProvForm({ ...provForm, ownerLastName: e.target.value })}
+                  className={inputCls}
+                />
+              </Field>
+              <Field label="Owner email" required>
+                <input
+                  type="email"
+                  required
+                  value={provForm.ownerEmail}
+                  onChange={(e) => setProvForm({ ...provForm, ownerEmail: e.target.value })}
+                  className={inputCls}
+                />
+              </Field>
+              <Field label="Owner password" required>
+                <input
+                  type="password"
+                  required
+                  value={provForm.ownerPassword}
+                  onChange={(e) => setProvForm({ ...provForm, ownerPassword: e.target.value })}
+                  className={inputCls}
+                />
+              </Field>
+            </div>
+          </div>
+
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">Subscription</p>
+            <div className="mt-2 grid grid-cols-2 gap-3">
+              <Field label="Plan" required>
+                <select
+                  required
+                  value={provForm.planId}
+                  onChange={(e) => setProvForm({ ...provForm, planId: e.target.value })}
+                  className={inputCls}
+                >
+                  <option value="">Select a plan…</option>
+                  {plans.map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {p.name} ({p.code})
+                    </option>
+                  ))}
+                </select>
+              </Field>
+              <Field label="Billing cycle">
+                <select
+                  value={provForm.billingCycle}
+                  onChange={(e) => setProvForm({ ...provForm, billingCycle: e.target.value })}
+                  className={inputCls}
+                >
+                  <option value="monthly">Monthly</option>
+                  <option value="yearly">Yearly</option>
+                </select>
+              </Field>
+              <Field label="Status">
+                <select
+                  value={provForm.status}
+                  onChange={(e) => setProvForm({ ...provForm, status: e.target.value })}
+                  className={inputCls}
+                >
+                  <option value="active">Active</option>
+                  <option value="trial">Trial</option>
+                  <option value="expired">Expired</option>
+                  <option value="cancelled">Cancelled</option>
+                  <option value="suspended">Suspended</option>
+                </select>
+              </Field>
+              <Field label="Trial days">
+                <input
+                  type="number"
+                  min={0}
+                  value={provForm.trialDays}
+                  onChange={(e) => setProvForm({ ...provForm, trialDays: e.target.value })}
+                  className={inputCls}
+                />
+              </Field>
+              <Field label="Start date">
+                <input
+                  type="date"
+                  value={provForm.startDate}
+                  onChange={(e) => setProvForm({ ...provForm, startDate: e.target.value })}
+                  className={inputCls}
+                />
+              </Field>
+              <Field label="End date">
+                <input
+                  type="date"
+                  value={provForm.endDate}
+                  onChange={(e) => setProvForm({ ...provForm, endDate: e.target.value })}
+                  className={inputCls}
+                />
+              </Field>
+              <Field label="Auto renew">
+                <select
+                  value={provForm.autoRenew}
+                  onChange={(e) => setProvForm({ ...provForm, autoRenew: e.target.value })}
+                  className={inputCls}
+                >
+                  <option value="true">Yes</option>
+                  <option value="false">No</option>
+                </select>
+              </Field>
+            </div>
+          </div>
+
+          <div className="flex justify-end gap-2 pt-2">
+            <button
+              type="button"
+              onClick={() => setProvOpen(false)}
+              className="rounded-lg px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={provisioning}
+              className="inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700 disabled:opacity-50"
+            >
+              {provisioning && <Loader2 size={14} className="animate-spin" />} Create Subscription
             </button>
           </div>
         </form>

@@ -30,7 +30,9 @@ export const auditLogs = pgTable(
     userAgent: text('user_agent'),
     sessionId: uuid('session_id'),
     outcome: varchar('outcome', { length: 20 }).default('success'),
-    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true })
+      .defaultNow()
+      .notNull(),
   },
   (table) => ({
     pk: primaryKey({ columns: [table.id, table.createdAt] }),

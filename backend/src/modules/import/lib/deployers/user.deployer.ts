@@ -68,11 +68,7 @@ export class UserDeployer implements EntityDeployer {
           continue;
         }
 
-        const explicitPassword = mapField(
-          row.data,
-          columnMapping,
-          'password',
-        );
+        const explicitPassword = mapField(row.data, columnMapping, 'password');
         const password = explicitPassword || generatePassword();
         if (!explicitPassword) {
           generatedPasswords.push({ email, password });

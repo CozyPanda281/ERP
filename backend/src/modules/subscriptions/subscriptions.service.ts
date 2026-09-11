@@ -41,7 +41,7 @@ export class SubscriptionsService {
     maxStudents: number;
     maxStaff: number;
     storageLimitMb: number;
-    features: Record<string, boolean>;
+    features?: Record<string, boolean>;
     sortOrder?: number;
   }) {
     const existing = await this.db.db
@@ -68,7 +68,7 @@ export class SubscriptionsService {
       maxStudents: params.maxStudents,
       maxStaff: params.maxStaff,
       storageLimitMb: params.storageLimitMb,
-      features: params.features,
+      features: params.features ?? {},
       sortOrder: params.sortOrder ?? 0,
     });
 

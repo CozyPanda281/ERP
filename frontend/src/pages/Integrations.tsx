@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import {
   KeyRound,
@@ -15,8 +15,10 @@ import {
   Copy,
   Eye,
   EyeOff,
+  Building2,
 } from 'lucide-react'
 import { unwrap, api, errorMessage } from '../lib/api'
+import { useAuth } from '../lib/auth'
 import type { ApiKeyRecord, ApiKeyCreated, WebhookEndpoint, WebhookDelivery } from '../lib/types'
 
 const WEBHOOK_EVENTS = [
@@ -27,6 +29,13 @@ const WEBHOOK_EVENTS = [
   'test.ping',
 ]
 
+interface TenantRow {
+  id: string
+  name: string
+  slug: string
+  status: string | null
+}
+
 function fmtDate(v: string | null): string {
   if (!v) return '—'
   return new Date(v).toLocaleString('en-IN', { dateStyle: 'short', timeStyle: 'short' })
@@ -34,50 +43,74 @@ function fmtDate(v: string | null): string {
 
 export default function Integrations() {
   const queryClient = useQueryClient()
+  const { user } = useAuth()
+  const isSuperAdmin = !!user?.isSuperAdmin
+  const [tenantId, setTenantId] = useState<string>('')
+  const config = tenantId ? { headers: { 'X-Tenant-Id': tenantId } } : {}
+
+  const tenantsQuery = useQuery({
+    queryKey: ['tenants'],
+    queryFn: async () => {
+      const res = await api.get('/tenants', { params: { page: 1, limit: 500 } })
+      return (res.data?.data?.data ?? res.data?.data ?? []) as TenantRow[]
+    },
+    enabled: isSuperAdmin,
+  })
+  const tenants = tenantsQuery.data ?? []
+
+  useEffect(() => {
+    if (isSuperAdmin && tenants.length && !tenants.some((t) => t.id === tenantId)) {
+      setTenantId(tenants[0]?.id ?? '')
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isSuperAdmin, tenants])
 
   // ---- API keys ----
   const keysQuery = useQuery({
-    queryKey: ['api-keys'],
-    queryFn: () => unwrap<ApiKeyRecord[]>(api.get('/api-keys')),
+    queryKey: ['api-keys', tenantId],
+    queryFn: () => unwrap<ApiKeyRecord[]>(api.get('/api-keys', config)),
+    enabled: !isSuperAdmin || !!tenantId,
   })
 
   const createKey = useMutation({
     mutationFn: (body: { name: string; scopes: string; rateLimitPerMinute: number }) =>
-      unwrap<ApiKeyCreated>(api.post('/api-keys', body)),
+      unwrap<ApiKeyCreated>(api.post('/api-keys', body, config)),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['api-keys'] }),
   })
 
   const revokeKey = useMutation({
-    mutationFn: (id: string) => unwrap<{ success: boolean }>(api.post(`/api-keys/${id}/revoke`)),
+    mutationFn: (id: string) => unwrap<{ success: boolean }>(api.post(`/api-keys/${id}/revoke`, {}, config)),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['api-keys'] }),
   })
 
   const deleteKey = useMutation({
-    mutationFn: (id: string) => unwrap<{ success: boolean }>(api.delete(`/api-keys/${id}`)),
+    mutationFn: (id: string) => unwrap<{ success: boolean }>(api.delete(`/api-keys/${id}`, config)),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['api-keys'] }),
   })
 
   // ---- Webhooks ----
   const webhooksQuery = useQuery({
-    queryKey: ['webhooks'],
-    queryFn: () => unwrap<WebhookEndpoint[]>(api.get('/webhooks')),
+    queryKey: ['webhooks', tenantId],
+    queryFn: () => unwrap<WebhookEndpoint[]>(api.get('/webhooks', config)),
+    enabled: !isSuperAdmin || !!tenantId,
   })
 
   const deliveriesQuery = useQuery({
-    queryKey: ['webhook-deliveries'],
-    queryFn: () => unwrap<WebhookDelivery[]>(api.get('/webhooks/deliveries', { params: { limit: 10 } })),
+    queryKey: ['webhook-deliveries', tenantId],
+    queryFn: () => unwrap<WebhookDelivery[]>(api.get('/webhooks/deliveries', { ...config, params: { limit: 10 } })),
+    enabled: !isSuperAdmin || !!tenantId,
   })
 
   const createWebhook = useMutation({
     mutationFn: (body: { name: string; url: string; secret: string; events: string; description?: string }) =>
-      unwrap<WebhookEndpoint>(api.post('/webhooks', body)),
+      unwrap<WebhookEndpoint>(api.post('/webhooks', body, config)),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['webhooks'] })
     },
   })
 
   const testWebhook = useMutation({
-    mutationFn: (id: string) => unwrap<{ event: string }>(api.post(`/webhooks/${id}/test`)),
+    mutationFn: (id: string) => unwrap<{ event: string }>(api.post(`/webhooks/${id}/test`, {}, config)),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['webhook-deliveries'] })
       queryClient.invalidateQueries({ queryKey: ['webhooks'] })
@@ -85,7 +118,7 @@ export default function Integrations() {
   })
 
   const deleteWebhook = useMutation({
-    mutationFn: (id: string) => unwrap<{ success: boolean }>(api.delete(`/webhooks/${id}`)),
+    mutationFn: (id: string) => unwrap<{ success: boolean }>(api.delete(`/webhooks/${id}`, config)),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['webhooks'] })
       queryClient.invalidateQueries({ queryKey: ['webhook-deliveries'] })
@@ -93,7 +126,7 @@ export default function Integrations() {
   })
 
   const retryDelivery = useMutation({
-    mutationFn: (id: string) => unwrap<{ success: boolean }>(api.post(`/webhooks/deliveries/${id}/retry`)),
+    mutationFn: (id: string) => unwrap<{ success: boolean }>(api.post(`/webhooks/deliveries/${id}/retry`, {}, config)),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['webhook-deliveries'] })
       setTimeout(() => queryClient.invalidateQueries({ queryKey: ['webhook-deliveries'] }), 2500)
@@ -175,6 +208,26 @@ export default function Integrations() {
             API keys for external systems and webhooks for real-time event delivery.
           </p>
         </div>
+        {isSuperAdmin && (
+          <div className="flex items-center gap-2">
+            <Building2 className="h-4 w-4 text-slate-400" />
+            <label className="flex items-center gap-2 text-sm text-slate-500">
+              Tenant
+              <select
+                value={tenantId}
+                onChange={(e) => setTenantId(e.target.value)}
+                className="rounded-lg border border-slate-300 px-2 py-1.5 text-sm text-slate-900 focus:border-indigo-500 focus:outline-none"
+              >
+                {!tenantId && <option value="">Select a tenant…</option>}
+                {tenants.map((t) => (
+                  <option key={t.id} value={t.id}>
+                    {t.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+          </div>
+        )}
       </div>
 
       {pageError && (

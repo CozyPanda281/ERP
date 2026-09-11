@@ -208,7 +208,10 @@ export class SubscriptionsController {
     @Query('page') page: number = 1,
     @Query('limit') limit: number = 20,
   ) {
-    const data = await this.subscriptionsService.listAllSubscriptions(page, limit);
+    const data = await this.subscriptionsService.listAllSubscriptions(
+      page,
+      limit,
+    );
     return { success: true, ...data };
   }
 

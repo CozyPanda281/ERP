@@ -17,6 +17,7 @@ import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { Public } from '../../common/decorators/public.decorator';
 import { ROLES } from '../../common/constants';
 import { CreateTenantDto } from './dto/create-tenant.dto';
+import { ProvisionTenantDto } from './dto/provision-tenant.dto';
 import { UpdateTenantDto } from './dto/update-tenant.dto';
 import { TenantQueryDto } from './dto/tenant-query.dto';
 import { SetupTenantDto } from './dto/setup-tenant.dto';
@@ -34,6 +35,22 @@ export class TenantsController {
   @Post()
   @ApiOperation({ summary: 'Create a new tenant (public registration)' })
   async create(@Body() dto: CreateTenantDto) {
+    const data = await this.tenantsService.create(dto);
+    return { success: true, data };
+  }
+
+  @AuditLog({
+    action: 'post_provision',
+    module: 'tenants',
+    includeBody: false,
+  })
+  @Post('provision')
+  @Roles(ROLES.SUPER_ADMIN)
+  @ApiOperation({
+    summary:
+      'Provision a tenant + owner account + subscription with a custom tenant ID (SuperAdmin)',
+  })
+  async provision(@Body() dto: ProvisionTenantDto) {
     const data = await this.tenantsService.create(dto);
     return { success: true, data };
   }

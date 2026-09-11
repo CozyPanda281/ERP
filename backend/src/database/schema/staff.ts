@@ -66,7 +66,9 @@ export const staff = pgTable(
   (table) => ({
     tenantBranchEmpCodeUnique: uniqueIndex(
       'staff_tenant_id_branch_id_employee_code_key',
-    ).on(table.tenantId, table.branchId, table.employeeCode).where(sql`deleted_at IS NULL`),
+    )
+      .on(table.tenantId, table.branchId, table.employeeCode)
+      .where(sql`deleted_at IS NULL`),
     branchIdx: index('idx_staff_branch').on(table.branchId),
     departmentIdx: index('idx_staff_department').on(table.departmentId),
     teachingIdx: index('idx_staff_teaching')

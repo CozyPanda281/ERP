@@ -17,7 +17,9 @@ describe('AppController (e2e)', () => {
   });
 
   it('unknown routes return 404', () => {
-    return request(app.getHttpServer()).get('/definitely-not-a-route').expect(404);
+    return request(app.getHttpServer())
+      .get('/definitely-not-a-route')
+      .expect(404);
   });
 
   it('login with bad credentials is rejected (401) without crashing', async () => {

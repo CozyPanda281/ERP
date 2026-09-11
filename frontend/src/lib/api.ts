@@ -55,7 +55,9 @@ api.interceptors.request.use((config) => {
   const auth = loadAuth()
   if (auth) {
     config.headers.Authorization = `Bearer ${auth.accessToken}`
-    if (auth.user.tenantId) config.headers['X-Tenant-Id'] = auth.user.tenantId
+    if (auth.user.tenantId && !config.headers['X-Tenant-Id']) {
+      config.headers['X-Tenant-Id'] = auth.user.tenantId
+    }
   }
   return config
 })

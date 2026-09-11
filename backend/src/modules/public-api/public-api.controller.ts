@@ -1,12 +1,10 @@
+import { Controller, Get, Param, Query, Req, UseGuards } from '@nestjs/common';
 import {
-  Controller,
-  Get,
-  Param,
-  Query,
-  Req,
-  UseGuards,
-} from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiBearerAuth, ApiQuery } from '@nestjs/swagger';
+  ApiTags,
+  ApiOperation,
+  ApiBearerAuth,
+  ApiQuery,
+} from '@nestjs/swagger';
 import type { Request } from 'express';
 import { PublicApiService } from './public-api.service';
 import { Public } from '../../common/decorators/public.decorator';

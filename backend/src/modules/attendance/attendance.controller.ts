@@ -51,7 +51,12 @@ export class AttendanceController {
   }
 
   @Get('attendance/sessions/:id')
-  @Roles(ROLES.TEACHER, ROLES.PRINCIPAL, ROLES.STUDENT, ROLES.ORGANIZATION_OWNER)
+  @Roles(
+    ROLES.TEACHER,
+    ROLES.PRINCIPAL,
+    ROLES.STUDENT,
+    ROLES.ORGANIZATION_OWNER,
+  )
   @ApiOperation({ summary: 'Get attendance session with records' })
   async getSession(@Param('id') id: string, @CurrentUser() user: any) {
     const data = await this.attendanceService.getSessionById(id, user.branchId);
@@ -87,7 +92,10 @@ export class AttendanceController {
     @CurrentUser() user: any,
     @Query() query: AttendanceQueryDto,
   ) {
-    const data = await this.attendanceService.findByBranch(user.branchId, query);
+    const data = await this.attendanceService.findByBranch(
+      user.branchId,
+      query,
+    );
     return { success: true, ...data };
   }
 

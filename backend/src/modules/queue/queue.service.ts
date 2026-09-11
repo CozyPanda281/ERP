@@ -1,4 +1,9 @@
-import { Injectable, Logger, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
+import {
+  Injectable,
+  Logger,
+  OnModuleDestroy,
+  OnModuleInit,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Queue, Worker, Job } from 'bullmq';
 import * as net from 'net';
@@ -23,8 +28,12 @@ export class QueueService implements OnModuleInit, OnModuleDestroy {
 
   async onModuleInit() {
     const host = this.configService.get<string>('redis.host');
-    const port = parseInt(this.configService.get<string>('redis.port', '6379'), 10);
-    const password = this.configService.get<string>('redis.password', '') || undefined;
+    const port = parseInt(
+      this.configService.get<string>('redis.port', '6379'),
+      10,
+    );
+    const password =
+      this.configService.get<string>('redis.password', '') || undefined;
 
     if (!host || !(await this.canReach(host, port))) {
       this.logger.warn(
@@ -115,7 +124,11 @@ export class QueueService implements OnModuleInit, OnModuleDestroy {
     this.enabled = false;
   }
 
-  private canReach(host: string, port: number, timeoutMs = 500): Promise<boolean> {
+  private canReach(
+    host: string,
+    port: number,
+    timeoutMs = 500,
+  ): Promise<boolean> {
     return new Promise((resolve) => {
       const socket = new net.Socket();
       let done = false;

@@ -39,7 +39,9 @@ export class HealthService {
       await Promise.race([ping, timeout]);
       dbOk = true;
     } catch (err) {
-      this.logger.error(`Health check db ping failed: ${(err as Error).message}`);
+      this.logger.error(
+        `Health check db ping failed: ${(err as Error).message}`,
+      );
     }
 
     const redisHost = this.configService.get<string>('redis.host');

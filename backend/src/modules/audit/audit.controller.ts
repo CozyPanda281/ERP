@@ -62,7 +62,12 @@ export class AuditController {
     @Query('page') page: number = 1,
     @Query('limit') limit: number = 20,
   ) {
-    const data = await this.auditService.findByUser(userId, tenantId, page, limit);
+    const data = await this.auditService.findByUser(
+      userId,
+      tenantId,
+      page,
+      limit,
+    );
     return { success: true, ...data };
   }
 

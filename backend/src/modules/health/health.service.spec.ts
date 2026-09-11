@@ -54,7 +54,9 @@ describe('HealthService', () => {
     });
 
     it('throws 503 when the database is unreachable', async () => {
-      mockDb.query = jest.fn().mockRejectedValue(new Error('connection refused'));
+      mockDb.query = jest
+        .fn()
+        .mockRejectedValue(new Error('connection refused'));
       await expect(service.dbHealth()).rejects.toThrow(
         ServiceUnavailableException,
       );

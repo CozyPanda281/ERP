@@ -14,7 +14,6 @@ export const tenantAls = new AsyncLocalStorage<Map<string, string>>();
 // Applies the current request's GUCs on the acquired connection before every
 // query, and on connect() so transactions inherit them too.
 class GucAwarePool extends Pool {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   query: any = async (text: string, values?: unknown[]) => {
     // NOTE: never delegate to Pool.prototype.query here — it uses the
     // callback form of this.connect(), which the async override below cannot

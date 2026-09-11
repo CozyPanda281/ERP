@@ -5,7 +5,7 @@ import {
   BadRequestException,
   Logger,
 } from '@nestjs/common';
-import { DatabaseProvider } from '../../database/database.provider';
+import { DatabaseProvider, tenantAls } from '../../database/database.provider';
 import { v4 as uuidv4 } from 'uuid';
 import * as bcrypt from 'bcrypt';
 import {
@@ -33,13 +33,25 @@ export class TenantsService {
     slug: string;
     email?: string;
     phone?: string;
+    address?: string;
+    city?: string;
+    state?: string;
+    pincode?: string;
+    country?: string;
     planId: string;
     ownerEmail: string;
     ownerPassword: string;
     ownerFirstName: string;
     ownerLastName: string;
+    tenantId?: string;
+    billingCycle?: 'monthly' | 'yearly';
+    trialDays?: number;
+    startDate?: string;
+    endDate?: string;
+    status?: 'active' | 'trial' | 'expired' | 'cancelled' | 'suspended';
+    autoRenew?: boolean;
   }) {
-    const existing = await this.db.db
+    const existingSlug = await this.db.db
       .select()
       .from(schema.tenants)
       .where(
@@ -50,11 +62,23 @@ export class TenantsService {
       )
       .limit(1);
 
-    if (existing.length) {
+    if (existingSlug.length) {
       throw new ConflictException('Tenant slug already exists');
     }
 
-    const tenantId = uuidv4();
+    const tenantId = (params.tenantId ?? '').trim() || uuidv4();
+
+    const existingId = await this.db.db
+      .select()
+      .from(schema.tenants)
+      .where(
+        and(eq(schema.tenants.id, tenantId), isNull(schema.tenants.deletedAt)),
+      )
+      .limit(1);
+
+    if (existingId.length) {
+      throw new ConflictException('Tenant ID already exists');
+    }
 
     await this.db.db.insert(schema.tenants).values({
       id: tenantId,
@@ -62,23 +86,70 @@ export class TenantsService {
       slug: params.slug,
       email: params.email || null,
       phone: params.phone || null,
+      address: params.address || null,
+      city: params.city || null,
+      state: params.state || null,
+      pincode: params.pincode || null,
+      country: params.country ?? 'India',
     });
 
+    const plan = await this.findPlanById(params.planId);
+
     const now = new Date();
-    const endDate = new Date(
-      now.getFullYear() + 1,
-      now.getMonth(),
-      now.getDate(),
-    );
+    const startDateStr = params.startDate
+      ? new Date(params.startDate).toISOString().split('T')[0]
+      : now.toISOString().split('T')[0];
+
+    let endDateStr: string;
+    let status: string = params.status ?? 'active';
+    let trialEndsAt: string | null = null;
+
+    if (params.trialDays && params.trialDays > 0) {
+      const trialEnd = new Date(startDateStr);
+      trialEnd.setDate(trialEnd.getDate() + params.trialDays);
+      endDateStr = params.endDate
+        ? new Date(params.endDate).toISOString().split('T')[0]
+        : trialEnd.toISOString().split('T')[0];
+      trialEndsAt = trialEnd.toISOString().split('T')[0];
+      if (!params.status) status = 'trial';
+    } else if (params.endDate) {
+      endDateStr = new Date(params.endDate).toISOString().split('T')[0];
+    } else {
+      const billingCycle = params.billingCycle ?? 'monthly';
+      const endDate = new Date(startDateStr);
+      if (billingCycle === 'yearly') {
+        endDate.setFullYear(endDate.getFullYear() + 1);
+      } else {
+        endDate.setMonth(endDate.getMonth() + 1);
+      }
+      endDateStr = endDate.toISOString().split('T')[0];
+    }
 
     await this.db.db.insert(schema.subscriptions).values({
       id: uuidv4(),
       tenantId,
       planId: params.planId,
-      startDate: now.toISOString().split('T')[0],
-      endDate: endDate.toISOString().split('T')[0],
-      status: 'active',
+      startDate: startDateStr,
+      endDate: endDateStr,
+      billingCycle: params.billingCycle ?? 'monthly',
+      status,
+      trialEndsAt,
+      autoRenew: params.autoRenew ?? true,
     });
+
+    await this.db.db
+      .update(schema.tenants)
+      .set({
+        maxBranches: plan.maxBranches,
+        maxUsers: plan.maxUsers,
+        maxStudents: plan.maxStudents,
+        maxStaff: plan.maxStaff,
+        storageLimitMb: plan.storageLimitMb,
+        status:
+          status === 'cancelled' || status === 'suspended' ? status : 'active',
+        updatedAt: new Date(),
+      })
+      .where(eq(schema.tenants.id, tenantId));
 
     const defaultRoles = [
       { name: 'Organization Owner', slug: 'organization-owner', level: 1 },
@@ -93,6 +164,12 @@ export class TenantsService {
       { name: 'Parent', slug: 'parent', level: 5 },
       { name: 'Student', slug: 'student', level: 6 },
     ];
+
+    // Superadmin has no tenantId, so the RLS tenant_isolation policy on
+    // roles/users/user_roles would silently filter these inserts. Scope the
+    // request to the new tenant for the remaining writes in this request.
+    tenantAls.getStore()?.set('app.tenant_id', tenantId);
+    tenantAls.getStore()?.set('app.current_tenant_id', tenantId);
 
     for (const role of defaultRoles) {
       await this.db.db.insert(schema.roles).values({
@@ -321,6 +398,20 @@ export class TenantsService {
 
     if (!result) {
       throw new NotFoundException('Tenant not found');
+    }
+
+    return result;
+  }
+
+  async findPlanById(planId: string) {
+    const [result] = await this.db.db
+      .select()
+      .from(schema.plans)
+      .where(eq(schema.plans.id, planId))
+      .limit(1);
+
+    if (!result) {
+      throw new NotFoundException('Plan not found');
     }
 
     return result;

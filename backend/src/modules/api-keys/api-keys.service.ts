@@ -64,7 +64,9 @@ export class ApiKeysService {
     const { secret, prefix } = generateApiKey();
     const scopes = dto.scopes?.trim() || 'read';
     if (!scopes.split(',').every((s) => ['read', 'write'].includes(s.trim()))) {
-      throw new BadRequestException('Scopes must be a comma-separated list of: read, write');
+      throw new BadRequestException(
+        'Scopes must be a comma-separated list of: read, write',
+      );
     }
     const rateLimit = Math.max(1, Math.min(600, dto.rateLimitPerMinute ?? 60));
     const expiresAt = dto.expiresAt ? new Date(dto.expiresAt) : null;
@@ -106,7 +108,12 @@ export class ApiKeysService {
   async update(
     tenantId: string,
     keyId: string,
-    patch: Partial<Pick<CreateApiKeyDto, 'name' | 'scopes' | 'rateLimitPerMinute' | 'expiresAt'>>,
+    patch: Partial<
+      Pick<
+        CreateApiKeyDto,
+        'name' | 'scopes' | 'rateLimitPerMinute' | 'expiresAt'
+      >
+    >,
   ): Promise<ApiKeyRecord> {
     const existing = await this.findOwned(tenantId, keyId);
     if (!existing) throw new NotFoundException('API key not found');
@@ -114,7 +121,9 @@ export class ApiKeysService {
     const name = patch.name?.trim() || existing.name;
     const scopes = patch.scopes?.trim() || existing.scopes;
     if (!scopes.split(',').every((s) => ['read', 'write'].includes(s.trim()))) {
-      throw new BadRequestException('Scopes must be a comma-separated list of: read, write');
+      throw new BadRequestException(
+        'Scopes must be a comma-separated list of: read, write',
+      );
     }
     const rateLimit = Math.max(
       1,

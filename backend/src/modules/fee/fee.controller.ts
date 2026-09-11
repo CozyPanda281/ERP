@@ -234,7 +234,12 @@ export class FeeController {
   }
 
   @Get('fee-accounts/student/:studentId')
-  @Roles(ROLES.PRINCIPAL, ROLES.ACCOUNTANT, ROLES.STUDENT, ROLES.ORGANIZATION_OWNER)
+  @Roles(
+    ROLES.PRINCIPAL,
+    ROLES.ACCOUNTANT,
+    ROLES.STUDENT,
+    ROLES.ORGANIZATION_OWNER,
+  )
   @ApiOperation({ summary: 'Get fee account for a student' })
   async findAccountByStudent(
     @Param('studentId') studentId: string,
@@ -279,7 +284,12 @@ export class FeeController {
   }
 
   @Get('fee-invoices/student/:studentId')
-  @Roles(ROLES.PRINCIPAL, ROLES.ACCOUNTANT, ROLES.STUDENT, ROLES.ORGANIZATION_OWNER)
+  @Roles(
+    ROLES.PRINCIPAL,
+    ROLES.ACCOUNTANT,
+    ROLES.STUDENT,
+    ROLES.ORGANIZATION_OWNER,
+  )
   @ApiOperation({ summary: 'Get invoices for a student' })
   async findInvoicesByStudent(
     @Param('studentId') studentId: string,
@@ -296,7 +306,12 @@ export class FeeController {
   }
 
   @Get('fee-invoices/:id')
-  @Roles(ROLES.PRINCIPAL, ROLES.ACCOUNTANT, ROLES.STUDENT, ROLES.ORGANIZATION_OWNER)
+  @Roles(
+    ROLES.PRINCIPAL,
+    ROLES.ACCOUNTANT,
+    ROLES.STUDENT,
+    ROLES.ORGANIZATION_OWNER,
+  )
   @ApiOperation({ summary: 'Get invoice by ID' })
   async findInvoice(@Param('id') id: string) {
     const data = await this.feeService.findInvoiceById(id);
@@ -335,7 +350,12 @@ export class FeeController {
   }
 
   @Get('fee-payments/student/:studentId')
-  @Roles(ROLES.PRINCIPAL, ROLES.ACCOUNTANT, ROLES.STUDENT, ROLES.ORGANIZATION_OWNER)
+  @Roles(
+    ROLES.PRINCIPAL,
+    ROLES.ACCOUNTANT,
+    ROLES.STUDENT,
+    ROLES.ORGANIZATION_OWNER,
+  )
   @ApiOperation({ summary: 'Get payments for a student' })
   async findPaymentsByStudent(
     @Param('studentId') studentId: string,
@@ -352,7 +372,12 @@ export class FeeController {
   }
 
   @Get('fee-payments/:transactionId/receipt')
-  @Roles(ROLES.PRINCIPAL, ROLES.ACCOUNTANT, ROLES.STUDENT, ROLES.ORGANIZATION_OWNER)
+  @Roles(
+    ROLES.PRINCIPAL,
+    ROLES.ACCOUNTANT,
+    ROLES.STUDENT,
+    ROLES.ORGANIZATION_OWNER,
+  )
   @ApiOperation({ summary: 'Get receipt for a transaction' })
   async findReceipt(@Param('transactionId') transactionId: string) {
     const data = await this.feeService.findReceiptByTransaction(transactionId);

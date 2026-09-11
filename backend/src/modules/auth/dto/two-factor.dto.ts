@@ -4,7 +4,8 @@ import { IsString, Matches } from 'class-validator';
 export class TwoFactorCodeDto {
   @ApiProperty({
     example: '287082',
-    description: 'Six-digit TOTP code from the authenticator app, or a recovery code',
+    description:
+      'Six-digit TOTP code from the authenticator app, or a recovery code',
   })
   @IsString()
   @Matches(/^[0-9]{6}$|^[A-Z0-9]{4}-[A-Z0-9]{4}-[A-Z0-9]{4}$/, {

@@ -11,7 +11,11 @@ import {
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 export class CreateEntryDto {
-  @ApiProperty({ description: '0=Sunday..6=Saturday (JS Date.getDay convention)', minimum: 0, maximum: 6 })
+  @ApiProperty({
+    description: '0=Sunday..6=Saturday (JS Date.getDay convention)',
+    minimum: 0,
+    maximum: 6,
+  })
   @IsNumber()
   @IsNotEmpty()
   @Min(0)

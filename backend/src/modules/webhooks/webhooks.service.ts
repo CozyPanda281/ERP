@@ -269,7 +269,7 @@ export class WebhooksService {
       [deliveryId, tenantId],
     );
     if (!result.rows.length) throw new NotFoundException('Delivery not found');
-    const row = result.rows[0] as any;
+    const row = result.rows[0];
     if (row.deleted_at || !row.is_active) {
       throw new BadRequestException('Endpoint is inactive or deleted');
     }
